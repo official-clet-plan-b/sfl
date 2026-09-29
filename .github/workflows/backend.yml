@@ -151,7 +151,7 @@ jobs:
       # `TypeError: webidl.util.markAsUncloneable is not a function` and vitest reported unhandled
       # errors rather than failures. Vite 7 asks for `^20.19.0 || >=22.12.0` for the same reason, and
       # Node 20 left support in April 2026, so pinning to the 20 line was borrowing trouble twice.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
