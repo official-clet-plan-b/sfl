@@ -18,7 +18,7 @@ COPY services/sfl-portal-service/pom.xml services/sfl-portal-service/pom.xml
 COPY frontend frontend
 RUN mvn -f services/pom.xml -pl sfl-fleet-logistics-service -am -Pui package -DskipTests
 
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:25-jre
 RUN groupadd -r spring && useradd -r -g spring spring
 WORKDIR /app
 COPY --from=build /workspace/services/sfl-fleet-logistics-service/target/sfl-fleet-logistics-service-0.1.0-SNAPSHOT.jar app.jar
