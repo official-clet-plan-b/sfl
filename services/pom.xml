@@ -42,7 +42,7 @@
         -->
         <archunit.version>1.3.0</archunit.version>
         <springdoc-openapi.version>3.0.3</springdoc-openapi.version>
-        <testcontainers.version>1.21.3</testcontainers.version>
+        <testcontainers.version>2.0.5</testcontainers.version>
     </properties>
 
     <dependencyManagement>
