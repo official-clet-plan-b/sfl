@@ -40,7 +40,7 @@
           a routine bump in one module could silently diverge from its siblings. A fourth service
           inherits these for free.
         -->
-        <archunit.version>1.3.0</archunit.version>
+        <archunit.version>1.5.1</archunit.version>
         <springdoc-openapi.version>3.0.3</springdoc-openapi.version>
         <testcontainers.version>1.21.3</testcontainers.version>
     </properties>
