@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router';
 import Alert from 'shared/components/Alert';
 import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
 import DataTable, { Column } from 'shared/components/DataTable';
 import FilterBar from 'shared/components/FilterBar';
 import PageHeader from 'shared/components/PageHeader';
-import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
+import SiteSelect, { defaultSite, sflSites } from 'shared/components/SiteSelect';
 import StatusChip from 'shared/components/StatusChip';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
@@ -23,6 +24,12 @@ export interface IfimpView {
   query?: Record<string, string>;
 }
 
+/** Stable route segment used by both the sidebar and the compact secondary navigation. */
+export const viewSlug = (view: IfimpView): string => {
+  const segments = view.path.split('/').filter(Boolean);
+  return segments[segments.length - 1] ?? '';
+};
+
 export interface IfimpOperationsPageProps {
   system: string;
   title: string;
@@ -30,6 +37,10 @@ export interface IfimpOperationsPageProps {
   dependencyNote?: string;
   views: IfimpView[];
 }
+
+// Phase 2 operational endpoints work on one site at a time. Wildcard actors therefore start on the
+// first real site instead of sending an empty siteCode and meeting a validation error on arrival.
+const phase2DefaultSite = defaultSite || sflSites()[0] || '';
 
 const identifier = (row: IfimpRecord): string =>
   String(row.id ?? row.code ?? row.deviceCode ?? row.projectNumber ?? JSON.stringify(row));
@@ -100,11 +111,16 @@ const IfimpOperationsPage = ({
   dependencyNote,
   views,
 }: IfimpOperationsPageProps) => {
-  const [siteCode, setSiteCode] = useState(defaultSite);
-  const [activePath, setActivePath] = useState(views[0].path);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { view: requestedView } = useParams<{ view?: string }>();
+  const [siteCode, setSiteCode] = useState(phase2DefaultSite);
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<IfimpRecord>();
-  const active = views.find((view) => view.path === activePath) ?? views[0];
+  const active = views.find((candidate) => viewSlug(candidate) === requestedView) ?? views[0];
+  const basePath = requestedView
+    ? location.pathname.slice(0, location.pathname.lastIndexOf('/'))
+    : location.pathname;
   const query = useApiQuery(
     (signal) => readIfimpDataset(active.path, siteCode, active.query, signal),
     [active.path, siteCode],
@@ -133,17 +149,22 @@ const IfimpOperationsPage = ({
       )}
 
       <FilterBar>
-        <SiteSelect value={siteCode} onChange={setSiteCode} />
+        <SiteSelect
+          value={siteCode}
+          onChange={setSiteCode}
+          required
+          helperText="Phase 2 operations are shown for one site at a time."
+        />
       </FilterBar>
 
-      <div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label={`${title} views`}>
-        {views.map((view) => (
+      <div className="mb-5 flex flex-wrap gap-2" aria-label={`${title} views`}>
+        {views.map((candidate, index) => (
           <Button
-            key={view.path}
-            variant={active.path === view.path ? 'primary' : 'outline'}
-            onClick={() => setActivePath(view.path)}
+            key={candidate.path}
+            variant={active.path === candidate.path ? 'primary' : 'outline'}
+            onClick={() => navigate(index === 0 ? basePath : `${basePath}/${viewSlug(candidate)}`)}
           >
-            {view.label}
+            {candidate.label}
           </Button>
         ))}
       </div>

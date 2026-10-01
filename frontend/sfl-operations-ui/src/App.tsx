@@ -332,21 +332,27 @@ const App = () => {
             <Route path="facilities">
               <Route path="building-systems" element={<SystemRoutes system="S156" />}>
                 <Route index element={<BuildingSystemsPage />} />
+                <Route path=":view" element={<BuildingSystemsPage />} />
               </Route>
               <Route path="energy" element={<SystemRoutes system="S157" />}>
                 <Route index element={<EnergyPage />} />
+                <Route path=":view" element={<EnergyPage />} />
               </Route>
               <Route path="space-planning" element={<SystemRoutes system="S158" />}>
                 <Route index element={<SpacePlanningPage />} />
+                <Route path=":view" element={<SpacePlanningPage />} />
               </Route>
               <Route path="cleaning" element={<SystemRoutes system="S169" />}>
                 <Route index element={<CleaningPage />} />
+                <Route path=":view" element={<CleaningPage />} />
               </Route>
               <Route path="event-logistics" element={<SystemRoutes system="S173" />}>
                 <Route index element={<EventLogisticsPage />} />
+                <Route path=":view" element={<EventLogisticsPage />} />
               </Route>
               <Route path="construction" element={<SystemRoutes system="S176" />}>
                 <Route index element={<ConstructionPage />} />
+                <Route path=":view" element={<ConstructionPage />} />
               </Route>
             </Route>
             {/*

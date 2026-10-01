@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { DateField, DateTimeField } from 'shared/components/DateField';
 import FormDialog from 'shared/components/FormDialog';
+import SiteSelect from 'shared/components/SiteSelect';
 import { NumberInput, SelectInput, TextAreaInput, TextInput } from 'shared/components/fields';
 import { FleetApiError } from 'shared/errors/FleetApiError';
 import { IfimpRecord, IfimpWriteMethod, writeIfimpRecord } from '../api/ifimpPhase2Api';
@@ -7,7 +9,7 @@ import { IfimpRecord, IfimpWriteMethod, writeIfimpRecord } from '../api/ifimpPha
 export interface CreateField {
   key: string;
   label: string;
-  type?: 'text' | 'number' | 'textarea' | 'select' | 'date';
+  type?: 'text' | 'number' | 'textarea' | 'select' | 'date' | 'datetime';
   required?: boolean;
   options?: string[];
   initial?: string;
@@ -69,10 +71,13 @@ const IfimpCreateDialog = ({ action, siteCode, open, onClose, onCreated, record 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {action.fields.map((field) => {
           const common = { key: field.key, label: field.label, required: field.required, value: values[field.key] ?? '', onChange: (value: string) => update(field.key, value) };
+          if (field.key === 'siteCode') return <SiteSelect {...common} />;
           if (field.type === 'select') return <SelectInput {...common} options={(field.options ?? []).map((value) => ({ value, label: value.replace(/_/g, ' ') }))} />;
           if (field.type === 'number') return <NumberInput {...common} />;
           if (field.type === 'textarea') return <TextAreaInput {...common} className="sm:col-span-2" />;
-          return <TextInput {...common} type={field.type === 'date' ? 'text' : 'text'} placeholder={field.type === 'date' ? 'YYYY-MM-DD' : undefined} />;
+          if (field.type === 'date') return <DateField {...common} />;
+          if (field.type === 'datetime') return <DateTimeField {...common} />;
+          return <TextInput {...common} />;
         })}
       </div>
     </FormDialog>
