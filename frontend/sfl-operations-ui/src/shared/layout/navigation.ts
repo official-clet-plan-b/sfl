@@ -171,6 +171,16 @@ export const bookingPaths = {
   bookingDetail: (bookingId: string) => `/facilities/bookings/${bookingId}`,
 };
 
+/** Phase 2 IFIMP systems share the facilities deployable but remain independently entitled. */
+export const ifimpPhase2Paths = {
+  buildingSystems: '/facilities/building-systems',
+  energy: '/facilities/energy',
+  spacePlanning: '/facilities/space-planning',
+  cleaning: '/facilities/cleaning',
+  eventLogistics: '/facilities/event-logistics',
+  construction: '/facilities/construction',
+};
+
 export const fleetPaths = {
   dashboard: '/fleetvehicle/fleet',
   vehicles: '/fleetvehicle/fleet/vehicles',
@@ -617,6 +627,84 @@ export const navSections: NavSection[] = [
         capability: 'FACILITIES_RESOURCE_MANAGE',
       },
     ],
+  },
+  {
+    heading: 'Building systems',
+    programme: 'IFIMP',
+    system: 'S156',
+    items: [{
+      label: 'BMS & IoT operations',
+      to: ifimpPhase2Paths.buildingSystems,
+      icon: 'activity',
+      description: 'Devices, telemetry, alerts and quarantine',
+      permission: 'FACILITIES_BMS_READ',
+      capability: ['FACILITIES_BMS_DEVICE_MANAGE', 'FACILITIES_BMS_RULE_MANAGE', 'FACILITIES_BMS_QUARANTINE_RESOLVE'],
+    }],
+  },
+  {
+    heading: 'Energy & sustainability',
+    programme: 'IFIMP',
+    system: 'S157',
+    items: [{
+      label: 'Energy operations',
+      to: ifimpPhase2Paths.energy,
+      icon: 'gauge',
+      description: 'Meters, readings, budgets and KPIs',
+      permission: 'FACILITIES_ENERGY_READ',
+      capability: ['FACILITIES_ENERGY_METER_MANAGE', 'FACILITIES_ENERGY_READING_ENTER', 'FACILITIES_ENERGY_BUDGET_MANAGE'],
+    }],
+  },
+  {
+    heading: 'Space planning',
+    programme: 'IFIMP',
+    system: 'S158',
+    items: [{
+      label: 'Plans & moves',
+      to: ifimpPhase2Paths.spacePlanning,
+      icon: 'layers',
+      description: 'Scenarios, allocations and change requests',
+      permission: 'FACILITIES_SPACE_PLAN_READ',
+      capability: ['FACILITIES_SPACE_PLAN_MANAGE', 'FACILITIES_SPACE_CHANGE_REQUEST', 'FACILITIES_SPACE_CHANGE_DECIDE'],
+    }],
+  },
+  {
+    heading: 'Cleaning operations',
+    programme: 'IFIMP',
+    system: 'S169',
+    items: [{
+      label: 'Cleaning work',
+      to: ifimpPhase2Paths.cleaning,
+      icon: 'check-circle',
+      description: 'Schedules, tasks, checklists and vendors',
+      permission: 'FACILITIES_CLEANING_READ',
+      capability: ['FACILITIES_CLEANING_SCHEDULE_MANAGE', 'FACILITIES_CLEANING_TASK_EXECUTE', 'FACILITIES_CLEANING_TASK_SUPERVISE', 'FACILITIES_CLEANING_REQUEST'],
+    }],
+  },
+  {
+    heading: 'Event logistics',
+    programme: 'IFIMP',
+    system: 'S173',
+    items: [{
+      label: 'Event readiness',
+      to: ifimpPhase2Paths.eventLogistics,
+      icon: 'calendar',
+      description: 'Set-up tasks, resources and reconciliation',
+      permission: 'FACILITIES_EVENT_READ',
+      capability: ['FACILITIES_EVENT_COORDINATE', 'FACILITIES_EVENT_RISK_CATEGORY_MANAGE'],
+    }],
+  },
+  {
+    heading: 'Construction',
+    programme: 'IFIMP',
+    system: 'S176',
+    items: [{
+      label: 'Construction projects',
+      to: ifimpPhase2Paths.construction,
+      icon: 'building',
+      description: 'Projects, contractors, variations and handover',
+      permission: 'FACILITIES_PROJECT_READ',
+      capability: ['FACILITIES_PROJECT_MANAGE', 'FACILITIES_PROJECT_APPROVE', 'FACILITIES_PROJECT_HANDOVER', 'FACILITIES_CONTRACTOR_MANAGE'],
+    }],
   },
   {
     // Last, because neither answers "what do I do next" - one proves what was already done and the
