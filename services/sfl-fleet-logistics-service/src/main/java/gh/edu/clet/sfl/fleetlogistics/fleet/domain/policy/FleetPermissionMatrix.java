@@ -151,6 +151,9 @@ public final class FleetPermissionMatrix {
                 // the journey starts, and to read the closing odometer off it when it is over.
                 SflPermission.FLEET_TRIP_START_OWN,
                 SflPermission.FLEET_TRIP_CLOSE_OWN,
+                // Reports their own position while driving - see the permission's own javadoc for why
+                // this exists at all without a connected telematics vendor.
+                SflPermission.FLEET_TRIP_LOCATION_REPORT_OWN,
                 SflPermission.FLEET_INSPECTION_RECORD,
                 SflPermission.FLEET_EVIDENCE_REGISTER));
 

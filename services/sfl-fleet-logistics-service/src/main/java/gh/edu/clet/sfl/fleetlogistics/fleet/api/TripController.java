@@ -7,6 +7,7 @@ import gh.edu.clet.sfl.fleetlogistics.fleet.api.mapper.FleetWorkflowMapper;
 import gh.edu.clet.sfl.fleetlogistics.fleet.api.request.FleetTripRequests;
 import gh.edu.clet.sfl.fleetlogistics.fleet.api.response.FleetWorkflowResponses.InspectionResponse;
 import gh.edu.clet.sfl.fleetlogistics.fleet.api.response.FleetWorkflowResponses.TripResponse;
+import gh.edu.clet.sfl.fleetlogistics.fleet.api.response.FleetIntegrationResponses.VehicleLocationResponse;
 import gh.edu.clet.sfl.fleetlogistics.fleet.api.response.PageResponse;
 import gh.edu.clet.sfl.fleetlogistics.fleet.api.response.ReadinessResponse;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.AcknowledgeTripCommand;
@@ -16,6 +17,7 @@ import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.CloseTripCommand
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.CreateTripCommand;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.HoldTripCommand;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.RecordInspectionCommand;
+import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.ReportTripLocationCommand;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.StartTripCommand;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.TripRepository;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.query.TripQueryService;
@@ -253,6 +255,40 @@ class TripController {
         return ApiResponse.ok(tripQueries.findInspections(tripId, actorResolver.resolve(httpRequest)).stream()
                 .map(mapper::toResponse)
                 .toList());
+    }
+
+    /**
+     * The assigned driver reports the vehicle's current position while the trip is in progress.
+     *
+     * <p>Without a connected telematics vendor (S167, Phase 2), this is the live feed: the driver's
+     * own device, on the same mobile-friendly web workflow every other field role here already uses.
+     */
+    @io.swagger.v3.oas.annotations.Operation(
+            summary = "Reports the vehicle's current position - the assigned driver's own trip, in progress, only")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Request failed bean validation")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Not the driver assigned to this trip, or the trip is not in progress")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "No trip exists with this id")
+    @PostMapping("/{tripId}/location")
+    ApiResponse<VehicleLocationResponse> reportLocation(@PathVariable UUID tripId,
+            @Valid @RequestBody FleetTripRequests.ReportLocation request, HttpServletRequest httpRequest) {
+        ActorContext actor = actorResolver.resolve(httpRequest);
+        return ApiResponse.ok(VehicleLocationResponse.from(tripService.reportOwnLocation(
+                new ReportTripLocationCommand(tripId, request.latitude(), request.longitude(), actor,
+                        actorResolver.resolveSourceChannel(httpRequest)))));
+    }
+
+    /**
+     * The vehicle's latest known position for this trip, for a live map - driver-reported or, once a
+     * telematics vendor is connected (S167), vendor-fed; the reader cannot tell which from this alone.
+     */
+    @io.swagger.v3.oas.annotations.Operation(summary = "The trip's vehicle's latest known position, if any has been reported")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "The trip's site is outside the actor's scope")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "No trip exists with this id")
+    @GetMapping("/{tripId}/location")
+    ApiResponse<VehicleLocationResponse> latestLocation(@PathVariable UUID tripId, HttpServletRequest httpRequest) {
+        return ApiResponse.ok(tripQueries.latestLocation(tripId, actorResolver.resolve(httpRequest))
+                .map(VehicleLocationResponse::from)
+                .orElse(null));
     }
 
     /**

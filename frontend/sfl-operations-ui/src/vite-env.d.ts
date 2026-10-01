@@ -9,8 +9,6 @@ interface ImportMetaEnv {
   readonly VITE_APP_PORT?: string;
   readonly VITE_FLEET_API_BASE_URL?: string;
   readonly VITE_SAFETY_SECURITY_API_BASE_URL?: string;
-  /** Places autocomplete for origin/destination. Unset means free text. */
-  readonly VITE_GOOGLE_MAPS_API_KEY?: string;
   readonly VITE_SFL_USER?: string;
   readonly VITE_SFL_DISPLAY_NAME?: string;
   readonly VITE_SFL_ROLES?: string;

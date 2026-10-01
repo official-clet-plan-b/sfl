@@ -19,8 +19,10 @@ import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.LicenceClass;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.LicenceDetails;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.OperatingMode;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.Trip;
+import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.VehicleLocationSnapshot;
 import gh.edu.clet.sfl.fleetlogistics.fleet.support.FleetTestDoubles;
 import gh.edu.clet.sfl.fleetlogistics.fleet.support.FleetWorkflowTestDoubles;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.ZoneOffset;
@@ -50,6 +52,7 @@ class TripQueryScopeTest {
     private FleetWorkflowTestDoubles.InMemoryTripRepository trips;
     private FleetTestDoubles.InMemoryDriverProfileRepository drivers;
     private TripQueryService queries;
+    private FleetTestDoubles.InMemoryLocationRepository locations;
 
     private DriverProfileReference kwame;
     private DriverProfileReference ama;
@@ -69,8 +72,9 @@ class TripQueryScopeTest {
         FleetReadinessService readiness = new FleetReadinessService(
                 new FleetTestDoubles.InMemoryComplianceDocumentRepository(), inspections, trips, drivers,
                 new FleetTestDoubles.FixedRuntimeConfiguration(), clock);
+        locations = new FleetTestDoubles.InMemoryLocationRepository();
         queries = new TripQueryService(trips, vehicles, inspections, readiness, accessPolicy,
-                new DriverScopeResolver(drivers, accessPolicy));
+                new DriverScopeResolver(drivers, accessPolicy), locations);
 
         kwame = drivers.save(driver("11111111-1111-1111-1111-111111111111", "CLET/HR/00123", "Kwame Mensah",
                 "GHA-DL-4477201", "CLET/HR/00123"));
@@ -154,6 +158,31 @@ class TripQueryScopeTest {
 
         assertThatThrownBy(() -> queries.findById(unassigned.id(), driverActor("CLET/HR/00123")))
                 .isInstanceOf(FleetAuthorizationException.class);
+    }
+
+    @Test
+    @DisplayName("a reported position is visible through the same narrowing as the trip itself")
+    void latest_location_is_narrowed_like_the_trip_it_belongs_to() {
+        locations.save(new VehicleLocationSnapshot(UUID.randomUUID(), VEHICLE_ID, ACCRA,
+                new BigDecimal("5.6037"), new BigDecimal("-0.186964"), null, NOW, "DRIVER_MOBILE",
+                UUID.randomUUID(), null));
+
+        assertThat(queries.latestLocation(kwamesTrip.id(), driverActor("CLET/HR/00123")))
+                .isPresent()
+                .get()
+                .extracting(VehicleLocationSnapshot::vehicleId)
+                .isEqualTo(VEHICLE_ID);
+
+        // Ama's driver scope cannot reach Kwame's trip, so it cannot reach its position either -
+        // the same refusal findById already gives, not a second rule to keep in step with it.
+        assertThatThrownBy(() -> queries.latestLocation(kwamesTrip.id(), driverActor("CLET/HR/00456")))
+                .isInstanceOf(FleetAuthorizationException.class);
+    }
+
+    @Test
+    @DisplayName("a trip nobody has reported a position for answers empty, not an error")
+    void latest_location_is_empty_before_anything_is_reported() {
+        assertThat(queries.latestLocation(kwamesTrip.id(), driverActor("CLET/HR/00123"))).isEmpty();
     }
 
     private static TripRepository.TripSearchCriteria criteria(UUID driverId) {

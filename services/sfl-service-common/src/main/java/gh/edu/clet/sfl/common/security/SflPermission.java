@@ -131,6 +131,16 @@ public enum SflPermission {
      * the wider schedule a driver does not have.
      */
     FLEET_TRIP_START_OWN,
+    /**
+     * Report the vehicle's current position while driving a trip that is assigned to you.
+     *
+     * <p>Scoped the same way as {@link #FLEET_TRIP_START_OWN} and {@link #FLEET_TRIP_CLOSE_OWN}: it
+     * answers for one trip, the actor's own, and grants nothing over anybody else's. Without a
+     * connected telematics vendor (S167, Phase 2), this is how a live position reaches the fleet
+     * office at all - the driver's own device reports it while {@code IN_PROGRESS}, through the same
+     * mobile-friendly web workflow every other field role in this platform already uses.
+     */
+    FLEET_TRIP_LOCATION_REPORT_OWN,
     FLEET_TRIP_CANCEL,
     FLEET_TRIP_CLOSE,
     FLEET_INSPECTION_RECORD,

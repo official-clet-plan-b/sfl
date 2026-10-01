@@ -33,6 +33,7 @@ import {
   OperationsDashboardSnapshot,
   RaiseWorkflowItemRequest,
   ReadinessResponse,
+  ReportLocationRequest,
   RecordInspectionRequest,
   RecordStandaloneInspectionRequest,
   RecordVehicleServiceRequest,
@@ -230,6 +231,26 @@ export const tripsApi = {
 
   recordInspection: (tripId: string, body: RecordInspectionRequest) =>
     apiClient.post<InspectionResponse>(`${BASE}/trips/${tripId}/inspections`, body),
+
+  /**
+   * The assigned driver reports the vehicle's current position, while the trip is in progress.
+   *
+   * There is no connected telematics vendor (S167, Phase 2) - this is how a live position reaches
+   * the fleet office at all, through the same mobile-friendly web workflow every other field role
+   * already uses. Refused outside `IN_PROGRESS`, and unless the signed-in identity is bound to the
+   * driver on this trip.
+   */
+  reportLocation: (tripId: string, body: ReportLocationRequest) =>
+    apiClient.post<VehicleLocationResponse>(`${BASE}/trips/${tripId}/location`, body),
+
+  /**
+   * The trip's vehicle's latest known position, if anything has reported one yet.
+   *
+   * `null` is the honest answer before the first report - not an error, and not distinguishable
+   * from "the trip has no vehicle assigned" on this response alone.
+   */
+  latestLocation: (tripId: string, signal?: AbortSignal) =>
+    apiClient.get<VehicleLocationResponse | null>(`${BASE}/trips/${tripId}/location`, undefined, signal),
 
   /**
    * Readiness preview before committing to an assignment.

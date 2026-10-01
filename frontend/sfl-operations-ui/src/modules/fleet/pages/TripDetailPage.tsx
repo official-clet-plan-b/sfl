@@ -10,8 +10,10 @@ import {
   canCloseTrips,
   canManageTrips,
   canRecordInspections,
+  canReportOwnTripLocation,
   canStartOwnTrip,
 } from 'modules/fleet/api/access';
+import TripRouteMap from 'modules/fleet/components/TripRouteMap';
 import {
   AcknowledgeTripDialog,
   AssignTripDialog,
@@ -21,6 +23,7 @@ import {
   RecordInspectionDialog,
   StartTripDialog,
 } from 'modules/fleet/dialogs/tripDialogs';
+import { useOwnLocationReporting } from 'modules/fleet/hooks/useOwnLocationReporting';
 import Alert from 'shared/components/Alert';
 import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
@@ -89,6 +92,17 @@ const answerable = (trip: TripResponse) =>
 const startableOwn = (trip: TripResponse) =>
   trip.status === 'ASSIGNED' && canStartOwnTrip() && !canManageTrips();
 
+/**
+ * Whether this screen should be reporting the device's own position right now.
+ *
+ * Same reasoning as {@link startableOwn}: the permission alone is not "this is my trip", and the
+ * status has to be {@code IN_PROGRESS} - before or after, there is nothing for a device to be
+ * reporting. A dispatcher viewing the same trip never reports anything; only the driver's own open
+ * tab on their own assigned, moving trip does.
+ */
+const reportingOwn = (trip: TripResponse) =>
+  trip.status === 'IN_PROGRESS' && canReportOwnTripLocation() && !canManageTrips();
+
 /** A related record rendered as a navigable tile - the assignment's vehicle and driver. */
 const linkTile = 'block rounded-xl border border-gray-200 p-3 transition hover:border-brand-500';
 
@@ -114,6 +128,9 @@ const TripDetailPage = () => {
 
   const trip = useApiQuery((signal) => tripsApi.findById(tripId, signal), [tripId]);
   const inspections = useApiQuery((signal) => tripsApi.inspections(tripId, signal), [tripId]);
+  // Always called, never conditionally - only the argument depends on whether the trip has loaded yet
+  // and whether this is the driver's own moving trip.
+  useOwnLocationReporting(tripId, Boolean(trip.data && reportingOwn(trip.data)));
 
   const vehicleId = trip.data?.vehicleId ?? '';
   const driverId = trip.data?.driverId ?? '';
@@ -298,6 +315,19 @@ const TripDetailPage = () => {
                 )}
               </div>
             </SectionCard>
+
+            {trip.data.vehicleId && !['COMPLETED', 'CANCELLED'].includes(trip.data.status) && (
+              <SectionCard
+                title="Live route"
+                subtitle={
+                  reportingOwn(trip.data)
+                    ? 'Your position is shared with the fleet office while this trip is in progress'
+                    : 'Planned route, and the vehicle\'s current position once the trip is under way'
+                }
+              >
+                <TripRouteMap trip={trip.data} />
+              </SectionCard>
+            )}
 
             <div className="grid gap-5 xl:grid-cols-3">
               <SectionCard title="Trip record" className="xl:col-span-2">
