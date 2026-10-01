@@ -5,11 +5,14 @@ import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.InspectionType;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.OperatingMode;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.TripAcknowledgementState;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -45,6 +48,17 @@ public final class FleetTripRequests {
     public record StartTrip(
             @NotNull @PositiveOrZero Long startOdometer,
             Long expectedVersion) {
+    }
+
+    /**
+     * {@code POST /api/v1/fleet/trips/{tripId}/location}. The device's own reading, unadjusted.
+     *
+     * <p>Bounded to real coordinates rather than merely non-null: a malformed or spoofed value here
+     * would otherwise land silently in the same read a dispatcher trusts for "where is the vehicle".
+     */
+    public record ReportLocation(
+            @NotNull @DecimalMin("-90") @DecimalMax("90") BigDecimal latitude,
+            @NotNull @DecimalMin("-180") @DecimalMax("180") BigDecimal longitude) {
     }
 
     /** {@code PATCH /api/v1/fleet/trips/{tripId}/hold}. */

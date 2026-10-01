@@ -13,6 +13,7 @@ import type { TripResponse } from 'modules/fleet/api/dto';
 import { CloseTripDialog, StartTripDialog } from 'modules/fleet/dialogs/tripDialogs';
 import Button from 'shared/components/Button';
 import { useNotifier } from 'shared/components/Notifier';
+import { fleetPaths } from 'shared/layout/navigation';
 
 /**
  * A driver's day - the eight permissions `FLEET_DRIVER` actually holds, and nothing else.
@@ -167,6 +168,7 @@ const DriverDayPage = () => {
             columns={tripColumns(true)}
             rows={activeTrips}
             getRowId={(row) => row.id}
+            onRowClick={(row) => navigate(fleetPaths.tripDetail(row.id))}
           />
         </DataState>
       </section>

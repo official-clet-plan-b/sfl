@@ -15,6 +15,7 @@ import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.CloseTripCommand
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.CreateTripCommand;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.HoldTripCommand;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.RecordInspectionCommand;
+import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.ReportTripLocationCommand;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.StartTripCommand;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.event.FleetEventType;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.exception.AssignmentConflictException;
@@ -22,6 +23,7 @@ import gh.edu.clet.sfl.fleetlogistics.fleet.domain.exception.ClosureEvidenceMiss
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.exception.DriverIneligibleException;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.exception.FleetAuthorizationException;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.exception.FleetErrorCode;
+import gh.edu.clet.sfl.fleetlogistics.fleet.domain.exception.InvalidStateTransitionException;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.exception.PreTripInspectionMissingException;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.exception.ReadinessBlockedException;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.AuditAction;
@@ -40,10 +42,12 @@ import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.TripStatus;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.Vehicle;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.VehicleAvailabilityStatus;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.VehicleInspection;
+import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.VehicleLocationSnapshot;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.VehicleServiceStatus;
 import gh.edu.clet.sfl.fleetlogistics.fleet.support.FleetFixtures;
 import gh.edu.clet.sfl.fleetlogistics.fleet.support.FleetTestDoubles;
 import gh.edu.clet.sfl.fleetlogistics.fleet.support.FleetWorkflowTestDoubles;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -96,7 +100,8 @@ class TripApplicationServiceTest {
         FleetAccessPolicy accessPolicy = new FleetAccessPolicy();
         service = new TripApplicationService(trips, vehicles, inspections, drivers, readiness, workflowRaiser,
                 accessPolicy, audit, events, new FleetTestDoubles.InMemoryIdempotencyPort(),
-                new DriverScopeResolver(drivers, accessPolicy), clock);
+                new DriverScopeResolver(drivers, accessPolicy), new FleetTestDoubles.InMemoryLocationRepository(),
+                clock);
 
         vehicle = vehicles.save(FleetFixtures.vehicle());
         driver = drivers.save(eligibleDriver());
@@ -376,6 +381,48 @@ class TripApplicationServiceTest {
                 UUID.randomUUID(), 42_500L, null,
                 FleetTestDoubles.driver("nobody-is-bound-to-this", "ACCRA"), SourceChannel.MOBILE)))
                 .isInstanceOf(FleetAuthorizationException.class);
+    }
+
+    // --- the driver's own live position, without a telematics vendor (S167 seam) ----------
+
+    @Test
+    @DisplayName("the assigned driver reports their own trip's position while it is in progress")
+    void a_driver_reports_their_own_trips_position() {
+        Trip inProgress = startedTrip();
+
+        VehicleLocationSnapshot reported = service.reportOwnLocation(new ReportTripLocationCommand(
+                inProgress.id(), new BigDecimal("5.603700"), new BigDecimal("-0.186964"), boundDriverActor(),
+                SourceChannel.MOBILE));
+
+        assertThat(reported.vehicleId()).isEqualTo(inProgress.vehicleId());
+        assertThat(reported.sourceSystem()).isEqualTo("DRIVER_MOBILE");
+        assertThat(reported.latitude()).isEqualByComparingTo("5.603700");
+        assertThat(reported.longitude()).isEqualByComparingTo("-0.186964");
+    }
+
+    @Test
+    @DisplayName("a driver cannot report the position of a trip assigned to somebody else")
+    void a_driver_cannot_report_another_drivers_trip_position() {
+        DriverProfileReference other = drivers.save(anotherEligibleDriver());
+        Trip trip = service.create(createCommand(vehicle.id(), other.id(), "idem-other-loc"));
+        service.recordInspection(inspectionCommand(trip.id(), List.of(), "idem-insp-other-loc"));
+        service.start(new StartTripCommand(trip.id(), 42_100L, null,
+                FleetTestDoubles.fleetOfficer("ACCRA"), SourceChannel.WEB));
+
+        assertThatThrownBy(() -> service.reportOwnLocation(new ReportTripLocationCommand(trip.id(),
+                new BigDecimal("5.6"), new BigDecimal("-0.2"), boundDriverActor(), SourceChannel.MOBILE)))
+                .isInstanceOf(FleetAuthorizationException.class);
+    }
+
+    @Test
+    @DisplayName("a position cannot be reported before the trip is in progress")
+    void location_cannot_be_reported_before_the_trip_is_in_progress() {
+        Trip assigned = service.create(createCommand(vehicle.id(), driver.id(), "idem-not-started"));
+
+        // ASSIGNED, not IN_PROGRESS: nothing about "the driver is at the wheel right now" is true yet.
+        assertThatThrownBy(() -> service.reportOwnLocation(new ReportTripLocationCommand(assigned.id(),
+                new BigDecimal("5.6"), new BigDecimal("-0.2"), boundDriverActor(), SourceChannel.MOBILE)))
+                .isInstanceOf(InvalidStateTransitionException.class);
     }
 
     @Test

@@ -4,7 +4,7 @@ import {
   newSessionToken,
   placesConfigured,
   type PlaceSuggestion,
-} from 'shared/places/googlePlaces';
+} from 'shared/places/openStreetMapPlaces';
 import { TextInput } from './fields';
 
 /**

@@ -68,6 +68,14 @@ export const canCancelTrips = (): boolean => permits('FLEET_TRIP_CANCEL');
  * {@link canAcknowledgeTrips}'s doc) before offering the control.
  */
 export const canStartOwnTrip = (): boolean => permits('FLEET_TRIP_START_OWN');
+/**
+ * Report your own position while driving a trip assigned to you.
+ *
+ * Same shape as {@link canStartOwnTrip}: necessary and not sufficient, the service also requires the
+ * trip to be yours and `IN_PROGRESS`. Without a connected telematics vendor, this is the one source
+ * of a live position the fleet office has.
+ */
+export const canReportOwnTripLocation = (): boolean => permits('FLEET_TRIP_LOCATION_REPORT_OWN');
 export const canRecordInspections = (): boolean => permits('FLEET_INSPECTION_RECORD');
 
 export const canManageWorkflow = (): boolean => permits('FLEET_WORKFLOW_MANAGE');

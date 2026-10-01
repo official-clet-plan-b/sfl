@@ -5,6 +5,7 @@ import gh.edu.clet.sfl.common.security.SflPermission;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.DriverProfileRepository;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.TripRepository;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.VehicleInspectionRepository;
+import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.VehicleLocationRepository;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.VehicleRepository;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.service.DriverScope;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.service.DriverScopeResolver;
@@ -19,9 +20,11 @@ import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.ReadinessAssessment;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.Trip;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.Vehicle;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.VehicleInspection;
+import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.VehicleLocationSnapshot;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,17 +41,39 @@ public class TripQueryService {
     private final FleetReadinessService readinessService;
     private final FleetAccessPolicy accessPolicy;
     private final DriverScopeResolver driverScopes;
+    private final VehicleLocationRepository locations;
 
     public TripQueryService(TripRepository trips, VehicleRepository vehicles,
             VehicleInspectionRepository inspections,
             FleetReadinessService readinessService,
-            FleetAccessPolicy accessPolicy, DriverScopeResolver driverScopes) {
+            FleetAccessPolicy accessPolicy, DriverScopeResolver driverScopes,
+            VehicleLocationRepository locations) {
         this.trips = trips;
         this.vehicles = vehicles;
         this.inspections = inspections;
         this.readinessService = readinessService;
         this.accessPolicy = accessPolicy;
         this.driverScopes = driverScopes;
+        this.locations = locations;
+    }
+
+    /**
+     * The vehicle's latest known position for this trip, for a live map.
+     *
+     * <p>Goes through {@link #findById} first and only - every authorisation and narrowing rule a
+     * trip-detail read already enforces applies identically here, because seeing a live position is
+     * strictly less sensitive than seeing the trip it belongs to. {@code Optional.empty()} is the
+     * honest answer before anything has reported a position; the caller does not get to tell that
+     * apart from "the trip does not exist", because it already could not by the time {@link #findById}
+     * returned.
+     */
+    @Transactional(readOnly = true)
+    public Optional<VehicleLocationSnapshot> latestLocation(UUID tripId, ActorContext actor) {
+        Trip trip = findById(tripId, actor);
+        if (trip.vehicleId() == null) {
+            return Optional.empty();
+        }
+        return locations.findLatestByVehicle(trip.vehicleId());
     }
 
     /**

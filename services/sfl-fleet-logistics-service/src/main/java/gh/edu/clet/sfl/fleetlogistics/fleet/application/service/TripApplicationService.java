@@ -9,6 +9,7 @@ import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.CloseTripCommand
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.CreateTripCommand;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.HoldTripCommand;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.RecordInspectionCommand;
+import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.ReportTripLocationCommand;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.StartTripCommand;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.AuditPort;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.DriverProfileRepository;
@@ -16,6 +17,7 @@ import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.IdempotencyPort;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.IntegrationEventPublisher;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.TripRepository;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.VehicleInspectionRepository;
+import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.VehicleLocationRepository;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.VehicleRepository;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.workflow.FleetWorkflowRaiser;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.event.FleetEventType;
@@ -41,7 +43,11 @@ import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.TripAcknowledgementStat
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.TripStatus;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.Vehicle;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.VehicleInspection;
+import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.VehicleLocationSnapshot;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.VehicleServiceStatus;
+import gh.edu.clet.sfl.fleetlogistics.fleet.domain.exception.InvalidStateTransitionException;
+import java.math.BigDecimal;
+import java.util.UUID;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -78,6 +84,7 @@ public class TripApplicationService {
     private final IntegrationEventPublisher eventPublisher;
     private final IdempotencyPort idempotency;
     private final DriverScopeResolver driverScopes;
+    private final VehicleLocationRepository locations;
     private final Clock clock;
 
     public TripApplicationService(TripRepository trips, VehicleRepository vehicles,
@@ -85,7 +92,7 @@ public class TripApplicationService {
             FleetReadinessService readinessService,
             FleetWorkflowRaiser workflowRaiser, FleetAccessPolicy accessPolicy, AuditPort auditPort,
             IntegrationEventPublisher eventPublisher, IdempotencyPort idempotency,
-            DriverScopeResolver driverScopes, Clock clock) {
+            DriverScopeResolver driverScopes, VehicleLocationRepository locations, Clock clock) {
         this.trips = trips;
         this.vehicles = vehicles;
         this.inspections = inspections;
@@ -97,6 +104,7 @@ public class TripApplicationService {
         this.eventPublisher = eventPublisher;
         this.idempotency = idempotency;
         this.driverScopes = driverScopes;
+        this.locations = locations;
         this.clock = clock;
     }
 
@@ -262,6 +270,45 @@ public class TripApplicationService {
                 AuditAction.STATE_TRANSITION, RESOURCE_TYPE, started.id().toString(), auditImage(existing),
                 auditImage(started));
         return started;
+    }
+
+    /**
+     * The assigned driver reports where the vehicle is right now, while the trip is in progress.
+     *
+     * <h2>Not an audited state change, on purpose</h2>
+     *
+     * <p>Every other write in this class moves the trip through its state machine and records a
+     * before/after audit entry. This does neither: the trip's own status is untouched, and a position
+     * report every few seconds would turn the audit chain - which exists to answer "who changed what,
+     * and when" - into a GPS log nobody reading it for that purpose wants to wade through. The
+     * telemetry itself is still kept, in {@link VehicleLocationSnapshot}, which is where a reading
+     * belongs and where the vendor-fed readings already live.
+     *
+     * <h2>Why {@code IN_PROGRESS} is enforced here and not just assumed</h2>
+     *
+     * <p>A stale tab left open after a trip closes, or opened before it starts, must not be able to
+     * keep writing positions against a vehicle that is no longer - or not yet - that driver's to
+     * report on. {@link TripStatus#IN_PROGRESS} is the one status for which "the driver is at the
+     * wheel, right now" is actually true.
+     *
+     * <p>Shares {@link #requireOwnAssignment} with {@link #start} and {@link #close}: the permission
+     * says a driver may report their own trip's position; the binding check says which trip is theirs.
+     */
+    @Transactional
+    public VehicleLocationSnapshot reportOwnLocation(ReportTripLocationCommand command) {
+        Trip existing = requireTrip(command.tripId());
+        accessPolicy.require(command.actor(), SflPermission.FLEET_TRIP_LOCATION_REPORT_OWN, existing.siteCode(),
+                RESOURCE_TYPE, existing.id().toString());
+        requireOwnAssignment(existing, command.actor(), SflPermission.FLEET_TRIP_LOCATION_REPORT_OWN,
+                "Only the driver assigned to this trip can report its position");
+        if (existing.status() != TripStatus.IN_PROGRESS) {
+            throw InvalidStateTransitionException.of(RESOURCE_TYPE, existing.status(), "location report");
+        }
+
+        VehicleLocationSnapshot snapshot = new VehicleLocationSnapshot(UUID.randomUUID(), existing.vehicleId(),
+                existing.siteCode(), command.latitude(), command.longitude(), null, clock.instant(),
+                "DRIVER_MOBILE", UUID.randomUUID(), command.actor().correlationId());
+        return locations.save(snapshot);
     }
 
     /**

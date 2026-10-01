@@ -387,6 +387,11 @@ export interface StartTripRequest {
   expectedVersion?: number | null;
 }
 
+export interface ReportLocationRequest {
+  latitude: number;
+  longitude: number;
+}
+
 export interface HoldTripRequest {
   action: 'HOLD' | 'RESUME';
   reason?: string | null;
