@@ -1,7 +1,5 @@
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
 import SiteSelect from 'shared/components/SiteSelect';
-import { SelectInput, TextInput } from 'shared/components/fields';
+import { Notice } from '@rfdtech/components';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { compose, maxLength, required } from 'shared/validation/validators';
@@ -10,6 +8,7 @@ import { zoneMemberTypes } from '../api/enums';
 import type { ZoneMemberType } from '../api/enums';
 import { listBuildings, listDeviceReferences, listSpaces, listZones } from '../api/facilitiesApi';
 import { humaniseCode } from '../components/facilitiesFormat';
+import { FormDialog, SelectInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
 
 /**
  * Creating a zone, and saying what it covers.
@@ -226,14 +225,14 @@ export const AddZoneMemberDialog = ({ zone, onClose, onSubmit }: AddZoneMemberDi
         />
 
         {floorsUnsupported ? (
-          <Alert variant="warning" title="A floor cannot be chosen here yet">
-            <p className="text-theme-sm">
+          <Notice variant="warning" title="A floor cannot be chosen here yet">
+            <p className="text-sm">
               The service accepts a floor as a zone member, but there is no endpoint that lists the
               floors of a site without first naming a building - so this screen has nothing to offer
               you. Add the building, or the individual rooms, instead. This is recorded in the gap
               report rather than worked around.
             </p>
-          </Alert>
+          </Notice>
         ) : (
           <SelectInput
             label="Which record"

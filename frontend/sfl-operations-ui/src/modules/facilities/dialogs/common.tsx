@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
-import { SelectInput, TextAreaInput } from 'shared/components/fields';
+import { Notice } from '@rfdtech/components';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import { recordLifecycleStatuses } from '../api/enums';
 import type { RecordLifecycleStatus } from '../api/enums';
 import { humaniseCode } from '../components/facilitiesFormat';
+import { FormDialog, SelectInput, TextAreaInput } from 'modules/facilities/dialogs/dialogKit';
 
 /**
  * The pieces every estate edit dialog needs, in one place.
@@ -25,13 +24,13 @@ import { humaniseCode } from '../components/facilitiesFormat';
  */
 export const StaleWriteNotice = ({ error }: { error?: FleetApiError }) =>
   error?.isVersionConflict ? (
-    <Alert variant="warning" title="Somebody else changed this record first">
-      <p className="text-theme-sm">
+    <Notice variant="warning" title="Somebody else changed this record first">
+      <p className="text-sm">
         Close this dialog and reopen it to see their version. Your entries here are measured against
         the record as it was when you opened it, so saving them now would replace their change rather
         than build on it.
       </p>
-    </Alert>
+    </Notice>
   ) : null;
 
 interface LifecycleDialogProps {
@@ -112,13 +111,13 @@ export const LifecycleDialog = ({
         />
 
         {terminal && (
-          <Alert variant="warning" title="Archiving cannot be undone">
-            <p className="text-theme-sm">
+          <Notice variant="warning" title="Archiving cannot be undone">
+            <p className="text-sm">
               An archived {noun} cannot be brought back into use, edited, or moved to another state.
               Everything it holds stays readable and its audit trail is untouched - but this is the
               end of the line. If it is only out of use for a while, choose inactive or suspended.
             </p>
-          </Alert>
+          </Notice>
         )}
 
         <StaleWriteNotice error={formError} />

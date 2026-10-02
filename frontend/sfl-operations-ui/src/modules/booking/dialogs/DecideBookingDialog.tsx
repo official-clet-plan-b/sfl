@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
-import { SelectInput, TextAreaInput } from 'shared/components/fields';
+import { Notice } from '@rfdtech/components';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import type { Booking, DecideBookingBody } from '../api/dto';
 import { formatWindow } from '../components/bookingFormat';
+import { FormDialog, SelectInput, TextAreaInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface DecideBookingDialogProps {
   booking: Booking;
@@ -104,13 +103,13 @@ const DecideBookingDialog = ({ booking, onClose, onSubmit }: DecideBookingDialog
         />
 
         {rejecting && (
-          <Alert variant="warning" title="What rejecting does">
-            <p className="text-theme-sm">
+          <Notice variant="warning" title="What rejecting does">
+            <p className="text-sm">
               The space and every resource this booking holds are released immediately, and its setup
               tasks are marked skipped with your reason. {formatWindow(booking.startsAt, booking.endsAt)}{' '}
               becomes free for the next requester.
             </p>
-          </Alert>
+          </Notice>
         )}
       </div>
     </FormDialog>

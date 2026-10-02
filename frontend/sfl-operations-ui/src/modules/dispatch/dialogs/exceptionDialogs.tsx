@@ -2,17 +2,20 @@ import { DispatchExceptionCase } from 'modules/dispatch/api/dto';
 import { ExceptionAction, dispatchExceptionsApi, scanImportsApi } from 'modules/dispatch/api/dispatchApi';
 import { SCAN_CSV_HEADERS } from 'modules/dispatch/api/enums';
 import { EXCEPTION_RULES, exceptionClosureBlockers } from 'modules/dispatch/api/workflow';
-import FileField from 'shared/components/FileField';
 import { MAX_IMPORT_BYTES } from 'shared/evidence/evidenceFilesApi';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
 import SiteSelect from 'shared/components/SiteSelect';
-import { TextAreaInput, TextInput } from 'shared/components/fields';
 import { humanise } from 'modules/fleet/api/enums';
 // One evidence store serves the whole FTLMP service - a dispatch case's evidence is written into
 // the same table as a trip's, by RecordedDispatchEvidenceAdapter. Same reuse as `humanise` above.
 import { searchEvidenceChoices } from 'modules/fleet/api/fleetApi';
 import { EvidenceSelect } from 'shared/components/EvidenceSelect';
+import { AcceptingFileField } from 'modules/dispatch/components/dialogParts';
+import {
+  Callout,
+  FormModal,
+  TextAreaField,
+  TextField,
+} from 'modules/dispatch/components/formKit';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { compose, maxLength, required } from 'shared/validation/validators';
 import { ScanImportBatch } from 'modules/dispatch/api/dto';
@@ -73,7 +76,7 @@ export const ExceptionActionDialog = ({
   const longText = action !== 'assign' && action !== 'reassign';
 
   return (
-    <FormDialog
+    <FormModal
       open={open}
       title={`${rule.label} · ${exceptionCase.exceptionNumber}`}
       description={describe(exceptionCase)}
@@ -86,27 +89,27 @@ export const ExceptionActionDialog = ({
       onSubmit={form.submit}
     >
       {blockers.length > 0 && (
-        <Alert variant="error" title="The service will refuse this closure">
+        <Callout tone="danger" title="The service will refuse this closure">
           <ul className="mt-1 list-disc space-y-1 pl-4">
             {blockers.map((blocker) => (
               <li key={blocker}>{blocker}</li>
             ))}
           </ul>
-        </Alert>
+        </Callout>
       )}
 
       {exceptionCase.securityRelevant && action === 'escalate' && (
-        <Alert variant="warning" title="This case is security relevant">
+        <Callout tone="warning" title="This case is security relevant">
           Escalating it surfaces the case to the security function as well as to the dispatch
           manager.
-        </Alert>
+        </Callout>
       )}
 
-      {note && <Alert variant={rule.privileged ? 'warning' : 'info'}>{note}</Alert>}
+      {note && <Callout tone={rule.privileged ? 'warning' : 'info'}>{note}</Callout>}
 
       {(needsValue || action === 'explain') &&
         (longText ? (
-          <TextAreaInput
+          <TextAreaField
             label={fieldLabel(action)}
             required={needsValue}
             rows={4}
@@ -115,7 +118,7 @@ export const ExceptionActionDialog = ({
             {...form.fieldProps('value')}
           />
         ) : (
-          <TextInput
+          <TextField
             label={fieldLabel(action)}
             required={needsValue}
             value={form.values.value}
@@ -148,7 +151,7 @@ export const ExceptionActionDialog = ({
           )}
         />
       )}
-    </FormDialog>
+    </FormModal>
   );
 };
 
@@ -265,7 +268,7 @@ export const ScanImportDialog = ({
   });
 
   return (
-    <FormDialog
+    <FormModal
       open={open}
       title="Import a scanner batch"
       description="Each scanned code is checked against the manifest and recorded with its outcome."
@@ -283,14 +286,14 @@ export const ScanImportDialog = ({
           onChange={(value) => form.setValue('siteCode', value)}
           {...form.fieldProps('siteCode')}
         />
-        <TextInput
+        <TextField
           label="Source system"
           required
           value={form.values.sourceSystem}
           onChange={(value) => form.setValue('sourceSystem', value)}
           {...form.fieldProps('sourceSystem', 'Which scanner or gateway produced the file.')}
         />
-        <TextInput
+        <TextField
           label="Batch reference"
           value={form.values.batchReference}
           onChange={(value) => form.setValue('batchReference', value)}
@@ -299,7 +302,7 @@ export const ScanImportDialog = ({
       </div>
 
       {/* A scanner's whole batch answers to the import ceiling, not the evidence one. */}
-      <FileField
+      <AcceptingFileField
         label="Scan CSV"
         required
         accept=".csv,text/csv"
@@ -309,24 +312,24 @@ export const ScanImportDialog = ({
         {...form.fieldProps('file', 'A header row plus at least one scanned row.')}
       />
 
-      <Alert variant="info" title="File format">
+      <Callout tone="info" title="File format">
         <p className="mt-1">
           Two columns, read by position rather than by name - the header row is skipped:
         </p>
-        <p className="mt-1.5 font-mono text-theme-xs text-gray-900">
+        <p className="mt-1.5 font-mono text-xs text-foreground">
           {SCAN_CSV_HEADERS.join(', ')}
         </p>
         <p className="mt-2">
           A file with a single column is read as the scanned code, with a row reference generated for
           each line.
         </p>
-      </Alert>
+      </Callout>
 
-      <Alert variant="warning" title="Mismatches raise cases">
+      <Callout tone="warning" title="Mismatches raise cases">
         A code that does not match the manifest, or that belongs to no registered item, records the
         row as a mismatch and opens an exception case. That is the point of the import - but it means
         a batch scanned against the wrong consignment will raise a case per row.
-      </Alert>
-    </FormDialog>
+      </Callout>
+    </FormModal>
   );
 };

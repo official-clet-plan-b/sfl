@@ -1,11 +1,9 @@
 import { useState } from 'react';
-import FormDialog from 'shared/components/FormDialog';
-import { DateTimeField } from 'shared/components/DateField';
-import { NumberInput, TextAreaInput } from 'shared/components/fields';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import type { Booking, RescheduleBookingBody } from '../api/dto';
 import { canOverrideReadiness } from '../api/workflow';
 import { fromLocalInput, toLocalInput, windowProblem } from '../components/bookingFormat';
+import { DateTimeField, FormDialog, NumberInput, TextAreaInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface RescheduleBookingDialogProps {
   booking: Booking;

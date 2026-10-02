@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router';
-import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
-import PageHeader from 'shared/components/PageHeader';
-import StatusChip from 'shared/components/StatusChip';
+import type { TableColumn } from '@rfdtech/components';
+import { LocalTable } from 'modules/me/components/LocalTable';
+import PageHeading from 'modules/dispatch/components/PageHeading';
+import Panel from 'modules/dispatch/components/Panel';
+import StatusBadge from 'modules/dispatch/components/StatusBadge';
 import { defaultSite } from 'shared/components/SiteSelect';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
@@ -42,53 +43,50 @@ const MyRequestsPage = () => {
     [site],
   );
 
-  const columns: Column<FacilityFault>[] = [
-    { key: 'faultNumber', header: 'Reference', cell: (row) => row.faultNumber },
-    { key: 'title', header: 'What I reported', cell: (row) => row.title },
-    { key: 'locationCode', header: 'Where', cell: (row) => row.locationCode ?? '-' },
-    { key: 'priority', header: 'Priority', cell: (row) => <StatusChip value={row.priority} /> },
-    { key: 'status', header: 'Status', cell: (row) => <StatusChip value={row.status} /> },
+  const columns: TableColumn<FacilityFault>[] = [
+    { id: 'faultNumber', header: 'Reference', cell: ({ row }) => row.faultNumber },
+    { id: 'title', header: 'What I reported', cell: ({ row }) => row.title },
+    { id: 'locationCode', header: 'Where', cell: ({ row }) => row.locationCode ?? '-' },
+    { id: 'priority', header: 'Priority', cell: ({ row }) => <StatusBadge value={row.priority} /> },
+    { id: 'status', header: 'Status', cell: ({ row }) => <StatusBadge value={row.status} /> },
   ];
 
   const rows = faults.data?.items ?? [];
 
   return (
-    <div className="space-y-8">
-      <PageHeader
+    <>
+      <PageHeading
         title="My requests"
         subtitle="The faults you reported and the rooms you booked"
+        crumbs={[{ label: 'My requests' }]}
       />
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-slate-800">Faults I reported</h2>
-        <DataState
+      <Panel title="Faults I reported">
+        <LocalTable
+          paramPrefix="faults"
+          columns={columns}
+          rows={rows}
+          rowKey={(row) => row.id}
           loading={faults.loading}
           error={faults.error}
-          empty={rows.length === 0}
+          onRetry={faults.refetch}
+          caption="Faults you reported"
           emptyTitle="You have not reported a fault"
           // Not "there are no faults" - this list is narrowed to yours, so the wider claim is one
           // this screen has no standing to make.
           emptyHint="Faults you report appear here, with whatever the maintenance team does about them."
-          onRetry={faults.refetch}
-        >
-          <DataTable
-            columns={columns}
-            rows={rows}
-            getRowId={(row) => row.id}
-            onRowClick={(row) => navigate(facilitiesPaths.faultDetail(row.id))}
-          />
-        </DataState>
-      </section>
+          onRowClick={(row) => navigate(facilitiesPaths.faultDetail(row.id))}
+        />
+      </Panel>
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-slate-800">My bookings</h2>
-        <p className="text-sm text-slate-600">
+      <Panel title="My bookings">
+        <p className="text-sm text-muted-foreground">
           Room and resource booking has its own screens, under Room booking in the navigation. Your
           bookings are narrowed to you by the service there; this panel is not showing an empty list
           because you have none.
         </p>
-      </section>
-    </div>
+      </Panel>
+    </>
   );
 };
 

@@ -1,12 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
+import {
+  Button,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  UploadField,
+} from '@rfdtech/components';
+import { Camera, Download, Eye, FileText } from 'lucide-react';
 import {
   ACCEPTED_FILE_ACCEPT,
   ACCEPTED_FILE_DESCRIPTION,
+  MAX_UPLOAD_BYTES,
   rejectionReason,
+  sizeRejectionReason,
 } from 'shared/evidence/evidenceFilesApi';
-import Button from './Button';
-import FileField from './FileField';
-import Icon from './Icon';
 
 /**
  * Choose a file, see what you chose, before anything is uploaded.
@@ -60,7 +68,24 @@ const EvidenceFileField = ({
   onBlur,
   capture,
 }: EvidenceFileFieldProps) => {
-  const localRefusal = value ? rejectionReason(value) : null;
+  const labelId = useId();
+  const hintId = useId();
+  const [sizeRefusal, setSizeRefusal] = useState<string | null>(null);
+  const localRefusal = sizeRefusal ?? (value ? rejectionReason(value) : null);
+
+  /**
+   * The size cap sits here rather than on the upload field's `maxSize`, which answers an oversized
+   * file with a dialog. A refused file is not handed to the form at all: reporting it while leaving
+   * it selected would let a submit go ahead with a file the service is certain to reject.
+   */
+  const choose = (next: File | File[] | null) => {
+    const chosen = Array.isArray(next) ? (next[0] ?? null) : next;
+    const reason = chosen ? sizeRejectionReason(chosen, MAX_UPLOAD_BYTES) : null;
+    setSizeRefusal(reason);
+    onChange(reason ? null : chosen);
+  };
+  const invalid = Boolean(error || localRefusal);
+  const hint = localRefusal ?? helperText ?? ACCEPTED_FILE_DESCRIPTION;
 
   // Derived during render rather than pushed into state from an effect: the URL is a pure function of
   // the chosen file, and the state-plus-effect version rendered once with a stale preview before
@@ -83,27 +108,46 @@ const EvidenceFileField = ({
 
   return (
     <div>
-      <FileField
-        label={label}
-        value={value}
-        onChange={onChange}
-        accept={ACCEPTED_FILE_ACCEPT}
-        required={required}
-        error={error || Boolean(localRefusal)}
-        disabled={disabled}
-        onBlur={onBlur}
-        helperText={localRefusal ?? helperText ?? ACCEPTED_FILE_DESCRIPTION}
-      />
+      <Field invalid={invalid}>
+        <FieldLabel id={labelId} htmlFor={undefined}>
+          {label}
+          {required && (
+            <>
+              <span className="ml-0.5 text-error" aria-hidden="true">
+                *
+              </span>
+              <span className="sr-only"> (required)</span>
+            </>
+          )}
+        </FieldLabel>
+        <UploadField
+          variant="inline"
+          aria-labelledby={labelId}
+          aria-describedby={hintId}
+          value={value}
+          onChange={choose}
+          accept={ACCEPTED_FILE_ACCEPT}
+          subtitle=""
+          invalid={invalid}
+          disabled={disabled}
+          onBlur={onBlur}
+        />
+        {invalid ? (
+          <FieldError id={hintId}>{hint}</FieldError>
+        ) : (
+          <FieldDescription id={hintId}>{hint}</FieldDescription>
+        )}
+      </Field>
 
       {/*
-        `capture` cannot be passed through FileField without widening it for one caller, and the
+        `capture` cannot be passed through the upload field without widening it for one caller, and the
         attribute has to sit on the real input. Rendering a second, camera-only input beside the
         picker keeps both routes open, which matters: the same form is used at a pump on a phone and
         at a desk on a laptop, and a camera-only field is unusable on the second.
       */}
       {capture && !disabled && (
-        <label className="mt-1.5 inline-flex cursor-pointer items-center gap-1.5 text-theme-xs font-medium text-brand-600 hover:text-brand-700">
-          <Icon name="camera" size={14} />
+        <label className="mt-1.5 inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-primary hover:underline">
+          <Camera size={14} strokeWidth={1.75} aria-hidden="true" />
           Take a photo instead
           <input
             type="file"
@@ -116,7 +160,7 @@ const EvidenceFileField = ({
       )}
 
       {previewUrl && (
-        <div className="mt-2 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+        <div className="mt-2 overflow-hidden rounded-lg border border-border bg-muted">
           <img
             src={previewUrl}
             alt={`Preview of ${value?.name ?? 'the chosen file'}`}
@@ -126,8 +170,8 @@ const EvidenceFileField = ({
       )}
 
       {value?.type === 'application/pdf' && (
-        <p className="mt-2 flex items-center gap-1.5 text-theme-xs text-gray-600">
-          <Icon name="document" size={14} />
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <FileText size={14} strokeWidth={1.75} aria-hidden="true" />
           PDF chosen - it can be opened once the record is saved.
         </p>
       )}
@@ -182,7 +226,7 @@ export const EvidenceFileActions = ({
 
   if (!hasContent) {
     return (
-      <span className="text-theme-xs text-gray-500">
+      <span className="text-xs text-muted-foreground">
         Registered before file upload - no file is stored.
       </span>
     );
@@ -210,23 +254,23 @@ export const EvidenceFileActions = ({
       <Button
         size="sm"
         variant="outline"
-        startIcon="eye"
         disabled={busy}
         aria-label={compact ? 'Preview the document' : undefined}
         title={compact ? 'Preview' : undefined}
         onClick={() => void run('preview')}
       >
+        <Eye size={14} strokeWidth={1.75} aria-hidden="true" />
         {compact ? '' : 'Preview'}
       </Button>
       <Button
         size="sm"
         variant="ghost"
-        startIcon="download"
         disabled={busy}
         aria-label={compact ? 'Download the document' : undefined}
         title={compact ? 'Download' : undefined}
         onClick={() => void run('download')}
       >
+        <Download size={14} strokeWidth={1.75} aria-hidden="true" />
         {compact ? '' : 'Download'}
       </Button>
 
@@ -239,13 +283,13 @@ export const EvidenceFileActions = ({
               src={preview.url}
               title={preview.name}
               sandbox=""
-              className="h-[28rem] w-full rounded-lg border border-gray-200"
+              className="h-[28rem] w-full rounded-lg border border-border"
             />
           ) : (
             <img
               src={preview.url}
               alt={preview.name}
-              className="max-h-[28rem] w-full rounded-lg border border-gray-200 object-contain"
+              className="max-h-[28rem] w-full rounded-lg border border-border object-contain"
             />
           )}
           <Button

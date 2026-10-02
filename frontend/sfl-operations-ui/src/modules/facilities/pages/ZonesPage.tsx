@@ -1,14 +1,23 @@
 import { useState } from 'react';
-import ControlButton from 'shared/components/ControlButton';
+import { Plus } from 'lucide-react';
+import {
+  Card,
+  EmptyState,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  useBreadcrumbs,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import FilterBar from 'shared/components/FilterBar';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
+import { facilitiesPaths } from 'shared/layout/navigation';
 import type { Zone, ZoneMember } from '../api/dto';
 import {
   addZoneMember,
@@ -22,7 +31,10 @@ import {
   removeZoneMember,
 } from '../api/facilitiesApi';
 import { createZoneControl, manageZoneMembersControl, retireZoneControl } from '../api/workflow';
+import CellStack from '../components/CellStack';
+import ControlButton from '../components/ControlButton';
 import RowActions, { RemoveRowAction, RetireRowAction } from '../components/RowActions';
+import StatusBadge from '../components/StatusBadge';
 import { formatDateTime, orDash } from '../components/facilitiesFormat';
 import { LifecycleDialog } from '../dialogs/common';
 import { AddZoneMemberDialog, CreateZoneDialog } from '../dialogs/zoneDialogs';
@@ -40,6 +52,7 @@ import { AddZoneMemberDialog, CreateZoneDialog } from '../dialogs/zoneDialogs';
  */
 const ZonesPage = () => {
   const notify = useNotifier();
+  useBreadcrumbs([{ label: 'Facilities', href: facilitiesPaths.dashboard }, { label: 'Zones' }]);
   const [siteCode, setSiteCode] = useState<string>(defaultSite);
   const [selected, setSelected] = useState<Zone | null>(null);
   const [adding, setAdding] = useState(false);
@@ -89,34 +102,33 @@ const ZonesPage = () => {
     [selected?.id, selected?.siteCode],
   );
 
-  const zoneColumns: Column<Zone>[] = [
+  const zoneColumns: TableColumn<Zone>[] = [
     {
-      key: 'zoneCode',
+      id: 'zoneCode',
       header: 'Code',
       width: 150,
-      cell: (zone) => <span className="font-medium text-gray-900">{zone.zoneCode}</span>,
+      cell: ({ row }) => <span className="font-medium text-foreground">{row.zoneCode}</span>,
     },
-    { key: 'name', header: 'Zone', cell: (zone) => zone.name },
+    { id: 'name', header: 'Zone', accessorKey: 'name' },
     {
-      key: 'purpose',
+      id: 'purpose',
       header: 'Purpose',
-      hideBelowLg: true,
-      cell: (zone) => <span className="text-gray-600">{orDash(zone.purpose)}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">{orDash(row.purpose)}</span>,
     },
     {
-      key: 'parent',
+      id: 'parent',
       header: 'Nested',
       width: 110,
       align: 'right',
-      cell: (zone) =>
-        zone.parentZoneId ? <StatusChip value="NESTED" label="Nested" tone="neutral" /> : null,
+      cell: ({ row }) =>
+        row.parentZoneId ? <StatusBadge value="NESTED" label="Nested" tone="neutral" /> : null,
     },
     {
-      key: 'actions',
+      id: 'actions',
       header: '',
       width: 110,
       align: 'right',
-      cell: (zone) => (
+      cell: ({ row: zone }) => (
         <RowActions>
           <RetireRowAction
             state={retireZoneControl(zone)}
@@ -128,45 +140,44 @@ const ZonesPage = () => {
     },
   ];
 
-  const memberColumns: Column<ZoneMember>[] = [
+  const memberColumns: TableColumn<ZoneMember>[] = [
     {
-      key: 'memberType',
+      id: 'memberType',
       header: 'Type',
       width: 130,
-      cell: (member) => <StatusChip value={member.memberType} tone="neutral" />,
+      cell: ({ row }) => <StatusBadge value={row.memberType} tone="neutral" />,
     },
     {
-      key: 'memberId',
+      id: 'memberId',
       header: 'Record',
-      cell: (member) => {
+      cell: ({ row: member }) => {
         const name = memberNames.data?.get(member.memberId);
         return name ? (
           <CellStack primary={name} secondary={member.memberId} />
         ) : (
-          <span className="font-mono text-theme-xs">{member.memberId}</span>
+          <span className="font-mono text-xs">{member.memberId}</span>
         );
       },
     },
     {
-      key: 'addedBy',
+      id: 'addedBy',
       header: 'Added by',
       width: 160,
-      hideBelowLg: true,
-      cell: (member) => member.addedBy,
+      accessorKey: 'addedBy',
     },
     {
-      key: 'addedAt',
+      id: 'addedAt',
       header: 'Added',
       width: 190,
       align: 'right',
-      cell: (member) => <span className="text-gray-600">{formatDateTime(member.addedAt)}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">{formatDateTime(row.addedAt)}</span>,
     },
     {
-      key: 'actions',
+      id: 'actions',
       header: '',
       width: 110,
       align: 'right',
-      cell: (member) => (
+      cell: ({ row: member }) => (
         <RowActions>
           <RemoveRowAction
             state={selected ? manageZoneMembersControl(selected) : { kind: 'hidden' }}
@@ -201,93 +212,99 @@ const ZonesPage = () => {
 
   return (
     <>
-      <PageHeader
-        title="Zones"
-        subtitle="How safety, life-safety and emergency systems address this estate"
-        actions={
-          <ControlButton
-            state={createZoneControl()}
-            variant="primary"
-            startIcon="plus"
-            onClick={() => setAdding(true)}
-          >
-            Add a zone
-          </ControlButton>
-        }
-      />
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Zones</SectionTitle>
+          <SectionDescription>
+            How safety, life-safety and emergency systems address this estate
+          </SectionDescription>
+          <SectionActions>
+            <SiteSelect
+              value={siteCode}
+              onChange={(value) => {
+                setSiteCode(value);
+                setSelected(null);
+              }}
+              allowEmpty
+              emptyLabel="All sites"
+            />
+            <ControlButton state={createZoneControl()} variant="primary" onClick={() => setAdding(true)}>
+              <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+              Add a zone
+            </ControlButton>
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      <FilterBar>
-        <SiteSelect
-          value={siteCode}
-          onChange={(value) => {
-            setSiteCode(value);
-            setSelected(null);
-          }}
-          allowEmpty
-          emptyLabel="All sites"
-        />
-      </FilterBar>
-
-      <div className="space-y-5">
-        <SectionCard title="Zones" subtitle="Select one to see what it covers">
-          <DataState
-            loading={zones.loading}
-            error={zones.error}
-            empty={!zones.data || zones.data.length === 0}
-            emptyTitle="No zones configured"
-            emptyHint="A zone is what an evacuation broadcast or a life-safety alarm resolves against."
-            onRetry={zones.refetch}
-          >
-            {zones.data && (
-              <DataTable
-                rows={zones.data}
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Zones</SectionTitle>
+          <SectionDescription>Select one to see what it covers</SectionDescription>
+        </SectionHeader>
+        <DataState loading={false} error={zones.error} onRetry={zones.refetch}>
+          <Table paramPrefix="zones" variant="soft">
+            <Card bordered>
+              <TableContent
+                variant="soft"
                 columns={zoneColumns}
-                getRowId={(zone) => zone.id}
+                data={zones.data ?? []}
+                rowKey={(zone) => zone.id}
+                loading={zones.loading}
                 onRowClick={setSelected}
-                caption="Zones"
-                dense
+                aria-label="Zones"
+                emptyContent={
+                  <EmptyState
+                    title="No zones configured"
+                    description="A zone is what an evacuation broadcast or a life-safety alarm resolves against."
+                  />
+                }
               />
-            )}
-          </DataState>
-        </SectionCard>
+            </Card>
+          </Table>
+        </DataState>
+      </PageSection>
 
-        {selected && (
-          <SectionCard
-            title={`What ${selected.zoneCode} covers`}
-            subtitle={`${selected.name}${selected.purpose ? ` · ${selected.purpose}` : ''}`}
-            actions={
+      {selected && (
+        <PageSection>
+          <SectionHeader>
+            <SectionTitle>{`What ${selected.zoneCode} covers`}</SectionTitle>
+            <SectionDescription>
+              {`${selected.name}${selected.purpose ? ` · ${selected.purpose}` : ''}`}
+            </SectionDescription>
+            <SectionActions>
               <ControlButton
                 state={manageZoneMembersControl(selected)}
                 variant="outline"
                 size="sm"
-                startIcon="plus"
                 onClick={() => setAddingMember(true)}
               >
+                <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
                 Add a record
               </ControlButton>
-            }
-          >
-            <DataState
-              loading={members.loading}
-              error={members.error}
-              empty={!members.data || members.data.length === 0}
-              emptyTitle="This zone is empty"
-              emptyHint="A zone with no members resolves to nothing - an alarm against it would reach nobody."
-              onRetry={members.refetch}
-              minHeight={120}
-            >
-              {members.data && (
-                <DataTable
-                  rows={members.data}
+            </SectionActions>
+          </SectionHeader>
+          <DataState loading={false} error={members.error} onRetry={members.refetch} minHeight={120}>
+            <Table paramPrefix="zone-members" variant="soft">
+              <Card bordered>
+                <TableContent
+                  variant="soft"
                   columns={memberColumns}
-                  getRowId={(member) => member.id}
-                  dense
+                  data={members.data ?? []}
+                  rowKey={(member) => member.id}
+                  loading={members.loading}
+                  aria-label="Zone members"
+                  emptyContent={
+                    <EmptyState
+                      title="This zone is empty"
+                      description="A zone with no members resolves to nothing - an alarm against it would reach nobody."
+                    />
+                  }
                 />
-              )}
-            </DataState>
-          </SectionCard>
-        )}
-      </div>
+              </Card>
+            </Table>
+          </DataState>
+        </PageSection>
+      )}
 
       {adding && (
         <CreateZoneDialog

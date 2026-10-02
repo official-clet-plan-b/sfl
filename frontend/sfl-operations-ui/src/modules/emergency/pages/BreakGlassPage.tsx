@@ -11,7 +11,7 @@ import type { ChannelType, Priority } from 'modules/emergency/api/enums';
 import { activationsApi } from 'modules/emergency/api/emergencyApi';
 import { afterActionOutstanding, breakGlassEligible, canBreakGlass } from 'modules/emergency/api/workflow';
 import {
-  ActivationStatusChip,
+  ActivationStatusBadge,
   CheckboxGroup,
   ConsequenceLine,
   ConsequencePanel,
@@ -21,20 +21,20 @@ import { formatElapsed } from 'modules/emergency/components/emergencyFormat';
 import { useSiteRecords } from 'modules/emergency/components/useSiteRecords';
 import { ConfirmBreakGlassDialog } from 'modules/emergency/dialogs/breakGlassDialogs';
 import { humanise } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
 import Icon from 'shared/components/Icon';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import { EnumSelect, SelectInput, TextInput } from 'shared/components/fields';
 import { formatDateTime, formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { emergencyPaths } from 'shared/layout/navigation';
 import type { NotificationActivation } from 'modules/emergency/api/dto';
+import { Button, Banner, type TableColumn } from '@rfdtech/components';
+import DataTable from 'shared/components/DataTable';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import Panel from 'modules/emergency/components/Panel';
+import { TextField, SelectField, EnumField } from 'modules/emergency/components/FormFields';
+import { CellStack } from 'modules/emergency/components/RegisterTable';
 
 /**
  * Break-glass activation - the declared-emergency path that sends without approval (Arch §0E).
@@ -119,13 +119,13 @@ const BreakGlassPage = () => {
 
   const breakGlassHistory = useMemo(() => history.data?.content ?? [], [history.data]);
 
-  const historyColumns = useMemo<Column<NotificationActivation>[]>(
+  const historyColumns = useMemo<TableColumn<NotificationActivation>[]>(
     () => [
       {
-        key: 'activation',
+        id: 'activation',
         header: 'Activation',
         width: 260,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack
             primary={row.activationNumber}
             secondary={records.templateName(row.templateId)}
@@ -133,17 +133,17 @@ const BreakGlassPage = () => {
         ),
       },
       {
-        key: 'sent',
+        id: 'sent',
         header: 'Sent in',
         width: 110,
         align: 'right',
-        cell: (row) => formatElapsed(row.fastLaneMillis),
+        cell: ({ row }) => formatElapsed(row.fastLaneMillis),
       },
       {
-        key: 'accounted',
+        id: 'accounted',
         header: 'Accounted for',
         width: 230,
-        cell: (row) =>
+        cell: ({ row }) =>
           row.afterActionApprovedBy ? (
             <CellStack
               primary={row.afterActionApprovedBy}
@@ -154,18 +154,17 @@ const BreakGlassPage = () => {
           ),
       },
       {
-        key: 'when',
+        id: 'when',
         header: 'Sent',
         width: 170,
-        hideBelowLg: true,
-        cell: (row) => formatDateTime(row.metadata.createdAt),
+        cell: ({ row }) => formatDateTime(row.metadata.createdAt),
       },
       {
-        key: 'status',
+        id: 'status',
         header: 'Status',
         width: 170,
         align: 'right',
-        cell: (row) => <ActivationStatusChip status={row.status} />,
+        cell: ({ row }) => <ActivationStatusBadge status={row.status} />,
       },
     ],
     [records],
@@ -175,40 +174,37 @@ const BreakGlassPage = () => {
 
   return (
     <div>
-      <PageHeader
+      <PageHeading
         title="Break glass"
         subtitle="A declared-emergency broadcast that sends immediately, with nobody approving it first."
         crumbs={[{ label: 'Emergency', to: emergencyPaths.dashboard }, { label: 'Break glass' }]}
         actions={
           <Button
             variant="outline"
-            startIcon="megaphone"
+           
             onClick={() => navigate(emergencyPaths.activations)}
-          >
+          ><Icon name="megaphone" size={14} aria-hidden="true" />
             Routine activation instead
           </Button>
         }
       />
 
       <div className="space-y-5">
-        <Alert variant="error" title="This is not the routine path">
-          A break-glass broadcast goes out the moment it is confirmed. There is no draft, no
+        <Banner variant="danger" heading="This is not the routine path"
+  subtext={<>A break-glass broadcast goes out the moment it is confirmed. There is no draft, no
           approver and no recall. Use it when a declared emergency makes waiting for approval the
           greater risk - and use the routine path for everything else, including anything urgent
-          that can still wait for one other person to read it.
-        </Alert>
+          that can still wait for one other person to read it.</>} />
 
         {outstanding.length > 0 && (
-          <Alert
+          <Banner
             variant="warning"
-            title={`${outstanding.length} earlier break-glass broadcast${outstanding.length === 1 ? ' has' : 's have'} not been accounted for`}
-          >
-            Each is waiting on after-the-fact approval and cannot be closed until it has one. That
-            backlog is the record of how this authority has been used.
-          </Alert>
+            heading={`${outstanding.length} earlier break-glass broadcast${outstanding.length === 1 ? ' has' : 's have'} not been accounted for`}
+  subtext={<>Each is waiting on after-the-fact approval and cannot be closed until it has one. That
+            backlog is the record of how this authority has been used.</>} />
         )}
 
-        <SectionCard
+        <Panel
           title="Compose the broadcast"
           subtitle="Everything here is what an operator would otherwise have had approved"
         >
@@ -224,13 +220,13 @@ const BreakGlassPage = () => {
                 setRecipientZoneIds([]);
               }}
             />
-            <TextInput
+            <TextField
               label="Incident reference"
               value={incidentReference}
               onChange={setIncidentReference}
               helperText="Ties this broadcast to the incident record it serves."
             />
-            <SelectInput
+            <SelectField
               label="Scenario"
               value={scenarioId}
               onChange={applyScenario}
@@ -242,7 +238,7 @@ const BreakGlassPage = () => {
               }))}
               helperText="Fills the template, priority and channels below."
             />
-            <SelectInput
+            <SelectField
               label="Template"
               required
               value={templateId}
@@ -263,12 +259,11 @@ const BreakGlassPage = () => {
 
           <div className="mt-5 space-y-5">
             {templateId && !eligible && (
-              <Alert variant="error" title="Neither record is break-glass eligible">
-                The service will refuse this send. Break-glass needs the template{' '}
+              <Banner variant="danger" heading="Neither record is break-glass eligible"
+  subtext={<>The service will refuse this send. Break-glass needs the template{' '}
                 <strong>or</strong> the scenario to be marked eligible - choose a different one, or
                 have the record marked eligible by somebody who can justify it being sendable with
-                no approval.
-              </Alert>
+                no approval.</>} />
             )}
 
             {chosenTemplate && (
@@ -278,7 +273,7 @@ const BreakGlassPage = () => {
             )}
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <EnumSelect
+              <EnumField
                 label="Priority"
                 required
                 value={priority}
@@ -353,12 +348,12 @@ const BreakGlassPage = () => {
               */}
               {canBreakGlass() && (
                 <Button
-                  variant="danger"
+                  variant="primary-destructive"
                   size="md"
-                  startIcon="zap"
+                 
                   disabled={!ready}
                   onClick={() => setConfirming(true)}
-                >
+                ><Icon name="zap" size={14} aria-hidden="true" />
                   Break glass and send
                 </Button>
               )}
@@ -376,12 +371,12 @@ const BreakGlassPage = () => {
               )}
             </div>
           </div>
-        </SectionCard>
+        </Panel>
 
-        <SectionCard
+        <Panel
           title="How this authority has been used at this site"
           subtitle="Every break-glass broadcast, and whether it has been accounted for"
-          flush
+         
         >
           <DataState
             loading={history.initialising}
@@ -401,7 +396,7 @@ const BreakGlassPage = () => {
               dense
             />
           </DataState>
-        </SectionCard>
+        </Panel>
       </div>
 
       {confirming && (

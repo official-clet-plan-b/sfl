@@ -1,16 +1,14 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
-import FileField from 'shared/components/FileField';
-import FormDialog from 'shared/components/FormDialog';
+import { Button, Notice, UploadField } from '@rfdtech/components';
 import Icon from 'shared/components/Icon';
-import { SelectInput, TextAreaInput, TextInput } from 'shared/components/fields';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
+import { MAX_UPLOAD_BYTES } from 'shared/evidence/evidenceFilesApi';
 import { digestUnavailable, formatBytes, sha256OfFile } from 'shared/files/digest';
 import type { AttachEvidenceRequest } from '../api/dto';
 import type { EvidenceType, RetentionClass } from '../api/enums';
 import { evidenceTypes, retentionClasses } from '../api/enums';
 import { humaniseCode } from '../components/facilitiesFormat';
+import { FieldFrame, FormDialog, SelectInput, TextAreaInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface AttachEvidenceDialogProps {
   onClose: () => void;
@@ -159,29 +157,36 @@ const AttachEvidenceDialog = ({ onClose, onSubmit }: AttachEvidenceDialogProps) 
           }
         />
 
-        <FileField
+        <FieldFrame
           label="The file"
-          value={file}
-          onChange={choose}
-          disabled={hashing}
           helperText={
             unavailable
               ? unavailable
               : 'Read in this browser to take its digest, name, type and size. Nothing is uploaded.'
           }
-        />
+          customControl
+        >
+          <UploadField
+            aria-label="The file"
+            variant="inline"
+            value={file}
+            onChange={(next) => choose(Array.isArray(next) ? (next[0] ?? null) : next)}
+            maxSize={MAX_UPLOAD_BYTES}
+            disabled={hashing}
+          />
+        </FieldFrame>
 
         {hashing && (
-          <p className="flex items-center gap-2 text-theme-sm text-gray-600" role="status">
+          <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
             <Icon name="refresh" size={15} className="animate-spin" />
             Reading {file ? formatBytes(file.size) : 'the file'} and computing its SHA-256…
           </p>
         )}
 
         {hashNote && (
-          <Alert variant="warning" title="The digest could not be computed here">
-            <p className="text-theme-sm">{hashNote}</p>
-          </Alert>
+          <Notice variant="warning" title="The digest could not be computed here">
+            <p className="text-sm">{hashNote}</p>
+          </Notice>
         )}
 
         <TextInput
@@ -227,7 +232,7 @@ const AttachEvidenceDialog = ({ onClose, onSubmit }: AttachEvidenceDialogProps) 
         />
 
         {derived && (
-          <p className="-mt-2 flex items-center gap-1.5 text-theme-xs font-medium text-success-800">
+          <p className="-mt-2 flex items-center gap-1.5 text-xs font-medium text-success-text">
             <Icon name="check-circle" size={14} />
             Digest read from {fileName}
           </p>
@@ -242,8 +247,8 @@ const AttachEvidenceDialog = ({ onClose, onSubmit }: AttachEvidenceDialogProps) 
           helperText="Mandatory. It is what sets the date this may eventually be disposed of."
         />
 
-        <details className="rounded-lg border border-gray-200 px-4 py-3">
-          <summary className="cursor-pointer text-theme-sm font-medium text-gray-800 select-none">
+        <details className="rounded-lg border border-border px-4 py-3">
+          <summary className="cursor-pointer text-sm font-medium text-foreground select-none">
             File details
             {file ? ` - taken from ${fileName}` : ''}
           </summary>
@@ -268,7 +273,7 @@ const AttachEvidenceDialog = ({ onClose, onSubmit }: AttachEvidenceDialogProps) 
               Read-only rather than a NumberInput: it is a fact about the chosen file, and an
               operator editing it would be recording a size the digest cannot corroborate.
             */}
-            <p className="text-theme-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Size:{' '}
               {sizeBytes === ''
                 ? 'not known - choose a file, or leave it unrecorded'

@@ -138,7 +138,9 @@ const AppShell = () => {
   return (
     <AppLayout>
       <AppHeader variant="plain">
-        <AppHeaderTitle>{portalLabel()}</AppHeaderTitle>
+        {/* The library paints the system title in its gold secondary-text token; the CLET design shows it
+            in the body text colour, so it is set explicitly here. */}
+        <AppHeaderTitle style={{ color: 'var(--clet-text)' }}>{portalLabel()}</AppHeaderTitle>
         <AppHeaderActions>
           <span
             className="hidden items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-theme-xs font-medium text-gray-800 md:inline-flex"

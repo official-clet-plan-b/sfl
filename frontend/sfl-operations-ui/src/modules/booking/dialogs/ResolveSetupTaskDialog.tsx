@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
-import { SelectInput, TextAreaInput } from 'shared/components/fields';
+import { Notice } from '@rfdtech/components';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import type { ResolveSetupTaskBody, SetupTask } from '../api/dto';
 import type { SetupTaskStatus } from '../api/enums';
+import { FormDialog, SelectInput, TextAreaInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface ResolveSetupTaskDialogProps {
   task: SetupTask;
@@ -90,12 +89,12 @@ const ResolveSetupTaskDialog = ({ task, onClose, onSubmit }: ResolveSetupTaskDia
         />
 
         {task.overdue && (
-          <Alert variant="warning" title="This task is past when the room was needed">
-            <p className="text-theme-sm">
+          <Notice variant="warning" title="This task is past when the room was needed">
+            <p className="text-sm">
               Resolving it now still records the outcome, but the booking it belongs to may already
               have started.
             </p>
-          </Alert>
+          </Notice>
         )}
       </div>
     </FormDialog>

@@ -5,24 +5,24 @@ import { RECORD_LIFECYCLES, type RecordLifecycle } from 'modules/emergency/api/e
 import { useSiteRecords } from 'modules/emergency/components/useSiteRecords';
 import { CreateAudienceDialog, CreateZoneDialog } from 'modules/emergency/dialogs/recordDialogs';
 import { humanise } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
 import Icon from 'shared/components/Icon';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatCard from 'shared/components/StatCard';
-import StatusChip from 'shared/components/StatusChip';
-import Tabs from 'shared/components/Tabs';
-import { EnumSelect, TextInput } from 'shared/components/fields';
 import { formatDateTime, formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { useClampPage, useServerPage } from 'shared/hooks/useServerPage';
 import { emergencyPaths } from 'shared/layout/navigation';
 import { canManageAudiences } from 'modules/emergency/api/workflow';
+import { Button, Banner, type TableColumn } from '@rfdtech/components';
+import DataTable from 'shared/components/DataTable';
+import Tabs from 'shared/components/Tabs';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import Panel from 'modules/emergency/components/Panel';
+import StatMetric from 'modules/emergency/components/StatMetric';
+import StatusBadge from 'modules/emergency/components/StatusBadge';
+import { TextField, EnumField } from 'modules/emergency/components/FormFields';
+import { CellStack } from 'modules/emergency/components/RegisterTable';
 
 /**
  * Who receives a broadcast: audience groups and the zones a broadcast can be narrowed to.
@@ -107,13 +107,13 @@ const EmergencyAudiencesPage = () => {
   );
   const emptyGroups = records.audiences.filter((audience) => audience.recipientCount === 0);
 
-  const audienceColumns = useMemo<Column<AudienceGroup>[]>(
+  const audienceColumns = useMemo<TableColumn<AudienceGroup>[]>(
     () => [
       {
-        key: 'group',
+        id: 'group',
         header: 'Group',
         width: 280,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack
             primary={`${row.groupCode} · ${row.name}`}
             secondary={row.directoryReference ?? 'No directory reference recorded'}
@@ -121,11 +121,11 @@ const EmergencyAudiencesPage = () => {
         ),
       },
       {
-        key: 'recipients',
+        id: 'recipients',
         header: 'Recipients',
         width: 130,
         align: 'right',
-        cell: (row) =>
+        cell: ({ row }) =>
           row.recipientCount === 0 ? (
             <span className="font-medium text-error-800">0</span>
           ) : (
@@ -133,40 +133,37 @@ const EmergencyAudiencesPage = () => {
           ),
       },
       {
-        key: 'share',
+        id: 'share',
         header: 'Share of site',
         width: 130,
         align: 'right',
-        hideBelowLg: true,
-        cell: (row) =>
+        cell: ({ row }) =>
           totalReach > 0 ? `${Math.round((100 * row.recipientCount) / totalReach)}%` : '-',
       },
       {
-        key: 'lifecycle',
+        id: 'lifecycle',
         header: 'Lifecycle',
         width: 120,
-        hideBelowLg: true,
-        cell: (row) => <StatusChip value={row.lifecycle} />,
+        cell: ({ row }) => <StatusBadge value={row.lifecycle} />,
       },
       {
-        key: 'created',
+        id: 'created',
         header: 'Created',
         width: 160,
         align: 'right',
-        hideBelowLg: true,
-        cell: (row) => formatDateTime(row.metadata.createdAt),
+        cell: ({ row }) => formatDateTime(row.metadata.createdAt),
       },
     ],
     [totalReach],
   );
 
-  const zoneColumns = useMemo<Column<RecipientZone>[]>(
+  const zoneColumns = useMemo<TableColumn<RecipientZone>[]>(
     () => [
       {
-        key: 'zone',
+        id: 'zone',
         header: 'Zone',
         width: 300,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack
             primary={`${row.zoneCode} · ${row.name}`}
             secondary={row.locationReference ?? 'Not mapped to a facilities location'}
@@ -174,25 +171,23 @@ const EmergencyAudiencesPage = () => {
         ),
       },
       {
-        key: 'lifecycle',
+        id: 'lifecycle',
         header: 'Lifecycle',
         width: 130,
-        cell: (row) => <StatusChip value={row.lifecycle} />,
+        cell: ({ row }) => <StatusBadge value={row.lifecycle} />,
       },
       {
-        key: 'createdBy',
+        id: 'createdBy',
         header: 'Created by',
         width: 180,
-        hideBelowLg: true,
-        cell: (row) => row.metadata.createdBy,
+        cell: ({ row }) => row.metadata.createdBy,
       },
       {
-        key: 'created',
+        id: 'created',
         header: 'Created',
         width: 170,
         align: 'right',
-        hideBelowLg: true,
-        cell: (row) => formatDateTime(row.metadata.createdAt),
+        cell: ({ row }) => formatDateTime(row.metadata.createdAt),
       },
     ],
     [],
@@ -200,7 +195,7 @@ const EmergencyAudiencesPage = () => {
 
   return (
     <div>
-      <PageHeader
+      <PageHeading
         title="Audiences and zones"
         subtitle="Who a broadcast reaches, and where it can be narrowed to."
         crumbs={[
@@ -212,15 +207,15 @@ const EmergencyAudiencesPage = () => {
             {/* Both write to the audience register, so both sit behind the one grant. */}
             {canManageAudiences() && (
               <>
-                <Button variant="primary" startIcon="plus" onClick={() => setCreatingAudience(true)}>
+                <Button variant="primary" onClick={() => setCreatingAudience(true)}><Icon name="plus" size={14} aria-hidden="true" />
                   Create audience group
                 </Button>
-                <Button variant="outline" startIcon="plus" onClick={() => setCreatingZone(true)}>
+                <Button variant="outline" onClick={() => setCreatingZone(true)}><Icon name="plus" size={14} aria-hidden="true" />
                   Create zone
                 </Button>
               </>
             )}
-            <Button variant="outline" startIcon="refresh" onClick={refreshAll}>
+            <Button variant="outline" onClick={refreshAll}><Icon name="refresh" size={14} aria-hidden="true" />
               Refresh
             </Button>
           </>
@@ -228,13 +223,13 @@ const EmergencyAudiencesPage = () => {
       />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
-        <StatCard
+        <StatMetric
           label="Recipients across all groups"
           value={formatNumber(totalReach)}
           icon="users"
           caption="Summed here across up to 200 groups"
         />
-        <StatCard
+        <StatMetric
           label="Audience groups"
           value={formatNumber(audienceQuery.data?.totalElements ?? 0)}
           icon="clipboard"
@@ -245,7 +240,7 @@ const EmergencyAudiencesPage = () => {
               : 'All sized above zero'
           }
         />
-        <StatCard
+        <StatMetric
           label="Recipient zones"
           value={formatNumber(zoneQuery.data?.totalElements ?? 0)}
           icon="map-pin"
@@ -254,32 +249,30 @@ const EmergencyAudiencesPage = () => {
       </div>
 
       {emptyGroups.length > 0 && (
-        <Alert
+        <Banner
           variant="warning"
-          title={`${emptyGroups.length} audience group${emptyGroups.length === 1 ? ' is' : 's are'} sized at zero`}
+          heading={`${emptyGroups.length} audience group${emptyGroups.length === 1 ? ' is' : 's are'} sized at zero`}
           className="mb-5"
-        >
-          A group with no recipients sends to nobody and still reports a successful broadcast - the
+  subtext={<>A group with no recipients sends to nobody and still reports a successful broadcast - the
           channel record shows a target of zero, which is not the same as a failure and reads
           exactly like a clean send.{' '}
           {emptyGroups.map((group) => group.name).join(', ')}. The count cannot be corrected through
           any endpoint; create a replacement group with the right size. Checked across up to 200
-          groups at this site.
-        </Alert>
+          groups at this site.</>} />
       )}
 
       <div className="mb-5">
-        <SectionCard>
+        <Panel>
           <div className="grid gap-4 sm:grid-cols-2 lg:max-w-3xl lg:grid-cols-3">
             <SiteSelect value={siteCode} onChange={setSiteCode} required />
-            <TextInput
+            <TextField
               label="Search"
               value={search}
               onChange={setSearch}
               placeholder="Code or name"
               helperText="Searched by the service across both registers."
             />
-            <EnumSelect
+            <EnumField
               label="Lifecycle"
               value={lifecycle}
               options={RECORD_LIFECYCLES}
@@ -287,10 +280,10 @@ const EmergencyAudiencesPage = () => {
               allowEmpty
             />
           </div>
-        </SectionCard>
+        </Panel>
       </div>
 
-      <SectionCard flush>
+      <Panel>
         <div className="px-5 pt-4">
           <Tabs
             value={tab}
@@ -355,7 +348,7 @@ const EmergencyAudiencesPage = () => {
               : `Naming a zone on an activation records ${humanise('ACCESS_CONTROL').toLowerCase()} lockdown and CCTV preservation context against it. SFL never actuates certified life-safety hardware.`}
           </span>
         </div>
-      </SectionCard>
+      </Panel>
 
       {creatingAudience && (
         <CreateAudienceDialog

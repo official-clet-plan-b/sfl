@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Banner, Button } from '@rfdtech/components';
+import Icon from 'shared/components/Icon';
 import { vehiclesApi } from 'modules/fleet/api/fleetApi';
 import { VehicleResponse } from 'modules/fleet/api/dto';
 import {
@@ -8,15 +10,13 @@ import {
   InspectionType,
   humanise,
 } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import Button, { IconButton } from 'shared/components/Button';
-import FormDialog from 'shared/components/FormDialog';
+import FleetFormDialog from 'modules/fleet/components/FleetFormDialog';
 import {
   EnumSelect,
   NumberInput,
   TextAreaInput,
   TextInput,
-} from 'shared/components/fields';
+} from 'modules/fleet/components/formFields';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { compose, maxLength, nonNegativeInteger, required } from 'shared/validation/validators';
 import { EvidenceSelect } from 'shared/components/EvidenceSelect';
@@ -126,7 +126,7 @@ export const RecordStandaloneInspectionDialog = ({
   };
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title="Record a periodic inspection"
       description={`${vehicle.registrationNumber}. No trip is involved - the findings decide the result.`}
@@ -156,7 +156,10 @@ export const RecordStandaloneInspectionDialog = ({
           required
           value={form.values.odometerReading}
           onChange={(value) => form.setValue('odometerReading', value)}
-          {...form.fieldProps('odometerReading', 'Seeded from the vehicle record; correct it if the dial disagrees.')}
+          {...form.fieldProps(
+            'odometerReading',
+            'Seeded from the vehicle record; correct it if the dial disagrees.',
+          )}
         />
       </div>
 
@@ -172,7 +175,8 @@ export const RecordStandaloneInspectionDialog = ({
 
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-theme-sm font-semibold text-gray-800">Findings ({findings.length})</h3>
-        <Button size="sm" variant="outline" startIcon="plus" onClick={addFinding}>
+        <Button size="sm" variant="outline" onClick={addFinding}>
+          <Icon name="plus" size={14} aria-hidden="true" />
           Add finding
         </Button>
       </div>
@@ -208,23 +212,28 @@ export const RecordStandaloneInspectionDialog = ({
                 value={finding.severity}
                 options={DEFECT_SEVERITIES}
                 onChange={(value) =>
-                  updateFinding(index, { severity: (value || 'MINOR') as DefectSeverity })
+                  updateFinding(index, {
+                    severity: (value || 'MINOR') as DefectSeverity,
+                  })
                 }
                 className="sm:w-40"
               />
               {/* Aligned to the controls rather than the labels, which sit above them. */}
-              <IconButton
-                name="close"
-                label="Remove finding"
+              <Button
+                variant="outline"
+                aria-label="Remove finding"
+                title="Remove finding"
                 onClick={() => removeFinding(index)}
                 className="shrink-0 self-end sm:mt-6 sm:self-auto"
-              />
+              >
+                <Icon name="close" size={16} aria-hidden="true" />
+              </Button>
             </div>
           ))}
         </div>
       )}
 
-      {findingError && <Alert variant="error">{findingError}</Alert>}
+      {findingError && <Banner variant="danger" heading={<>{findingError}</>} />}
 
       <TextAreaInput
         label="Notes"
@@ -234,11 +243,16 @@ export const RecordStandaloneInspectionDialog = ({
         {...form.fieldProps('notes')}
       />
 
-      <Alert variant={hasCritical ? 'error' : findings.length > 0 ? 'warning' : 'success'}>
-        Expected result: <strong>{humanise(predictedResult)}</strong>
-        {hasCritical &&
-          ' - a critical defect fails the inspection, takes the vehicle out of service and opens a defect workflow item so somebody owns the rectification.'}
-      </Alert>
-    </FormDialog>
+      <Banner
+        variant={hasCritical ? 'danger' : findings.length > 0 ? 'warning' : 'success'}
+        heading={
+          <>
+            Expected result: <strong>{humanise(predictedResult)}</strong>
+            {hasCritical &&
+              ' - a critical defect fails the inspection, takes the vehicle out of service and opens a defect workflow item so somebody owns the rectification.'}
+          </>
+        }
+      />
+    </FleetFormDialog>
   );
 };

@@ -2,22 +2,23 @@ import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { CHANNEL_DESCRIPTIONS } from 'modules/emergency/api/enums';
 import { activationsApi, emergencyRecordsApi } from 'modules/emergency/api/emergencyApi';
-import { ActivationStatusChip } from 'modules/emergency/components/EmergencyFields';
+import { ActivationStatusBadge } from 'modules/emergency/components/EmergencyFields';
 import { DerivedNote } from 'modules/fuel/components/Provenance';
 import { siteOf } from 'modules/fuel/components/fuelFormat';
 import { humanise } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatusChip from 'shared/components/StatusChip';
 import { formatDateTime } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { emergencyPaths } from 'shared/layout/navigation';
 import type { NotificationActivation } from 'modules/emergency/api/dto';
+import { Button, Banner, type TableColumn } from '@rfdtech/components';
+import DataTable from 'shared/components/DataTable';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import Panel from 'modules/emergency/components/Panel';
+import StatusBadge from 'modules/emergency/components/StatusBadge';
+import { CellStack } from 'modules/emergency/components/RegisterTable';
+import Icon from 'shared/components/Icon';
 
 /**
  * One notification template.
@@ -60,13 +61,13 @@ const EmergencyTemplateDetailPage = () => {
 
   const usedBy = useMemo(() => activations.data?.content ?? [], [activations.data]);
 
-  const columns = useMemo<Column<NotificationActivation>[]>(
+  const columns = useMemo<TableColumn<NotificationActivation>[]>(
     () => [
       {
-        key: 'activation',
+        id: 'activation',
         header: 'Activation',
         width: 240,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack
             primary={row.activationNumber}
             secondary={row.incidentReference ?? 'No incident reference'}
@@ -74,24 +75,23 @@ const EmergencyTemplateDetailPage = () => {
         ),
       },
       {
-        key: 'mode',
+        id: 'mode',
         header: 'Mode',
         width: 130,
-        cell: (row) => <StatusChip value={row.mode} />,
+        cell: ({ row }) => <StatusBadge value={row.mode} />,
       },
       {
-        key: 'when',
+        id: 'when',
         header: 'Composed',
         width: 170,
-        hideBelowLg: true,
-        cell: (row) => formatDateTime(row.metadata.createdAt),
+        cell: ({ row }) => formatDateTime(row.metadata.createdAt),
       },
       {
-        key: 'status',
+        id: 'status',
         header: 'Status',
         width: 170,
         align: 'right',
-        cell: (row) => <ActivationStatusChip status={row.status} />,
+        cell: ({ row }) => <ActivationStatusBadge status={row.status} />,
       },
     ],
     [],
@@ -107,7 +107,7 @@ const EmergencyTemplateDetailPage = () => {
       >
         {template && (
           <>
-            <PageHeader
+            <PageHeading
               title={template.title}
               subtitle={`${template.templateCode} · ${siteCode}`}
               crumbs={[
@@ -117,9 +117,9 @@ const EmergencyTemplateDetailPage = () => {
               ]}
               meta={
                 <span className="flex flex-wrap items-center gap-2">
-                  <StatusChip value={template.lifecycle} size="md" />
+                  <StatusBadge value={template.lifecycle} size="md" />
                   {template.breakGlassEligible && (
-                    <StatusChip
+                    <StatusBadge
                       value="BREAK_GLASS"
                       label="Break-glass eligible"
                       tone="blocked"
@@ -131,9 +131,9 @@ const EmergencyTemplateDetailPage = () => {
               actions={
                 <Button
                   variant="outline"
-                  startIcon="arrow-left"
+                 
                   onClick={() => navigate(emergencyPaths.templates)}
-                >
+                ><Icon name="arrow-left" size={14} aria-hidden="true" />
                   Back to templates
                 </Button>
               }
@@ -141,19 +141,18 @@ const EmergencyTemplateDetailPage = () => {
 
             <div className="space-y-5">
               {template.breakGlassEligible && (
-                <Alert variant="warning" title="This template can be sent without approval">
-                  An authorised role may broadcast it during a declared emergency with nobody
-                  reviewing it first. Whatever it says below is what would go out.
-                </Alert>
+                <Banner variant="warning" heading="This template can be sent without approval"
+  subtext={<>An authorised role may broadcast it during a declared emergency with nobody
+                  reviewing it first. Whatever it says below is what would go out.</>} />
               )}
 
-              <SectionCard title="Message">
+              <Panel title="Message">
                 <p className="whitespace-pre-wrap text-theme-sm leading-relaxed text-gray-900">
                   {template.body}
                 </p>
-              </SectionCard>
+              </Panel>
 
-              <SectionCard title="Channels">
+              <Panel title="Channels">
                 <ul className="space-y-2.5">
                   {template.channels.map((channel) => (
                     <li key={channel} className="text-theme-sm">
@@ -162,12 +161,12 @@ const EmergencyTemplateDetailPage = () => {
                     </li>
                   ))}
                 </ul>
-              </SectionCard>
+              </Panel>
 
-              <SectionCard
+              <Panel
                 title="Activations that used this template"
                 subtitle="What this message has actually been sent for"
-                flush
+               
               >
                 <DataState
                   loading={activations.initialising}
@@ -194,9 +193,9 @@ const EmergencyTemplateDetailPage = () => {
                     an unpaged window, so an older activation may not appear.
                   </DerivedNote>
                 </div>
-              </SectionCard>
+              </Panel>
 
-              <SectionCard title="Provenance">
+              <Panel title="Provenance">
                 <KeyValueGrid
                   items={[
                     { label: 'Template code', value: template.templateCode },
@@ -213,7 +212,7 @@ const EmergencyTemplateDetailPage = () => {
                     { label: 'Version', value: template.metadata.version },
                   ]}
                 />
-              </SectionCard>
+              </Panel>
             </div>
           </>
         )}

@@ -1,17 +1,28 @@
 import { useState } from 'react';
-import Button from 'shared/components/Button';
+import { Plus } from 'lucide-react';
+import {
+  Button,
+  Card,
+  EmptyState,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  useBreadcrumbs,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
-import FilterBar from 'shared/components/FilterBar';
-import PageHeader from 'shared/components/PageHeader';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
 import type { MaintenanceVendor } from '../api/dto';
 import { listVendors, registerVendor } from '../api/facilitiesApi';
 import { canManageVendors } from '../api/workflow';
+import StatusBadge from '../components/StatusBadge';
 import RegisterVendorDialog from '../dialogs/RegisterVendorDialog';
 import { formatDate, orDash } from '../components/facilitiesFormat';
 
@@ -34,6 +45,7 @@ import { formatDate, orDash } from '../components/facilitiesFormat';
  */
 const MaintenanceVendorsPage = () => {
   const notify = useNotifier();
+  useBreadcrumbs([{ label: 'Facilities', href: facilitiesPaths.dashboard }, { label: 'Vendors' }]);
   const [siteCode, setSiteCode] = useState<string>(defaultSite);
   const [registering, setRegistering] = useState(false);
 
@@ -42,53 +54,52 @@ const MaintenanceVendorsPage = () => {
     [siteCode],
   );
 
-  const columns: Column<MaintenanceVendor>[] = [
+  const columns: TableColumn<MaintenanceVendor>[] = [
     {
-      key: 'vendorCode',
+      id: 'vendorCode',
       header: 'Code',
       width: 140,
-      cell: (vendor) => <span className="font-medium text-gray-900">{vendor.vendorCode}</span>,
+      cell: ({ row }) => <span className="font-medium text-foreground">{row.vendorCode}</span>,
     },
-    { key: 'name', header: 'Vendor', cell: (vendor) => vendor.name },
+    { id: 'name', header: 'Vendor', accessorKey: 'name' },
     {
-      key: 'specialisation',
+      id: 'specialisation',
       header: 'Specialisation',
-      hideBelowLg: true,
-      cell: (vendor) => orDash(vendor.specialisation),
+      cell: ({ row }) => orDash(row.specialisation),
     },
     {
-      key: 'responseHours',
+      id: 'responseHours',
       header: 'Response',
       width: 130,
-      cell: (vendor) =>
-        vendor.responseHours ? (
-          <span>{vendor.responseHours}h contracted</span>
+      cell: ({ row }) =>
+        row.responseHours ? (
+          <span>{row.responseHours}h contracted</span>
         ) : (
-          <span className="text-theme-xs text-gray-500">Not contracted</span>
+          <span className="text-xs text-muted-foreground">Not contracted</span>
         ),
     },
     {
-      key: 'contractExpiresOn',
+      id: 'contractExpiresOn',
       header: 'Contract',
       width: 150,
-      cell: (vendor) =>
-        vendor.contractExpiresOn ? (
-          formatDate(vendor.contractExpiresOn)
+      cell: ({ row }) =>
+        row.contractExpiresOn ? (
+          formatDate(row.contractExpiresOn)
         ) : (
-          <span className="text-theme-xs text-gray-500">No end date</span>
+          <span className="text-xs text-muted-foreground">No end date</span>
         ),
     },
     {
-      key: 'assignable',
+      id: 'assignable',
       header: 'Availability',
       width: 190,
-      cell: (vendor) =>
+      cell: ({ row: vendor }) =>
         vendor.assignable ? (
-          <StatusChip value="Can take work" tone="ready" />
+          <StatusBadge value="ASSIGNABLE" label="Can take work" tone="ready" />
         ) : (
-          <div className="flex flex-col gap-0.5">
-            <StatusChip value="Unavailable" tone="blocked" />
-            <span className="text-theme-xs text-gray-500">
+          <div className="flex flex-col items-start gap-0.5">
+            <StatusBadge value="UNAVAILABLE" label="Unavailable" tone="blocked" />
+            <span className="text-xs text-muted-foreground">
               {orDash(vendor.unassignableReason)}
             </span>
           </div>
@@ -98,37 +109,46 @@ const MaintenanceVendorsPage = () => {
 
   return (
     <>
-      <PageHeader
-        title="Vendors"
-        subtitle="Contractors, their contracts and their contracted response times"
-        crumbs={[{ label: 'Facilities', to: facilitiesPaths.dashboard }, { label: 'Vendors' }]}
-        actions={
-          canManageVendors() && (
-            <Button variant="primary" onClick={() => setRegistering(true)}>
-              Register a vendor
-            </Button>
-          )
-        }
-      />
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Vendors</SectionTitle>
+          <SectionDescription>
+            Contractors, their contracts and their contracted response times
+          </SectionDescription>
+          <SectionActions>
+            <SiteSelect value={siteCode} onChange={setSiteCode} />
+            {canManageVendors() && (
+              <Button variant="primary" onClick={() => setRegistering(true)}>
+                <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+                Register a vendor
+              </Button>
+            )}
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      <FilterBar>
-        <SiteSelect value={siteCode} onChange={setSiteCode} />
-      </FilterBar>
-
-      <DataState
-        loading={vendors.loading}
-        error={vendors.error}
-        empty={vendors.data?.length === 0}
-        emptyTitle="No vendors registered"
-        emptyHint="Register a contractor to assign work to them. A contracted response time shortens the SLA on anything they take."
-        onRetry={vendors.refetch}
-      >
-        <DataTable
-          rows={vendors.data ?? []}
-          columns={columns}
-          getRowId={(vendor) => vendor.id}
-        />
-      </DataState>
+      <PageSection>
+        <DataState loading={false} error={vendors.error} onRetry={vendors.refetch}>
+          <Table paramPrefix="vendors" variant="soft">
+            <Card bordered>
+              <TableContent
+                variant="soft"
+                columns={columns}
+                data={vendors.data ?? []}
+                rowKey={(vendor) => vendor.id}
+                loading={vendors.loading}
+                aria-label="Vendors"
+                emptyContent={
+                  <EmptyState
+                    title="No vendors registered"
+                    description="Register a contractor to assign work to them. A contracted response time shortens the SLA on anything they take."
+                  />
+                }
+              />
+            </Card>
+          </Table>
+        </DataState>
+      </PageSection>
 
       {registering && (
         <RegisterVendorDialog

@@ -1,15 +1,28 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import ControlButton from 'shared/components/ControlButton';
+import { Plus } from 'lucide-react';
+import {
+  Banner,
+  Card,
+  Dropdown,
+  EmptyState,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  TableFilter,
+  TableHeader,
+  useBreadcrumbs,
+  useTableState,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar from 'shared/components/FilterBar';
-import PageHeader from 'shared/components/PageHeader';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
+import { facilitiesPaths } from 'shared/layout/navigation';
 import type { DeviceReference } from '../api/dto';
 import { deviceReferenceTypes } from '../api/enums';
 import type { DeviceReferenceType } from '../api/enums';
@@ -20,7 +33,9 @@ import {
   updateDeviceReference,
 } from '../api/facilitiesApi';
 import { editDeviceControl, registerDeviceControl, retireDeviceControl } from '../api/workflow';
+import ControlButton from '../components/ControlButton';
 import RowActions, { EditRowAction, RetireRowAction } from '../components/RowActions';
+import StatusBadge from '../components/StatusBadge';
 import { humaniseCode, orDash, relativeTime } from '../components/facilitiesFormat';
 import { LifecycleDialog } from '../dialogs/common';
 import { EditDeviceDialog, RegisterDeviceDialog } from '../dialogs/deviceDialogs';
@@ -37,24 +52,15 @@ import { EditDeviceDialog, RegisterDeviceDialog } from '../dialogs/deviceDialogs
  */
 const DeviceReferencesPage = () => {
   const notify = useNotifier();
+  useBreadcrumbs([{ label: 'Facilities', href: facilitiesPaths.dashboard }, { label: 'Devices' }]);
+  const { filters } = useTableState({ paramPrefix: 'devices' });
+  // The search endpoint takes one value per axis, so the type is a single choice.
+  const type = filters.type ?? '';
+  const [typeValue, setTypeValue] = useState(type);
   const [siteCode, setSiteCode] = useState<string>(defaultSite);
-  const [type, setType] = useState<string>('');
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<DeviceReference | null>(null);
   const [retiring, setRetiring] = useState<DeviceReference | null>(null);
-
-  /**
-   * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
-   * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
-   * option already active clears it, same as the dropdown it replaces; toggling a different one while
-   * one is active swaps to the new choice instead of appearing to hold both.
-   */
-  const pickSingle = (current: string, next: string[]): string => {
-    if (next.length === 0) {
-      return '';
-    }
-    return next.find((value) => value !== current) ?? next[0];
-  };
 
   const { data, loading, error, refetch } = useApiQuery(
     (signal) =>
@@ -68,33 +74,31 @@ const DeviceReferencesPage = () => {
     [siteCode, type],
   );
 
-  const columns: Column<DeviceReference>[] = [
+  const columns: TableColumn<DeviceReference>[] = [
     {
-      key: 'deviceCode',
+      id: 'deviceCode',
       header: 'Code',
       width: 150,
-      cell: (device) => <span className="font-medium text-gray-900">{device.deviceCode}</span>,
+      cell: ({ row }) => <span className="font-medium text-foreground">{row.deviceCode}</span>,
     },
-    { key: 'name', header: 'Device', cell: (device) => device.name },
+    { id: 'name', header: 'Device', accessorKey: 'name' },
     {
-      key: 'type',
+      id: 'type',
       header: 'Type',
-      hideBelowLg: true,
-      cell: (device) => humaniseCode(device.type),
+      cell: ({ row }) => humaniseCode(row.type),
     },
     {
-      key: 'vendor',
+      id: 'vendor',
       header: 'Vendor',
       width: 150,
-      hideBelowLg: true,
-      cell: (device) => <span className="text-gray-600">{orDash(device.vendor)}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">{orDash(row.vendor)}</span>,
     },
     {
-      key: 'status',
+      id: 'status',
       header: 'Reported status',
       width: 150,
-      cell: (device) => (
-        <StatusChip
+      cell: ({ row: device }) => (
+        <StatusBadge
           value={device.status}
           tone={
             device.status === 'ONLINE'
@@ -109,20 +113,20 @@ const DeviceReferencesPage = () => {
       ),
     },
     {
-      key: 'reported',
+      id: 'reported',
       header: 'Last reported',
       width: 160,
       align: 'right',
-      cell: (device) => (
-        <span className="text-gray-600">{relativeTime(device.statusReportedAt)}</span>
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">{relativeTime(row.statusReportedAt)}</span>
       ),
     },
     {
-      key: 'actions',
+      id: 'actions',
       header: '',
       width: 150,
       align: 'right',
-      cell: (device) => (
+      cell: ({ row: device }) => (
         <RowActions>
           <EditRowAction
             state={editDeviceControl(device)}
@@ -141,56 +145,68 @@ const DeviceReferencesPage = () => {
 
   return (
     <>
-      <PageHeader
-        title="Device references"
-        subtitle="Where each vendor-operated device sits on this estate"
-        actions={
-          <ControlButton
-            state={registerDeviceControl()}
-            variant="primary"
-            startIcon="plus"
-            onClick={() => setAdding(true)}
-          >
-            Register a device
-          </ControlButton>
-        }
-      />
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Device references</SectionTitle>
+          <SectionDescription>Where each vendor-operated device sits on this estate</SectionDescription>
+          <SectionActions>
+            <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
+            <ControlButton state={registerDeviceControl()} variant="primary" onClick={() => setAdding(true)}>
+              <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+              Register a device
+            </ControlButton>
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      <FilterBar>
-        <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
-        <FacetFilter
-          label="Device type"
-          selected={type ? [type] : []}
-          onChange={(next) => setType(pickSingle(type, next))}
-          options={deviceReferenceTypes.map((value) => ({ value, label: humaniseCode(value) }))}
-        />
-      </FilterBar>
+      {data?.some((device) => device.status === 'UNKNOWN') && (
+        <PageSection>
+          <Banner
+            variant="info"
+            heading="Devices showing UNKNOWN have never been reported on by their vendor system."
+            subtext="The facilities register holds the reference; the vendor feed supplies the status."
+          />
+        </PageSection>
+      )}
 
-      <DataState
-        loading={loading}
-        error={error}
-        empty={!data || data.length === 0}
-        emptyTitle="No device references"
-        emptyHint="Register one so CCTV, access and life-safety events can be placed in a space."
-        onRetry={refetch}
-      >
-        {data && (
-          <>
-            {data.some((device) => device.status === 'UNKNOWN') && (
-              <Alert variant="info" className="mb-4">
-                Devices showing UNKNOWN have never been reported on by their vendor system. The
-                facilities register holds the reference; the vendor feed supplies the status.
-              </Alert>
-            )}
-            <DataTable
-              rows={data}
-              columns={columns}
-              getRowId={(device) => device.id}
-              caption="Device references"
-            />
-          </>
-        )}
-      </DataState>
+      <PageSection>
+        <DataState loading={false} error={error} onRetry={refetch}>
+          <Table paramPrefix="devices" variant="soft">
+            <Card bordered>
+              <TableHeader>
+                <TableFilter variant="spread">
+                  <Dropdown
+                    name="type"
+                    aria-label="Device type"
+                    placeholder="All device types"
+                    clearable
+                    value={typeValue || null}
+                    onValueChange={(next) => setTypeValue(next ?? '')}
+                    options={deviceReferenceTypes.map((value) => ({
+                      value,
+                      label: humaniseCode(value),
+                    }))}
+                  />
+                </TableFilter>
+              </TableHeader>
+              <TableContent
+                variant="soft"
+                columns={columns}
+                data={data ?? []}
+                rowKey={(device) => device.id}
+                loading={loading}
+                aria-label="Device references"
+                emptyContent={
+                  <EmptyState
+                    title="No device references"
+                    description="Register one so CCTV, access and life-safety events can be placed in a space."
+                  />
+                }
+              />
+            </Card>
+          </Table>
+        </DataState>
+      </PageSection>
 
       {adding && (
         <RegisterDeviceDialog

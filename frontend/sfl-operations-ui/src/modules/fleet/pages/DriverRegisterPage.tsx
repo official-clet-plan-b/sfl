@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
+import dayjs from 'dayjs';
 import { useNavigate } from 'react-router';
+import { Button, Input, PageSection } from '@rfdtech/components';
 import { DriverResponse } from 'modules/fleet/api/dto';
 import {
-  DRIVER_ELIGIBILITY_STATUSES,
   DRIVER_LIFECYCLE_STATUSES,
   DriverEligibilityStatus,
   DriverLifecycleStatus,
@@ -10,99 +11,108 @@ import {
 } from 'modules/fleet/api/enums';
 import { describeDriverEligibility } from 'modules/fleet/api/driverEligibility';
 import { driversApi } from 'modules/fleet/api/fleetApi';
+import FleetTable, {
+  CellStack,
+  FilterDropdown,
+  FilterField,
+  FleetColumn,
+  useRegisterState,
+} from 'modules/fleet/components/FleetTable';
+import RegisterHeader from 'modules/fleet/components/RegisterHeader';
+import StatusBadge from 'modules/fleet/components/StatusBadge';
+import { DateField } from 'modules/fleet/components/formFields';
 import { RegisterDriverDialog } from 'modules/fleet/dialogs/driverDialogs';
-import { defaultPageSize } from 'shared/api/config';
-import Button from 'shared/components/Button';
-import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import { DateField } from 'shared/components/DateField';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar from 'shared/components/FilterBar';
+import Icon from 'shared/components/Icon';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
-import { TextInput } from 'shared/components/fields';
+import { defaultSite } from 'shared/components/SiteSelect';
 import { formatDate, formatDaysRemaining } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fleetPaths } from 'shared/layout/navigation';
 import { canManageDrivers } from '../api/access';
 
-interface Filters {
-  siteCode: string;
-  search: string;
-  status: DriverLifecycleStatus | '';
-  eligibility: DriverEligibilityStatus | '';
-  responsibleUnit: string;
-  licenceExpiringBefore: string;
-}
-
-const emptyFilters: Filters = {
-  siteCode: defaultSite,
-  search: '',
-  status: '',
-  eligibility: '',
-  responsibleUnit: '',
-  licenceExpiringBefore: '',
-};
-
-/**
- * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
- * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
- * option already active clears it, same as the dropdown it replaces; toggling a different one while
- * one is active swaps to the new choice instead of appearing to hold both.
- */
-const pickSingle = <T extends string>(current: T | '', next: string[]): T | '' => {
-  if (next.length === 0) {
-    return '';
-  }
-  return (next.find((value) => value !== current) ?? next[0]) as T;
-};
-
 /** Licence expiry earns colour: an expired licence is a refusal at assignment time, not a note. */
 const expiryTone = (days: number) =>
-  days < 0 ? 'text-error-600' : days < 30 ? 'text-warning-600' : 'text-gray-500';
+  days < 0 ? 'text-error-700' : days < 30 ? 'text-warning-700' : 'opacity-70';
+
+/** The one-click views of the register. The last is a date window, the rest are eligibility. */
+const VIEWS: { value: string; label: string; eligibility?: DriverEligibilityStatus }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'eligible', label: 'Eligible', eligibility: 'ELIGIBLE' },
+  { value: 'conditional', label: 'Conditional', eligibility: 'CONDITIONAL' },
+  { value: 'ineligible', label: 'Not eligible', eligibility: 'INELIGIBLE' },
+  { value: 'expiring', label: 'Licence expiring within 60 days' },
+];
+
+const expiryHorizon = () => dayjs().add(60, 'day').format('YYYY-MM-DD');
 
 /** The driver register: licence standing, lifecycle and eligibility in one scan. */
 const DriverRegisterPage = () => {
   const navigate = useNavigate();
   const { notifySuccess } = useNotifier();
-  const [filters, setFilters] = useState<Filters>(emptyFilters);
-  const [pagination, setPagination] = useState({ page: 0, pageSize: defaultPageSize });
   const [registerOpen, setRegisterOpen] = useState(false);
 
-  const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => {
-    setFilters((current) => ({ ...current, [key]: value }));
-    setPagination((current) => ({ ...current, page: 0 }));
-  };
-
-  // Reset is a filter change like any other: leaving the page index behind asks the server for a
-  // page the narrowed result set no longer has, and the table comes back empty.
-  const resetFilters = () => {
-    setFilters(emptyFilters);
-    setPagination((current) => ({ ...current, page: 0 }));
-  };
+  // The register's state lives in the URL. Every filter change returns to the first page - leaving
+  // the page index behind asks the server for a page the narrowed result set no longer has.
+  const state = useRegisterState('drivers');
+  const { filters, setFilter } = state;
+  const view = VIEWS.find((entry) => entry.value === filters.view) ?? VIEWS[0];
+  const status = (filters.status ?? '') as DriverLifecycleStatus | '';
+  const responsibleUnit = filters.unit ?? '';
+  const typedExpiry = filters.licenceExpiringBefore ?? '';
+  const licenceExpiringBefore = view.value === 'expiring' ? expiryHorizon() : typedExpiry;
 
   const query = useApiQuery(
     (signal) =>
       driversApi.search(
         {
-          siteCode: filters.siteCode || undefined,
-          search: filters.search || undefined,
-          status: filters.status || undefined,
-          eligibility: filters.eligibility || undefined,
-          responsibleUnit: filters.responsibleUnit || undefined,
-          licenceExpiringBefore: filters.licenceExpiringBefore || undefined,
-          page: pagination.page,
-          size: pagination.pageSize,
+          siteCode: state.site || undefined,
+          search: state.search || undefined,
+          status: status || undefined,
+          eligibility: view.eligibility,
+          responsibleUnit: responsibleUnit || undefined,
+          licenceExpiringBefore: licenceExpiringBefore || undefined,
+          page: state.apiPage,
+          size: state.pageSize,
         },
         signal,
       ),
-    [filters, pagination.page, pagination.pageSize],
+    [
+      state.site,
+      state.search,
+      status,
+      view.value,
+      responsibleUnit,
+      licenceExpiringBefore,
+      state.apiPage,
+      state.pageSize,
+    ],
   );
 
-  const columns = useMemo<Column<DriverResponse>[]>(
+  /** How many drivers each view holds, so the tab says what is behind it before it is opened. */
+  const counts = useApiQuery(
+    async (signal) => {
+      const site = state.site || undefined;
+      const totals = await Promise.all(
+        VIEWS.map((entry) =>
+          driversApi
+            .search(
+              {
+                siteCode: site,
+                eligibility: entry.eligibility,
+                licenceExpiringBefore: entry.value === 'expiring' ? expiryHorizon() : undefined,
+                size: 1,
+              },
+              signal,
+            )
+            .then((page) => [entry.value, page.totalElements] as const),
+        ),
+      );
+      return Object.fromEntries(totals);
+    },
+    [state.site],
+  );
+
+  const columns = useMemo<FleetColumn<DriverResponse>[]>(
     () => [
       {
         key: 'displayName',
@@ -149,7 +159,7 @@ const DriverRegisterPage = () => {
         key: 'lifecycleStatus',
         header: 'Lifecycle',
         width: 130,
-        cell: (row) => <StatusChip value={row.lifecycleStatus} />,
+        cell: (row) => <StatusBadge value={row.lifecycleStatus} />,
       },
       {
         key: 'eligibilityStatus',
@@ -161,8 +171,8 @@ const DriverRegisterPage = () => {
           const [reason] = describeDriverEligibility(row);
           return (
             <div className="min-w-0">
-              <StatusChip value={row.eligibilityStatus} />
-              {reason && <p className="mt-1 text-theme-xs text-gray-600">{reason}</p>}
+              <StatusBadge value={row.eligibilityStatus} />
+              {reason && <p className="mt-1 text-theme-xs opacity-70">{reason}</p>}
             </div>
           );
         },
@@ -171,33 +181,36 @@ const DriverRegisterPage = () => {
         key: 'responsibleUnit',
         header: 'Responsible unit',
         width: 180,
-        hideBelowLg: true,
         cell: (row) => row.responsibleUnit,
       },
     ],
     [],
   );
 
-  const filtersActive = JSON.stringify(filters) !== JSON.stringify(emptyFilters);
-  const noResults = (query.data?.content.length ?? 0) === 0 && !query.loading;
-  // The table is edge-to-edge in a flush card; only the loading, error and empty panels need padding.
-  const panelOnly = query.initialising || Boolean(query.error) || noResults;
-
   return (
-    <div>
-      <PageHeader
+    <>
+      <RegisterHeader
         title="Driver register"
-        subtitle="Licence standing, lifecycle and eligibility for every driver in your site scope."
-        crumbs={[{ label: 'Fleet', to: fleetPaths.dashboard }, { label: 'Driver register' }]}
+        siteCode={state.site}
+        onSiteChange={state.setSite}
         actions={
           <>
-            <Button variant="outline" startIcon="refresh" onClick={query.refetch}>
-              Refresh
+            <Button
+              variant="outline"
+              aria-label="Refresh"
+              title="Refresh"
+              onClick={() => {
+                query.refetch();
+                counts.refetch();
+              }}
+            >
+              <Icon name="refresh" size={14} aria-hidden="true" />
             </Button>
             {/* FLEET_DRIVER_MANAGE is a personnel function, not "am I a driver". A driver
                 registering themselves is precisely what this gate prevents. */}
             {canManageDrivers() && (
-              <Button variant="accent" startIcon="user-plus" onClick={() => setRegisterOpen(true)}>
+              <Button variant="primary" onClick={() => setRegisterOpen(true)}>
+                <Icon name="user-plus" size={14} aria-hidden="true" />
                 Register driver
               </Button>
             )}
@@ -205,83 +218,79 @@ const DriverRegisterPage = () => {
         }
       />
 
-      <SectionCard flush>
-        <FilterBar onReset={resetFilters} resetDisabled={!filtersActive}>
-          <SiteSelect
-            value={filters.siteCode}
-            onChange={(value) => setFilter('siteCode', value)}
-            allowEmpty
-          />
-          <TextInput
-            label="Search name or reference"
-            value={filters.search}
-            onChange={(value) => setFilter('search', value)}
-          />
-          <FacetFilter
-            label="Lifecycle"
-            selected={filters.status ? [filters.status] : []}
-            onChange={(next) => setFilter('status', pickSingle(filters.status, next))}
-            options={DRIVER_LIFECYCLE_STATUSES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <FacetFilter
-            label="Eligibility"
-            selected={filters.eligibility ? [filters.eligibility] : []}
-            onChange={(next) => setFilter('eligibility', pickSingle(filters.eligibility, next))}
-            options={DRIVER_ELIGIBILITY_STATUSES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <TextInput
-            label="Responsible unit"
-            value={filters.responsibleUnit}
-            onChange={(value) => setFilter('responsibleUnit', value)}
-          />
-          <DateField
-            label="Licence expiring before"
-            value={filters.licenceExpiringBefore}
-            onChange={(value) => setFilter('licenceExpiringBefore', value)}
-          />
-        </FilterBar>
-
-        <div className={panelOnly ? 'p-4' : undefined}>
-          <DataState
-            loading={query.initialising}
-            error={query.error}
-            empty={noResults}
-            emptyTitle="No drivers match these filters"
-            emptyHint="Adjust the filters, or register the first driver for this site."
-            onRetry={query.refetch}
-            minHeight={280}
-          >
-            <DataTable
-              rows={query.data?.content ?? []}
-              columns={columns}
-              getRowId={(row) => row.id}
-              loading={query.loading}
-              onRowClick={(row) => navigate(fleetPaths.driverDetail(row.id))}
-              page={pagination.page}
-              pageSize={pagination.pageSize}
-              totalElements={query.data?.totalElements ?? 0}
-              onPageChange={(page) => setPagination((current) => ({ ...current, page }))}
-              onPageSizeChange={(pageSize) => setPagination({ page: 0, pageSize })}
-              emptyMessage="No drivers match these filters."
-            />
-          </DataState>
-        </div>
-      </SectionCard>
+      <PageSection>
+        <FleetTable
+          paramPrefix="drivers"
+          rows={query.data?.content ?? []}
+          columns={columns}
+          getRowId={(row) => row.id}
+          loading={query.loading}
+          error={query.error}
+          onRetry={query.refetch}
+          onRowClick={(row) => navigate(fleetPaths.driverDetail(row.id))}
+          totalElements={query.data?.totalElements ?? 0}
+          pageSize={state.pageSize}
+          searchPlaceholder="Search name or staff number"
+          caption="Driver register"
+          heading={{
+            title: 'Drivers',
+            description:
+              'Licence standing, lifecycle and eligibility for every driver in your site scope. An ineligible driver cannot be assigned to a trip.',
+          }}
+          tabs={VIEWS.map((entry) => ({
+            value: entry.value,
+            label: entry.label,
+            count: counts.data?.[entry.value],
+          }))}
+          tab={view.value}
+          onTabChange={(value) => setFilter('view', value === 'all' ? '' : value)}
+          filters={
+            <>
+              <FilterDropdown
+                name="status"
+                label="Lifecycle"
+                value={status}
+                onChange={(value) => setFilter('status', value)}
+                options={DRIVER_LIFECYCLE_STATUSES.map((value) => ({
+                  value,
+                  label: humanise(value),
+                }))}
+              />
+              <Input
+                name="unit"
+                aria-label="Responsible unit"
+                placeholder="Responsible unit"
+                defaultValue={responsibleUnit}
+              />
+              <FilterField name="licenceExpiringBefore" value={typedExpiry}>
+                <DateField
+                  label="Licence expiring before"
+                  value={typedExpiry}
+                  onChange={(value) => setFilter('licenceExpiringBefore', value)}
+                />
+              </FilterField>
+            </>
+          }
+          emptyTitle="No drivers match these filters"
+          emptyDescription="Adjust the filters, or register the first driver for this site."
+        />
+      </PageSection>
 
       {/* Mounted only while open, so the dialog picks up the current site filter as its default
           and cannot reopen holding a half-typed profile from a previous attempt. */}
       {registerOpen && (
         <RegisterDriverDialog
           open
-          defaultSiteCode={filters.siteCode || defaultSite}
+          defaultSiteCode={state.site || defaultSite}
           onClose={() => setRegisterOpen(false)}
           onSaved={() => {
             notifySuccess('Driver registered.');
             query.refetch();
+            counts.refetch();
           }}
         />
       )}
-    </div>
+    </>
   );
 };
 

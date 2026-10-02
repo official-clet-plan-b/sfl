@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
-import StatusChip from 'shared/components/StatusChip';
-import { SelectInput, TextAreaInput } from 'shared/components/fields';
+import { Notice } from '@rfdtech/components';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import type { FacilityAsset } from '../api/dto';
 import { assetOperationalStatuses } from '../api/enums';
 import type { AssetOperationalStatus } from '../api/enums';
 import { assetBlockerSeverity } from '../api/workflow';
 import { humaniseCode, severityTone } from '../components/facilitiesFormat';
+import { FormDialog, SelectInput, TextAreaInput } from 'modules/facilities/dialogs/dialogKit';
+import StatusBadge from 'modules/facilities/components/StatusBadge';
 
 interface AssetStatusDialogProps {
   asset: FacilityAsset;
@@ -82,34 +81,34 @@ const AssetStatusDialog = ({ asset, onClose, onChanged }: AssetStatusDialogProps
         />
 
         {severity && attached && (
-          <Alert
+          <Notice
             variant={severity === 'CRITICAL' ? 'error' : 'warning'}
             title="What this does to the space"
           >
-            <p className="text-theme-sm">
+            <p className="text-sm">
               This asset is of {humaniseCode(asset.criticality).toLowerCase()} criticality, so marking
               it {humaniseCode(status).toLowerCase()} raises a{' '}
-              <StatusChip value={severity} tone={severityTone(severity)} /> blocker on the space it
+              <StatusBadge value={severity} tone={severityTone(severity)} /> blocker on the space it
               serves.
               {severity === 'CRITICAL'
                 ? ' That space will be marked BLOCKED and cannot be used until this is resolved.'
                 : ' That space will be marked DEGRADED.'}
             </p>
-          </Alert>
+          </Notice>
         )}
 
         {severity && !attached && (
-          <Alert variant="info">
+          <Notice variant="info">
             This asset is not attached to a space, so no readiness blocker will be raised. Attach it
             to a space if its condition should affect one.
-          </Alert>
+          </Notice>
         )}
 
         {!severity && !unchanged && asset.impairsReadiness && (
-          <Alert variant="success" title="This clears the blocker">
+          <Notice variant="success" title="This clears the blocker">
             Returning this asset to {humaniseCode(status).toLowerCase()} resolves the readiness
             blocker it raised, and the space it serves will be re-derived.
-          </Alert>
+          </Notice>
         )}
 
         <TextAreaInput

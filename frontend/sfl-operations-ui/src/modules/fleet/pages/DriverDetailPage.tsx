@@ -1,23 +1,20 @@
 import { useState } from 'react';
+import { Banner, Button } from '@rfdtech/components';
+import DetailHeader from 'modules/fleet/components/DetailHeader';
+import Panel from 'modules/fleet/components/Panel';
+import StatusBadge from 'modules/fleet/components/StatusBadge';
+import Icon from 'shared/components/Icon';
+import { EnumSelect } from 'modules/fleet/components/formFields';
 import { Link, useNavigate, useParams } from 'react-router';
 import { DriverResponse } from 'modules/fleet/api/dto';
 import { describeDriverEligibility } from 'modules/fleet/api/driverEligibility';
 import { VEHICLE_CATEGORIES, VehicleCategory, humanise } from 'modules/fleet/api/enums';
 import { driversApi, tripsApi } from 'modules/fleet/api/fleetApi';
-import {
-  BindDriverPrincipalDialog,
-  UpdateDriverDialog,
-} from 'modules/fleet/dialogs/driverDialogs';
-import Alert from 'shared/components/Alert';
+import { BindDriverPrincipalDialog, UpdateDriverDialog } from 'modules/fleet/dialogs/driverDialogs';
 import BlockerList from 'shared/components/BlockerList';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatusChip from 'shared/components/StatusChip';
-import { EnumSelect } from 'shared/components/fields';
 import { formatDate, formatDateTime, formatDaysRemaining } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fleetPaths } from 'shared/layout/navigation';
@@ -30,24 +27,26 @@ import { canManageDrivers } from '../api/access';
  * reads as a question the dashboard failed to answer.
  */
 const EligibilitySummary = ({ driver }: { driver: DriverResponse }) => {
-  const reasons =
-    driver.eligibilityStatus === 'ELIGIBLE' ? [] : describeDriverEligibility(driver);
+  const reasons = driver.eligibilityStatus === 'ELIGIBLE' ? [] : describeDriverEligibility(driver);
   if (reasons.length === 0) {
     return null;
   }
 
   const conditional = driver.eligibilityStatus === 'CONDITIONAL';
   return (
-    <Alert
-      variant={conditional ? 'warning' : 'error'}
-      title={conditional ? 'Assignable with conditions' : 'Not eligible for assignment'}
-    >
-      <ul className="mt-1 list-disc space-y-1 pl-4">
-        {reasons.map((reason) => (
-          <li key={reason}>{reason}</li>
-        ))}
-      </ul>
-    </Alert>
+    <Banner
+      variant={conditional ? 'warning' : 'danger'}
+      heading={conditional ? 'Assignable with conditions' : 'Not eligible for assignment'}
+      subtext={
+        <>
+          <ul className="mt-1 list-disc space-y-1 pl-4">
+            {reasons.map((reason) => (
+              <li key={reason}>{reason}</li>
+            ))}
+          </ul>
+        </>
+      }
+    />
   );
 };
 
@@ -78,7 +77,7 @@ const DriverDetailPage = () => {
 
   return (
     <div>
-      <PageHeader
+      <DetailHeader
         title={driver.data?.displayName ?? 'Driver'}
         subtitle={
           driver.data
@@ -92,18 +91,17 @@ const DriverDetailPage = () => {
         ]}
         actions={
           <>
-            <Button
-              variant="outline"
-              startIcon="arrow-left"
-              onClick={() => navigate(fleetPaths.drivers)}
-            >
+            <Button variant="outline" onClick={() => navigate(fleetPaths.drivers)}>
+              <Icon name="arrow-left" size={14} aria-hidden="true" />
               Register
             </Button>
-            <Button variant="primary" startIcon="edit" onClick={() => setEditOpen(true)}>
+            <Button variant="primary" onClick={() => setEditOpen(true)}>
+              <Icon name="edit" size={14} aria-hidden="true" />
               Update driver
             </Button>
             {canManageDrivers() && (
-              <Button variant="outline" startIcon="link" onClick={() => setBindOpen(true)}>
+              <Button variant="outline" onClick={() => setBindOpen(true)}>
+                <Icon name="link" size={14} aria-hidden="true" />
                 Link login
               </Button>
             )}
@@ -112,9 +110,9 @@ const DriverDetailPage = () => {
         meta={
           driver.data && (
             <div className="flex flex-wrap items-center gap-2">
-              <StatusChip value={driver.data.lifecycleStatus} />
-              <StatusChip value={driver.data.eligibilityStatus} />
-              <StatusChip
+              <StatusBadge value={driver.data.lifecycleStatus} />
+              <StatusBadge value={driver.data.eligibilityStatus} />
+              <StatusBadge
                 value={driver.data.licenceClass}
                 label={`Class ${driver.data.licenceClass}`}
                 tone="neutral"
@@ -134,9 +132,9 @@ const DriverDetailPage = () => {
           <div className="space-y-5">
             <EligibilitySummary driver={driver.data} />
 
-            <SectionCard
+            <Panel
               title="Eligibility"
-              subtitle="Blockers the service will apply at assignment time"
+              description="Blockers the service will apply at assignment time"
               actions={
                 <EnumSelect
                   label="Against category"
@@ -158,7 +156,7 @@ const DriverDetailPage = () => {
                 {eligibility.data && (
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <StatusChip value={eligibility.data.status} />
+                      <StatusBadge value={eligibility.data.status} />
                       <span className="text-theme-xs text-gray-500">
                         Assessed {formatDateTime(eligibility.data.assessedAt)}
                         {eligibility.data.assessedForCategory
@@ -173,9 +171,9 @@ const DriverDetailPage = () => {
                   </div>
                 )}
               </DataState>
-            </SectionCard>
+            </Panel>
 
-            <SectionCard title="Profile">
+            <Panel title="Profile">
               <div className="space-y-5">
                 <KeyValueGrid
                   items={[
@@ -218,19 +216,15 @@ const DriverDetailPage = () => {
                   ]}
                 />
               </div>
-            </SectionCard>
+            </Panel>
 
-            <SectionCard
+            <Panel
               title="Assignments"
-              subtitle="Current and recent trips for this driver"
+              description="Current and recent trips for this driver"
               actions={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  endIcon="chevron-right"
-                  onClick={() => navigate(fleetPaths.trips)}
-                >
+                <Button variant="ghost" size="sm" onClick={() => navigate(fleetPaths.trips)}>
                   Trip queue
+                  <Icon name="chevron-right" size={14} aria-hidden="true" />
                 </Button>
               }
             >
@@ -258,12 +252,12 @@ const DriverDetailPage = () => {
                           {formatDateTime(trip.plannedStart)} → {formatDateTime(trip.plannedEnd)}
                         </p>
                       </div>
-                      <StatusChip value={trip.status} />
+                      <StatusBadge value={trip.status} />
                     </Link>
                   ))}
                 </div>
               </DataState>
-            </SectionCard>
+            </Panel>
 
             {/* Mounted only while open: the form is seeded from the driver record, and a mounted
                 dialog would keep offering the values it was first given after a save and refetch. */}

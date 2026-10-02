@@ -1,5 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter as DomMemoryRouter } from 'react-router-dom';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotifierProvider } from 'shared/components/Notifier';
@@ -65,18 +66,18 @@ const page = <T,>(content: T[]): FuelPageResponse<T> => ({
 
 const renderPage = () =>
   render(
-    <MemoryRouter>
-      <NotifierProvider>
-        <FuelCardsPage />
-      </NotifierProvider>
-    </MemoryRouter>,
+    <DomMemoryRouter>
+      <MemoryRouter>
+        <NotifierProvider>
+          <FuelCardsPage />
+        </NotifierProvider>
+      </MemoryRouter>
+    </DomMemoryRouter>,
   );
 
 const selectFirstCard = async (user: ReturnType<typeof userEvent.setup>) => {
   const cardLabel = await screen.findByText('****1234');
-  const rowButton = cardLabel.closest('button');
-  expect(rowButton).not.toBeNull();
-  await user.click(rowButton!);
+  await user.click(cardLabel);
 };
 
 describe('FuelCardsPage', () => {

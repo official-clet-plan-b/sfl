@@ -1,120 +1,96 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate } from 'react-router';
+import { Button, DateRangeSelector, Input, type TableColumn } from '@rfdtech/components';
+import { Download, Plus, ShieldAlert } from 'lucide-react';
 import { CourierItem } from 'modules/dispatch/api/dto';
 import {
   ITEM_DIRECTIONS,
   ITEM_STATUSES,
   ITEM_TYPES,
-  ItemDirection,
-  ItemStatus,
-  ItemType,
   SENSITIVITIES,
-  Sensitivity,
 } from 'modules/dispatch/api/enums';
 import { courierItemsApi, dispatchReportsApi } from 'modules/dispatch/api/dispatchApi';
+import CellStack from 'modules/dispatch/components/CellStack';
+import PageHeading from 'modules/dispatch/components/PageHeading';
+import Panel from 'modules/dispatch/components/Panel';
+import {
+  FilterDropdown,
+  RegisterTable,
+  emptyRange,
+  rangeToInstants,
+  useClampRegisterPage,
+  useRegisterQuery,
+} from 'modules/dispatch/components/registerTable';
+import StatusBadge from 'modules/dispatch/components/StatusBadge';
 import { RegisterItemDialog } from 'modules/dispatch/dialogs/itemDialogs';
 import { humanise } from 'modules/fleet/api/enums';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar from 'shared/components/FilterBar';
-import Icon from 'shared/components/Icon';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
-import { DateTimeField } from 'shared/components/DateField';
-import { TextInput } from 'shared/components/fields';
 import { formatDateTime } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
-import { useClampPage, useServerPage } from 'shared/hooks/useServerPage';
 import { dispatchPaths } from 'shared/layout/navigation';
 import { canRegisterItems } from 'modules/fleet/api/access';
+
+const PREFIX = 'items';
+
+const options = (values: readonly string[]) =>
+  values.map((value) => ({ value, label: humanise(value) }));
 
 /**
  * The courier item register.
  *
- * Site, direction, status, sensitivity, handler and the date range all reach the service - those are
- * the six filters `GET /items` accepts. Item type is filtered here over the returned window and is
- * labelled as such, because the endpoint has no parameter for it.
+ * Site, direction, status, sensitivity, handler, the search over item number, sender and recipient,
+ * item type and the date range all reach the service. Every filter does, so the footer counts the
+ * register rather than a window of it.
  *
- * There is no pagination on the dispatch side, so the footer counts the window the service returned
- * Every filter reaches the service, and the footer counts the register rather than a window.
+ * Page, size, search and the dropdown filters live in the URL under `items.`, so a filtered view
+ * survives a reload and can be sent on.
  */
 const CourierItemsPage = () => {
   const navigate = useNavigate();
   const { notifySuccess, notifyError } = useNotifier();
-  const [searchParams] = useSearchParams();
 
   const [siteCode, setSiteCode] = useState(defaultSite);
-  const [direction, setDirection] = useState<ItemDirection | ''>(
-    (searchParams.get('direction') as ItemDirection | null) ?? '',
-  );
-  const [status, setStatus] = useState<ItemStatus | ''>(
-    (searchParams.get('status') as ItemStatus | null) ?? '',
-  );
-  const [sensitivity, setSensitivity] = useState<Sensitivity | ''>('');
-  const [handler, setHandler] = useState('');
-  const [itemType, setItemType] = useState<ItemType | ''>('');
-  const [reference, setReference] = useState('');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
+  const [range, setRange] = useState(emptyRange);
   const [registering, setRegistering] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  /**
-   * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
-   * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
-   * option already active clears it, same as the dropdown it replaces; toggling a different one while
-   * one is active swaps to the new choice instead of appearing to hold both.
-   */
-  const pickSingle = <T extends string>(current: T | '', next: string[]): T | '' => {
-    if (next.length === 0) {
-      return '';
-    }
-    return (next.find((value) => value !== current) ?? next[0]) as T;
-  };
-
-  const filterKey =
-    `${siteCode}|${direction}|${status}|${sensitivity}|${itemType}|${handler}|${reference}|${from}|${to}`;
-  const paging = useServerPage(filterKey);
+  const table = useRegisterQuery(PREFIX);
+  const { filters } = table;
 
   const query = useApiQuery(
     (signal) =>
       courierItemsApi.search(
         {
           siteCode,
-          direction: direction || undefined,
-          status: status || undefined,
-          sensitivity: sensitivity || undefined,
-          itemType: itemType || undefined,
-          handler: handler.trim() || undefined,
-          reference: reference.trim() || undefined,
-          from: from ? new Date(from).toISOString() : undefined,
-          to: to ? new Date(to).toISOString() : undefined,
-          page: paging.page,
-          size: paging.size,
+          direction: (filters.direction as CourierItem['direction']) || undefined,
+          status: (filters.status as CourierItem['status']) || undefined,
+          sensitivity: (filters.sensitivity as CourierItem['sensitivity']) || undefined,
+          itemType: (filters.itemType as CourierItem['itemType']) || undefined,
+          handler: filters.handler?.trim() || undefined,
+          reference: table.search || undefined,
+          ...rangeToInstants(range),
+          page: table.page,
+          size: table.size,
         },
         signal,
       ),
     [
       siteCode,
-      direction,
-      status,
-      sensitivity,
-      itemType,
-      handler,
-      reference,
-      from,
-      to,
-      paging.page,
-      paging.size,
+      filters.direction,
+      filters.status,
+      filters.sensitivity,
+      filters.itemType,
+      filters.handler,
+      table.search,
+      range,
+      table.page,
+      table.size,
     ],
   );
 
-  useClampPage(paging.page, query.data?.totalPages, paging.setPage);
+  useClampRegisterPage(table, query.data?.totalPages);
 
   const exportReport = async () => {
     setExporting(true);
@@ -131,37 +107,35 @@ const CourierItemsPage = () => {
     }
   };
 
-  const columns = useMemo<Column<CourierItem>[]>(
+  const columns = useMemo<TableColumn<CourierItem>[]>(
     () => [
       {
-        key: 'item',
+        id: 'item',
         header: 'Item',
-        width: 260,
-        cell: (row) => (
+        minWidth: 240,
+        cell: ({ row }) => (
           <CellStack
-            primary={`${row.itemNumber} · ${row.origin} → ${row.destination}`}
-            secondary={humanise(row.itemType)}
+            primary={row.itemNumber}
+            secondary={`${row.origin} → ${row.destination} · ${humanise(row.itemType)}`}
           />
         ),
       },
       {
-        key: 'direction',
+        id: 'direction',
         header: 'Direction',
-        width: 110,
-        cell: (row) => <StatusChip value={row.direction} />,
+        cell: ({ row }) => humanise(row.direction),
       },
       {
-        key: 'sensitivity',
+        id: 'sensitivity',
         header: 'Sensitivity',
-        width: 130,
-        cell: (row) => (
+        cell: ({ row }) => (
           <div className="flex items-center gap-1.5">
-            <StatusChip value={row.sensitivity} />
+            <StatusBadge value={row.sensitivity} />
             {row.chainOfCustodyRequired && (
-              <Icon
-                name="shield-lock"
+              <ShieldAlert
                 size={14}
-                className="shrink-0 text-gray-600"
+                strokeWidth={1.75}
+                className="shrink-0 text-muted-foreground"
                 aria-label="Chain of custody required"
               />
             )}
@@ -169,28 +143,23 @@ const CourierItemsPage = () => {
         ),
       },
       {
-        key: 'handler',
+        id: 'handler',
         header: 'Handler',
-        width: 150,
-        hideBelowLg: true,
-        cell: (row) => row.assignedHandler ?? <span className="text-gray-500">Unassigned</span>,
+        cell: ({ row }) =>
+          row.assignedHandler ?? <span className="text-muted-foreground">Unassigned</span>,
       },
       {
-        key: 'registered',
+        id: 'registered',
         header: 'Registered',
-        width: 160,
-        hideBelowLg: true,
-        cell: (row) => formatDateTime(row.metadata.createdAt),
+        cell: ({ row }) => formatDateTime(row.metadata.createdAt),
       },
       {
-        key: 'status',
+        id: 'status',
         header: 'Status',
-        width: 140,
-        align: 'right',
-        cell: (row) => (
-          <div className="flex items-center justify-end gap-1.5">
-            {row.undelivered && <StatusChip value="MISSING" label="Undelivered" tone="blocked" />}
-            <StatusChip value={row.status} />
+        cell: ({ row }) => (
+          <div className="flex items-center gap-1.5">
+            {row.undelivered && <StatusBadge value="MISSING" label="Undelivered" tone="blocked" />}
+            <StatusBadge value={row.status} />
           </div>
         ),
       },
@@ -198,29 +167,23 @@ const CourierItemsPage = () => {
     [],
   );
 
-  const filtersApplied = Boolean(
-    direction || status || sensitivity || handler || itemType || reference || from || to,
-  );
-
   return (
-    <div>
-      <PageHeader
+    <>
+      <PageHeading
         title="Courier items"
         subtitle="Every tracked item at this site, inbound and outbound."
         crumbs={[{ label: 'Dispatch', to: dispatchPaths.dashboard }, { label: 'Courier items' }]}
         actions={
           <>
-            <Button
-              variant="outline"
-              startIcon="download"
-              loading={exporting}
-              onClick={exportReport}
-            >
+            <SiteSelect value={siteCode} onChange={setSiteCode} required />
+            <Button variant="outline" loading={exporting} onClick={exportReport}>
+              <Download size={14} strokeWidth={1.5} aria-hidden="true" />
               Export CSV
             </Button>
-{/* DISPATCH_ITEM_REGISTER - a mailroom officer's grant, not a reader's. */}
+            {/* DISPATCH_ITEM_REGISTER - a mailroom officer's grant, not a reader's. */}
             {canRegisterItems() && (
-                          <Button variant="primary" startIcon="plus" onClick={() => setRegistering(true)}>
+              <Button variant="primary" onClick={() => setRegistering(true)}>
+                <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
                 Register item
               </Button>
             )}
@@ -228,87 +191,69 @@ const CourierItemsPage = () => {
         }
       />
 
-      <SectionCard flush>
-        <FilterBar
-          onReset={() => {
-            setDirection('');
-            setStatus('');
-            setSensitivity('');
-            setHandler('');
-            setItemType('');
-            setReference('');
-            setFrom('');
-            setTo('');
-          }}
-          resetDisabled={!filtersApplied}
-        >
-          <SiteSelect value={siteCode} onChange={setSiteCode} required />
-          <FacetFilter
-            label="Direction"
-            selected={direction ? [direction] : []}
-            onChange={(next) => setDirection(pickSingle(direction, next))}
-            options={ITEM_DIRECTIONS.map((value) => ({ value, label: humanise(value) }))}
+      <Panel
+        title="Items"
+        description={`Every tracked item at ${siteCode}, inbound and outbound. Confidential items move under chain of custody.`}
+      >
+        <DataState loading={false} error={query.error} onRetry={query.refetch}>
+          <RegisterTable
+            paramPrefix={PREFIX}
+            caption="Courier items matching the current filters, with direction, sensitivity, whether a chain of custody is required, handler and status."
+            columns={columns}
+            rows={query.data?.content ?? []}
+            rowKey={(row) => row.id}
+            loading={query.loading}
+            totalPages={query.data?.totalPages ?? 1}
+            totalItems={query.data?.totalElements ?? 0}
+            onRowClick={(row) => navigate(dispatchPaths.itemDetail(row.id))}
+            searchPlaceholder="Search item, sender or recipient"
+            filters={
+              <>
+                <FilterDropdown
+                  paramPrefix={PREFIX}
+                  name="direction"
+                  label="Direction"
+                  options={options(ITEM_DIRECTIONS)}
+                />
+                <FilterDropdown
+                  paramPrefix={PREFIX}
+                  name="status"
+                  label="Status"
+                  options={options(ITEM_STATUSES)}
+                />
+                <FilterDropdown
+                  paramPrefix={PREFIX}
+                  name="sensitivity"
+                  label="Sensitivity"
+                  options={options(SENSITIVITIES)}
+                />
+                <FilterDropdown
+                  paramPrefix={PREFIX}
+                  name="itemType"
+                  label="Item type"
+                  options={options(ITEM_TYPES)}
+                />
+                <Input
+                  name="handler"
+                  aria-label="Handler"
+                  placeholder="Handler: part of a name"
+                  defaultValue={filters.handler ?? ''}
+                />
+              </>
+            }
+            actions={
+              <DateRangeSelector
+                aria-label="Registered between"
+                placeholder="Registered: any time"
+                value={range}
+                onChange={setRange}
+              />
+            }
+            emptyTitle="No item matches these filters"
+            emptyDescription="Try removing a filter or adjusting your search terms."
           />
-          <FacetFilter
-            label="Status"
-            selected={status ? [status] : []}
-            onChange={(next) => setStatus(pickSingle(status, next))}
-            options={ITEM_STATUSES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <FacetFilter
-            label="Sensitivity"
-            selected={sensitivity ? [sensitivity] : []}
-            onChange={(next) => setSensitivity(pickSingle(sensitivity, next))}
-            options={SENSITIVITIES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <TextInput
-            label="Handler"
-            value={handler}
-            onChange={setHandler}
-            placeholder="Part of a name"
-          />
-          <TextInput
-            label="Reference"
-            value={reference}
-            onChange={setReference}
-            placeholder="Item number, sender or recipient"
-          />
-          <FacetFilter
-            label="Item type"
-            selected={itemType ? [itemType] : []}
-            onChange={(next) => setItemType(pickSingle(itemType, next))}
-            options={ITEM_TYPES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <DateTimeField label="From" value={from} onChange={setFrom} />
-          <DateTimeField label="To" value={to} onChange={setTo} />
-        </FilterBar>
-      </SectionCard>
-
-      <div className="mt-5">
-        <SectionCard flush>
-          <DataState
-            loading={query.initialising}
-            error={query.error}
-            onRetry={query.refetch}
-            minHeight={300}
-          >
-            <DataTable
-              rows={query.data?.content ?? []}
-              columns={columns}
-              getRowId={(row) => row.id}
-              loading={query.loading}
-              onRowClick={(row) => navigate(dispatchPaths.itemDetail(row.id))}
-              caption="Courier items matching the current filters, with direction, sensitivity, whether a chain of custody is required, handler and status."
-              emptyMessage="No item matches these filters."
-              page={query.data?.page ?? paging.page}
-              pageSize={query.data?.size ?? paging.size}
-              totalElements={query.data?.totalElements ?? 0}
-              onPageChange={paging.setPage}
-              onPageSizeChange={paging.setSize}
-            />
-          </DataState>
-        </SectionCard>
-      </div>
+        </DataState>
+      </Panel>
 
       {registering && (
         <RegisterItemDialog
@@ -327,7 +272,7 @@ const CourierItemsPage = () => {
           }}
         />
       )}
-    </div>
+    </>
   );
 };
 

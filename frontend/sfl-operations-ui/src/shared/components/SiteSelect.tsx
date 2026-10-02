@@ -1,5 +1,7 @@
+import { FocusEvent } from 'react';
+import { Dropdown, Field, FieldDescription, FieldError, FieldLabel } from '@rfdtech/components';
 import { actorSiteFailure, actorSites, defaultSite, scopeIsEverySite } from 'shared/layout/actorSites';
-import { SelectInput } from './fields';
+import { cn } from './cn';
 
 /**
  * The actor's site scope.
@@ -40,7 +42,7 @@ interface SiteSelectProps {
  * Every write carries a site code, and the service refuses one outside the actor's scope with
  * `FLEET_UNAUTHORIZED_SCOPE` - a rule the operator only discovered by typing a neighbouring site
  * and having the submission bounced. The options are the actor's own sites, so the dashboard can no
- * longer offer a site it cannot write to. Its props mirror `TextInput` so it drops into the same
+ * longer offer a site it cannot write to. Its props mirror the text fields' so it drops into the same
  * grid without any other change.
  *
  * <p>Where the site list could not be resolved, the control says so on itself rather than rendering
@@ -51,20 +53,54 @@ const SiteSelect = ({
   label = 'Site code',
   emptyLabel = 'All sites',
   helperText,
-  ...rest
+  value,
+  onChange,
+  required,
+  error,
+  onBlur,
+  disabled,
+  className,
+  allowEmpty,
 }: SiteSelectProps) => {
   const sites = actorSites();
   const failure = actorSiteFailure();
+  const invalid = Boolean(error || (failure !== null && required));
+  const hint = helperText ?? failure ?? undefined;
+
+  // The dropdown has no blur callback of its own, so the field reports leaving it - but not the
+  // focus moving into its own open list, which would mark the field visited before a choice is made.
+  const leave = (event: FocusEvent<HTMLDivElement>) => {
+    if (event.relatedTarget instanceof Element && event.relatedTarget.closest('[role="listbox"]')) {
+      return;
+    }
+    onBlur?.();
+  };
 
   return (
-    <SelectInput
-      {...rest}
-      label={label}
-      emptyLabel={emptyLabel}
-      helperText={helperText ?? failure ?? undefined}
-      error={rest.error || (failure !== null && rest.required)}
-      options={sites.map((site) => ({ value: site, label: site }))}
-    />
+    <Field invalid={invalid} className={cn('min-w-0', className)} onBlur={leave}>
+      <FieldLabel htmlFor={undefined}>
+        {label}
+        {required && (
+          <>
+            <span className="ml-0.5 text-error" aria-hidden="true">
+              *
+            </span>
+            <span className="sr-only"> (required)</span>
+          </>
+        )}
+      </FieldLabel>
+      <Dropdown
+        aria-label={required ? `${label} (required)` : label}
+        value={value || null}
+        onValueChange={(next) => onChange(next ?? '')}
+        options={sites.map((site) => ({ value: site, label: site }))}
+        placeholder={allowEmpty ? emptyLabel : 'Select…'}
+        clearable={allowEmpty}
+        disabled={disabled}
+        invalid={invalid}
+      />
+      {invalid ? <FieldError>{hint}</FieldError> : <FieldDescription>{hint}</FieldDescription>}
+    </Field>
   );
 };
 

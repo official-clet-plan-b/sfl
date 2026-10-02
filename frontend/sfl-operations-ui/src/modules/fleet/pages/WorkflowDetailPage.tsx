@@ -1,4 +1,10 @@
 import { useState } from 'react';
+import { Banner, Button } from '@rfdtech/components';
+import DetailHeader from 'modules/fleet/components/DetailHeader';
+import Panel from 'modules/fleet/components/Panel';
+import StatusBadge from 'modules/fleet/components/StatusBadge';
+import Icon from 'shared/components/Icon';
+import FleetTimeline, { TimelineEntry } from 'modules/fleet/components/FleetTimeline';
 import { useNavigate, useParams } from 'react-router';
 import { WorkflowItemResponse } from 'modules/fleet/api/dto';
 import { humanise } from 'modules/fleet/api/enums';
@@ -9,30 +15,16 @@ import {
   CloseWorkflowItemDialog,
   ReasonTransitionDialog,
 } from 'modules/fleet/dialogs/workflowDialogs';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatusChip from 'shared/components/StatusChip';
-import WorkflowTimeline, { TimelineEntry } from 'shared/components/WorkflowTimeline';
 import { formatDateTime } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fleetPaths } from 'shared/layout/navigation';
 import { canManageWorkflow } from 'modules/fleet/api/access';
 
 type DialogKey =
-  | 'assign'
-  | 'close'
-  | 'comment'
-  | 'escalate'
-  | 'cancel'
-  | 'reopen'
-  | 'hold'
-  | 'resume'
-  | null;
+  'assign' | 'close' | 'comment' | 'escalate' | 'cancel' | 'reopen' | 'hold' | 'resume' | null;
 
 const live = (item: WorkflowItemResponse) => !['CLOSED', 'CANCELLED'].includes(item.status);
 
@@ -108,7 +100,7 @@ const WorkflowDetailPage = () => {
 
   return (
     <div>
-      <PageHeader
+      <DetailHeader
         title={item.data?.workflowNumber ?? 'Workflow item'}
         subtitle={item.data?.title}
         crumbs={[
@@ -117,21 +109,18 @@ const WorkflowDetailPage = () => {
           { label: item.data?.workflowNumber ?? '…' },
         ]}
         actions={
-          <Button
-            variant="outline"
-            startIcon="arrow-left"
-            onClick={() => navigate(fleetPaths.workflow)}
-          >
+          <Button variant="outline" onClick={() => navigate(fleetPaths.workflow)}>
+            <Icon name="arrow-left" size={14} aria-hidden="true" />
             Queue
           </Button>
         }
         meta={
           item.data && (
             <div className="flex flex-wrap items-center gap-2">
-              <StatusChip value={item.data.status} />
-              <StatusChip value={item.data.priority} />
-              <StatusChip value={item.data.severity} />
-              <StatusChip value={item.data.workflowType} tone="neutral" />
+              <StatusBadge value={item.data.status} />
+              <StatusBadge value={item.data.priority} />
+              <StatusBadge value={item.data.severity} />
+              <StatusBadge value={item.data.workflowType} tone="neutral" />
             </div>
           )
         }
@@ -146,9 +135,10 @@ const WorkflowDetailPage = () => {
         {item.data && (
           <div className="space-y-5">
             {item.data.slaBreached && (
-              <Alert variant="error">
-                This item has breached its configured SLA and has been escalated.
-              </Alert>
+              <Banner
+                variant="danger"
+                heading={<>This item has breached its configured SLA and has been escalated.</>}
+              />
             )}
 
             {/*
@@ -158,69 +148,67 @@ const WorkflowDetailPage = () => {
               disables rather than hides, because that changes.
             */}
             {canManageWorkflow() && (
-            <SectionCard title="Actions">
-              <div className="flex flex-wrap items-center gap-2">
-                {live(item.data) && (
-                  <Button
-                    variant="primary"
-                    startIcon="user-plus"
-                    onClick={() => setDialog('assign')}
-                  >
-                    {item.data.assignee ? 'Reassign' : 'Assign'}
+              <Panel title="Actions">
+                <div className="flex flex-wrap items-center gap-2">
+                  {live(item.data) && (
+                    <Button variant="primary" onClick={() => setDialog('assign')}>
+                      <Icon name="user-plus" size={14} aria-hidden="true" />
+
+                      {item.data.assignee ? 'Reassign' : 'Assign'}
+                    </Button>
+                  )}
+                  {['OPEN', 'ASSIGNED', 'REOPENED'].includes(item.data.status) && (
+                    <Button variant="outline" loading={starting} onClick={startItem}>
+                      <Icon name="play" size={14} aria-hidden="true" />
+                      Start work
+                    </Button>
+                  )}
+                  {['ASSIGNED', 'IN_PROGRESS', 'OPEN'].includes(item.data.status) && (
+                    <Button variant="outline" onClick={() => setDialog('hold')}>
+                      <Icon name="stop" size={14} aria-hidden="true" />
+                      Hold
+                    </Button>
+                  )}
+                  {item.data.status === 'ON_HOLD' && (
+                    <Button variant="outline" onClick={() => setDialog('resume')}>
+                      <Icon name="play" size={14} aria-hidden="true" />
+                      Resume
+                    </Button>
+                  )}
+                  {live(item.data) && (
+                    <Button variant="outline" onClick={() => setDialog('escalate')}>
+                      <Icon name="alert-triangle" size={14} aria-hidden="true" />
+                      Escalate
+                    </Button>
+                  )}
+                  {live(item.data) && (
+                    <Button variant="primary" onClick={() => setDialog('close')}>
+                      <Icon name="check-circle" size={14} aria-hidden="true" />
+                      Close
+                    </Button>
+                  )}
+                  {live(item.data) && (
+                    <Button variant="destructive" onClick={() => setDialog('cancel')}>
+                      <Icon name="close" size={14} aria-hidden="true" />
+                      Cancel
+                    </Button>
+                  )}
+                  {item.data.status === 'CLOSED' && (
+                    <Button variant="outline" onClick={() => setDialog('reopen')}>
+                      <Icon name="refresh" size={14} aria-hidden="true" />
+                      Reopen
+                    </Button>
+                  )}
+                  <Button variant="ghost" onClick={() => setDialog('comment')}>
+                    <Icon name="edit" size={14} aria-hidden="true" />
+                    Add comment
                   </Button>
-                )}
-                {['OPEN', 'ASSIGNED', 'REOPENED'].includes(item.data.status) && (
-                  <Button variant="outline" startIcon="play" loading={starting} onClick={startItem}>
-                    Start work
-                  </Button>
-                )}
-                {['ASSIGNED', 'IN_PROGRESS', 'OPEN'].includes(item.data.status) && (
-                  <Button variant="outline" startIcon="stop" onClick={() => setDialog('hold')}>
-                    Hold
-                  </Button>
-                )}
-                {item.data.status === 'ON_HOLD' && (
-                  <Button variant="outline" startIcon="play" onClick={() => setDialog('resume')}>
-                    Resume
-                  </Button>
-                )}
-                {live(item.data) && (
-                  <Button
-                    variant="outline"
-                    startIcon="alert-triangle"
-                    onClick={() => setDialog('escalate')}
-                  >
-                    Escalate
-                  </Button>
-                )}
-                {live(item.data) && (
-                  <Button
-                    variant="accent"
-                    startIcon="check-circle"
-                    onClick={() => setDialog('close')}
-                  >
-                    Close
-                  </Button>
-                )}
-                {live(item.data) && (
-                  <Button variant="danger" startIcon="close" onClick={() => setDialog('cancel')}>
-                    Cancel
-                  </Button>
-                )}
-                {item.data.status === 'CLOSED' && (
-                  <Button variant="outline" startIcon="refresh" onClick={() => setDialog('reopen')}>
-                    Reopen
-                  </Button>
-                )}
-                <Button variant="ghost" startIcon="edit" onClick={() => setDialog('comment')}>
-                  Add comment
-                </Button>
-              </div>
-            </SectionCard>
+                </div>
+              </Panel>
             )}
 
             <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
-              <SectionCard title="Item">
+              <Panel title="Item">
                 <KeyValueGrid
                   items={[
                     { label: 'Workflow number', value: item.data.workflowNumber },
@@ -263,13 +251,14 @@ const WorkflowDetailPage = () => {
                     { label: 'Record version', value: item.data.version },
                   ]}
                 />
-              </SectionCard>
+              </Panel>
 
-              <SectionCard
+              <Panel
                 title="History"
-                subtitle="Append-only transitions and comments"
+                description="Append-only transitions and comments"
                 actions={
-                  <Button variant="ghost" size="sm" startIcon="refresh" onClick={history.refetch}>
+                  <Button variant="ghost" size="sm" onClick={history.refetch}>
+                    <Icon name="refresh" size={14} aria-hidden="true" />
                     Refresh
                   </Button>
                 }
@@ -280,9 +269,9 @@ const WorkflowDetailPage = () => {
                   onRetry={history.refetch}
                   minHeight={140}
                 >
-                  <WorkflowTimeline entries={timeline} />
+                  <FleetTimeline entries={timeline} />
                 </DataState>
-              </SectionCard>
+              </Panel>
             </div>
 
             {!live(item.data) && (

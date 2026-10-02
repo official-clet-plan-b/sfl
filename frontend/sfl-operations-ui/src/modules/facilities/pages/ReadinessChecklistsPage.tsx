@@ -1,19 +1,30 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import ControlButton from 'shared/components/ControlButton';
+import { Plus } from 'lucide-react';
+import {
+  Card,
+  EmptyState,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  useBreadcrumbs,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
-import FilterBar from 'shared/components/FilterBar';
-import PageHeader from 'shared/components/PageHeader';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
 import type { ReadinessChecklist } from '../api/dto';
 import { createChecklist, listChecklists, updateChecklist } from '../api/facilitiesApi';
 import { createChecklistControl, editChecklistControl } from '../api/workflow';
+import ControlButton from '../components/ControlButton';
 import RowActions, { EditRowAction } from '../components/RowActions';
+import StatusBadge from '../components/StatusBadge';
 import { humaniseCode } from '../components/facilitiesFormat';
 import { CreateChecklistDialog, EditChecklistDialog } from '../dialogs/checklistDialogs';
 
@@ -27,6 +38,7 @@ import { CreateChecklistDialog, EditChecklistDialog } from '../dialogs/checklist
 const ReadinessChecklistsPage = () => {
   const navigate = useNavigate();
   const notify = useNotifier();
+  useBreadcrumbs([{ label: 'Facilities', href: facilitiesPaths.dashboard }, { label: 'Checklists' }]);
   const [siteCode, setSiteCode] = useState<string>(defaultSite);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<ReadinessChecklist | null>(null);
@@ -36,59 +48,57 @@ const ReadinessChecklistsPage = () => {
     [siteCode],
   );
 
-  const columns: Column<ReadinessChecklist>[] = [
+  const columns: TableColumn<ReadinessChecklist>[] = [
     {
-      key: 'checklistCode',
+      id: 'checklistCode',
       header: 'Code',
       width: 160,
-      cell: (checklist) => (
-        <span className="font-medium text-gray-900">{checklist.checklistCode}</span>
-      ),
+      cell: ({ row }) => <span className="font-medium text-foreground">{row.checklistCode}</span>,
     },
-    { key: 'name', header: 'Checklist', cell: (checklist) => checklist.name },
+    { id: 'name', header: 'Checklist', accessorKey: 'name' },
     {
-      key: 'spaceType',
+      id: 'spaceType',
       header: 'Applies to',
-      cell: (checklist) => (
-        <span className="text-gray-600">
-          {checklist.spaceType ? humaniseCode(checklist.spaceType) : 'Any space type'}
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          {row.spaceType ? humaniseCode(row.spaceType) : 'Any space type'}
         </span>
       ),
     },
     {
-      key: 'operatingMode',
+      id: 'operatingMode',
       header: 'In mode',
       width: 140,
-      cell: (checklist) =>
-        checklist.operatingMode ? (
-          <StatusChip
-            value={checklist.operatingMode}
-            tone={checklist.operatingMode === 'EXAMINATION' ? 'accent' : 'neutral'}
+      cell: ({ row }) =>
+        row.operatingMode ? (
+          <StatusBadge
+            value={row.operatingMode}
+            tone={row.operatingMode === 'EXAMINATION' ? 'accent' : 'neutral'}
           />
         ) : (
-          <span className="text-gray-500">Any mode</span>
+          <span className="text-muted-foreground">Any mode</span>
         ),
     },
     {
-      key: 'items',
+      id: 'items',
       header: 'Items',
       align: 'right',
       width: 90,
-      cell: (checklist) => checklist.items.length,
+      cell: ({ row }) => row.items.length,
     },
     {
-      key: 'version',
+      id: 'version',
       header: 'Version',
       align: 'right',
       width: 100,
-      cell: (checklist) => <span className="text-gray-600">v{checklist.version}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">v{row.version}</span>,
     },
     {
-      key: 'actions',
+      id: 'actions',
       header: '',
       width: 100,
       align: 'right',
-      cell: (checklist) => (
+      cell: ({ row: checklist }) => (
         <RowActions>
           <EditRowAction
             state={editChecklistControl(checklist)}
@@ -102,43 +112,43 @@ const ReadinessChecklistsPage = () => {
 
   return (
     <>
-      <PageHeader
-        title="Readiness checklists"
-        subtitle="What an assessment asks, and what a failure costs"
-        actions={
-          <ControlButton
-            state={createChecklistControl()}
-            variant="primary"
-            startIcon="plus"
-            onClick={() => setAdding(true)}
-          >
-            Add a checklist
-          </ControlButton>
-        }
-      />
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Readiness checklists</SectionTitle>
+          <SectionDescription>What an assessment asks, and what a failure costs</SectionDescription>
+          <SectionActions>
+            <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
+            <ControlButton state={createChecklistControl()} variant="primary" onClick={() => setAdding(true)}>
+              <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+              Add a checklist
+            </ControlButton>
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      <FilterBar>
-        <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
-      </FilterBar>
-
-      <DataState
-        loading={loading}
-        error={error}
-        empty={!data || data.length === 0}
-        emptyTitle="No checklists configured"
-        emptyHint="Without one, an assessment records no answers and a space stays UNKNOWN."
-        onRetry={refetch}
-      >
-        {data && (
-          <DataTable
-            rows={data}
-            columns={columns}
-            getRowId={(checklist) => checklist.id}
-            onRowClick={(checklist) => navigate(facilitiesPaths.checklistDetail(checklist.id))}
-            caption="Readiness checklists"
-          />
-        )}
-      </DataState>
+      <PageSection>
+        <DataState loading={false} error={error} onRetry={refetch}>
+          <Table paramPrefix="checklists" variant="soft">
+            <Card bordered>
+              <TableContent
+                variant="soft"
+                columns={columns}
+                data={data ?? []}
+                rowKey={(checklist) => checklist.id}
+                loading={loading}
+                onRowClick={(checklist) => navigate(facilitiesPaths.checklistDetail(checklist.id))}
+                aria-label="Readiness checklists"
+                emptyContent={
+                  <EmptyState
+                    title="No checklists configured"
+                    description="Without one, an assessment records no answers and a space stays UNKNOWN."
+                  />
+                }
+              />
+            </Card>
+          </Table>
+        </DataState>
+      </PageSection>
 
       {adding && (
         <CreateChecklistDialog

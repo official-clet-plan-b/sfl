@@ -1,11 +1,25 @@
 import { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
+import { Eye, Pencil, Plus, RefreshCw } from 'lucide-react';
+import {
+  Banner,
+  Button,
+  Card,
+  EmptyState,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  useBreadcrumbs,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
-import FilterBar from 'shared/components/FilterBar';
-import PageHeader from 'shared/components/PageHeader';
 import SiteSelect, { defaultSite, sflSites } from 'shared/components/SiteSelect';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
@@ -112,6 +126,7 @@ const IfimpOperationsPage = ({
   const basePath = requestedView
     ? location.pathname.slice(0, location.pathname.lastIndexOf('/'))
     : location.pathname;
+  useBreadcrumbs([{ label: 'Facilities', href: facilitiesPaths.dashboard }, { label: system }]);
   const query = useApiQuery(
     (signal) => readIfimpDataset(active.path, siteCode, active.query, signal),
     [active.path, siteCode],
@@ -122,24 +137,28 @@ const IfimpOperationsPage = ({
     key,
     label: humaniseIfimpField(key.split('.').slice(-1)[0] ?? key),
   }));
-  const columns: Column<IfimpRecord>[] = declaredColumns.map((column) => ({
-    key: column.key,
+  const columns: TableColumn<IfimpRecord>[] = declaredColumns.map((column) => ({
+    id: column.key,
     header: column.label,
-    cell: (row) => <IfimpValue value={valueAtPath(row, column.key)} compact />,
+    cell: ({ row }) => <IfimpValue value={valueAtPath(row, column.key)} compact />,
   }));
   columns.push({
-    key: 'recordActions',
+    id: 'recordActions',
     header: 'Actions',
     align: 'right',
-    cell: (row) => {
+    cell: ({ row }) => {
       const canManage = visibleRecordActions(active.actions ?? [], row).length > 0;
       return (
         <Button
           size="sm"
           variant="outline"
-          startIcon={canManage ? 'edit' : 'eye'}
-          onClick={() => setSelected(row)}
+          // The row opens the same record; this button must not open it twice.
+          onClick={(event) => {
+            event.stopPropagation();
+            setSelected(row);
+          }}
         >
+          {canManage ? <Pencil size={14} aria-hidden="true" /> : <Eye size={14} aria-hidden="true" />}
           {canManage ? 'Manage' : 'View'}
         </Button>
       );
@@ -148,62 +167,90 @@ const IfimpOperationsPage = ({
 
   return (
     <>
-      <PageHeader
-        title={title}
-        subtitle={subtitle}
-        crumbs={[{ label: 'Facilities', to: facilitiesPaths.dashboard }, { label: system }]}
-        actions={<div className="flex gap-2">{active.create && <Button startIcon="plus" onClick={() => setCreating(true)}>{active.create.label}</Button>}<Button variant="outline" startIcon="refresh" onClick={query.refetch}>Refresh</Button></div>}
-      />
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>{title}</SectionTitle>
+          <SectionDescription>{subtitle}</SectionDescription>
+          <SectionActions>
+            <Button variant="outline" onClick={query.refetch}>
+              <RefreshCw size={14} strokeWidth={1.5} aria-hidden="true" />
+              Refresh
+            </Button>
+            {active.create && (
+              <Button variant="primary" onClick={() => setCreating(true)}>
+                <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+                {active.create.label}
+              </Button>
+            )}
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
       {dependencyNote && (
-        <Alert variant="info" title="Integration position" className="mb-5">
-          {dependencyNote}
-        </Alert>
+        <PageSection>
+          <Banner variant="info" heading="Integration position" subtext={dependencyNote} />
+        </PageSection>
       )}
 
-      <FilterBar>
-        <SiteSelect
-          value={siteCode}
-          onChange={setSiteCode}
-          required
-          helperText="Phase 2 operations are shown for one site at a time."
-        />
-      </FilterBar>
+      <PageSection>
+        <div className="max-w-sm">
+          <SiteSelect
+            value={siteCode}
+            onChange={setSiteCode}
+            required
+            helperText="Phase 2 operations are shown for one site at a time."
+          />
+        </div>
+      </PageSection>
 
-      <div className="mb-5 flex flex-wrap gap-2" aria-label={`${title} views`}>
-        {views.map((candidate, index) => (
-          <Button
-            key={candidate.path}
-            variant={active.path === candidate.path ? 'primary' : 'outline'}
-            onClick={() => navigate(index === 0 ? basePath : `${basePath}/${viewSlug(candidate)}`)}
-          >
-            {candidate.label}
-          </Button>
-        ))}
-      </div>
+      <PageSection>
+        <Tabs
+          variant="pill"
+          value={active.path}
+          onValueChange={(path) => {
+            const next = views.find((candidate) => candidate.path === path);
+            if (next) {
+              navigate(next === views[0] ? basePath : `${basePath}/${viewSlug(next)}`);
+            }
+          }}
+        >
+          <TabsList aria-label={`${title} views`}>
+            {views.map((candidate) => (
+              <TabsTrigger key={candidate.path} value={candidate.path}>
+                {candidate.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      </PageSection>
 
-      <div className="mb-3">
-        <h2 className="text-title-xs font-semibold text-gray-900">{active.label}</h2>
-        <p className="mt-1 text-theme-sm text-gray-500">{active.description}</p>
-      </div>
-
-      <DataState
-        loading={query.loading}
-        error={query.error}
-        empty={query.data?.rows.length === 0}
-        emptyTitle={`No ${active.label.toLowerCase()} found`}
-        emptyHint={`There are no records for ${siteCode || 'the sites you can access'}.`}
-        onRetry={query.refetch}
-      >
-        <DataTable
-          rows={query.data?.rows ?? []}
-          columns={columns}
-          getRowId={identifier}
-          loading={query.loading}
-          caption={active.label}
-          onRowClick={setSelected}
-        />
-      </DataState>
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>{active.label}</SectionTitle>
+          <SectionDescription>{active.description}</SectionDescription>
+        </SectionHeader>
+        <DataState loading={false} error={query.error} onRetry={query.refetch}>
+          <Table paramPrefix="ifimp" variant="soft">
+            <Card bordered>
+              <TableContent
+                variant="soft"
+                columns={columns}
+                data={query.data?.rows ?? []}
+                rowKey={identifier}
+                loading={query.loading}
+                onRowClick={setSelected}
+                aria-label={active.label}
+                emptyContent={
+                  <EmptyState
+                    title={`No ${active.label.toLowerCase()} found`}
+                    description={`There are no records for ${siteCode || 'the sites you can access'}.`}
+                  />
+                }
+              />
+            </Card>
+          </Table>
+        </DataState>
+      </PageSection>
       {active.create && <IfimpCreateDialog key={`${active.path}-${creating}`} action={active.create} siteCode={siteCode} open={creating} onClose={() => setCreating(false)} onCreated={query.refetch} />}
       {selected && <IfimpRecordDialog record={selected} title={active.label} siteCode={siteCode} actions={active.actions} onClose={() => setSelected(undefined)} onChanged={query.refetch} />}
     </>

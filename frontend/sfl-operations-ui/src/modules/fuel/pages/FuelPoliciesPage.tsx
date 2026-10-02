@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { FuelPolicy } from 'modules/fuel/api/dto';
 import { fuelPoliciesApi } from 'modules/fuel/api/fuelApi';
 import { CreatePolicyDialog } from 'modules/fuel/dialogs/policyDialogs';
-import { useClampPage, useServerPage } from 'modules/fuel/components/useServerPage';
+import { useClampPage, useServerPage } from 'shared/hooks/useServerPage';
 import PostedPricePanel from 'modules/fuel/components/PostedPricePanel';
 import { siteOf } from 'modules/fuel/components/fuelFormat';
 import Alert from 'shared/components/Alert';

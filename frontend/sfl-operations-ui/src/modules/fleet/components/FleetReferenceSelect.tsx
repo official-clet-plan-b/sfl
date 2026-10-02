@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { driversApi, tripsApi, vehiclesApi } from 'modules/fleet/api/fleetApi';
-import { SelectInput, type SelectOption } from 'shared/components/fields';
+import { SelectInput, type SelectOption } from 'modules/fleet/components/formFields';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 
 /**

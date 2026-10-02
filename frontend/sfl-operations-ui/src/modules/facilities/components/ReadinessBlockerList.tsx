@@ -1,8 +1,7 @@
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
-import StatusChip from 'shared/components/StatusChip';
+import { Banner, Button } from '@rfdtech/components';
 import type { ReadinessBlocker } from '../api/dto';
 import { humaniseCode, relativeTime, severityTone } from './facilitiesFormat';
+import StatusBadge from './StatusBadge';
 
 interface ReadinessBlockerListProps {
   blockers: ReadinessBlocker[];
@@ -32,7 +31,7 @@ const ReadinessBlockerList = ({
   const open = blockers.filter((blocker) => !blocker.resolved);
 
   if (open.length === 0) {
-    return <Alert variant="success">{clearMessage}</Alert>;
+    return <Banner variant="success" heading={clearMessage} />;
   }
 
   const critical = open.filter((blocker) => blocker.severity === 'CRITICAL');
@@ -45,14 +44,14 @@ const ReadinessBlockerList = ({
     <li key={blocker.id} className="flex flex-wrap items-start justify-between gap-2">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <StatusChip value={blocker.severity} tone={severityTone(blocker.severity)} />
-          <span className="text-theme-xs text-gray-500">
+          <StatusBadge value={blocker.severity} tone={severityTone(blocker.severity)} />
+          <span className="text-xs text-muted-foreground">
             {humaniseCode(blocker.source)}
             {blocker.sourceReference ? ` · ${blocker.sourceReference}` : ''} · raised{' '}
             {relativeTime(blocker.raisedAt)} by {blocker.raisedBy}
           </span>
         </div>
-        <p className="mt-1 text-theme-sm break-words text-gray-700">{blocker.description}</p>
+        <p className="mt-1 text-sm break-words text-foreground">{blocker.description}</p>
       </div>
       {onResolve && (
         <Button variant="outline" size="sm" onClick={() => onResolve(blocker)}>
@@ -65,30 +64,27 @@ const ReadinessBlockerList = ({
   return (
     <div className="space-y-2.5">
       {critical.length > 0 && (
-        <Alert
-          variant="error"
-          title={`${critical.length} critical blocker${critical.length === 1 ? '' : 's'} - this space cannot be marked ready`}
-        >
-          <ul className="mt-1.5 space-y-3">{critical.map(row)}</ul>
-        </Alert>
+        <Banner
+          variant="danger"
+          heading={`${critical.length} critical blocker${critical.length === 1 ? '' : 's'} - this space cannot be marked ready`}
+          subtext={<ul className="mt-1.5 space-y-3">{critical.map(row)}</ul>}
+        />
       )}
 
       {degrading.length > 0 && (
-        <Alert
+        <Banner
           variant="warning"
-          title={`${degrading.length} blocker${degrading.length === 1 ? '' : 's'} degrading this space`}
-        >
-          <ul className="mt-1.5 space-y-3">{degrading.map(row)}</ul>
-        </Alert>
+          heading={`${degrading.length} blocker${degrading.length === 1 ? '' : 's'} degrading this space`}
+          subtext={<ul className="mt-1.5 space-y-3">{degrading.map(row)}</ul>}
+        />
       )}
 
       {advisory.length > 0 && (
-        <Alert
+        <Banner
           variant="info"
-          title={`${advisory.length} advisory note${advisory.length === 1 ? '' : 's'}`}
-        >
-          <ul className="mt-1.5 space-y-3">{advisory.map(row)}</ul>
-        </Alert>
+          heading={`${advisory.length} advisory note${advisory.length === 1 ? '' : 's'}`}
+          subtext={<ul className="mt-1.5 space-y-3">{advisory.map(row)}</ul>}
+        />
       )}
     </div>
   );

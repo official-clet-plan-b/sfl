@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
-import { SelectInput, TextAreaInput } from 'shared/components/fields';
+import { Notice } from '@rfdtech/components';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import type { DismissFaultRequest, FacilitiesPage, FacilityFault } from '../api/dto';
@@ -9,6 +7,7 @@ import type { FaultDismissalOutcome } from '../api/enums';
 import { faultDismissalOutcomes } from '../api/enums';
 import { searchFaults } from '../api/facilitiesApi';
 import { humaniseCode } from '../components/facilitiesFormat';
+import { FormDialog, SelectInput, TextAreaInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface DismissFaultDialogProps {
   fault: FacilityFault;
@@ -151,20 +150,20 @@ const DismissFaultDialog = ({ fault, onClose, onSubmit }: DismissFaultDialogProp
         />
 
         {fault.blockerRaised && (
-          <Alert variant="info" title="This will unblock the space">
-            <p className="text-theme-sm">
+          <Notice variant="info" title="This will unblock the space">
+            <p className="text-sm">
               Dismissing the fault resolves the readiness blocker it currently holds, and the space
               returns to whatever its other blockers allow.
             </p>
-          </Alert>
+          </Notice>
         )}
 
-        <Alert variant="warning" title="This cannot be undone">
-          <p className="text-theme-sm">
+        <Notice variant="warning" title="This cannot be undone">
+          <p className="text-sm">
             All three outcomes are terminal. If the problem turns out to be real, it is reported
             again as a new fault with its own number.
           </p>
-        </Alert>
+        </Notice>
       </div>
     </FormDialog>
   );

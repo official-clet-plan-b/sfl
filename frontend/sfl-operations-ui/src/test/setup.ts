@@ -20,6 +20,15 @@ Object.defineProperty(window, 'localStorage', { configurable: true, value: testS
 Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: testStorage });
 
 /**
+ * jsdom has no pointer-capture API, and Radix Select (behind the library's Dropdown) calls it when a
+ * list opens - without these stubs opening any dropdown in a test throws before the option renders.
+ */
+Element.prototype.hasPointerCapture ??= () => false;
+Element.prototype.setPointerCapture ??= () => {};
+Element.prototype.releasePointerCapture ??= () => {};
+Element.prototype.scrollIntoView ??= () => {};
+
+/**
  * Test bootstrap.
  *
  * `cleanup` after every test is what keeps one test's DOM out of the next one's queries - without

@@ -1,14 +1,27 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import Button from 'shared/components/Button';
+import { Plus } from 'lucide-react';
+import {
+  Button,
+  Card,
+  Combobox,
+  Dropdown,
+  EmptyState,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  TableFilter,
+  TableHeader,
+  useBreadcrumbs,
+  useTableState,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
-import FilterBar from 'shared/components/FilterBar';
-import PageHeader from 'shared/components/PageHeader';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
-import FacetFilter from 'shared/components/FacetFilter';
-import { SelectInput } from 'shared/components/fields';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
@@ -17,6 +30,7 @@ import type { FacilityFaultStatus } from '../api/enums';
 import { faultPriorities, faultStatuses } from '../api/enums';
 import { reportFault, searchFaults } from '../api/facilitiesApi';
 import { canReportFaults } from '../api/workflow';
+import StatusBadge from '../components/StatusBadge';
 import ReportFaultDialog from '../dialogs/ReportFaultDialog';
 import {
   faultStatusTone,
@@ -40,14 +54,34 @@ import {
  * <p>A requester sees only the faults they reported. That is enforced per record by the service, so
  * this screen needs no special case: it asks for the register and receives a shorter one.
  */
+/**
+ * The three filters live in the URL, as the table keeps every filter. `show` defaults to open work,
+ * so an absent parameter means "Open only" and a link to the register opens on what is outstanding.
+ */
+const defaultFilters = { show: 'open' };
+const listOf = (value: string | null | undefined): string[] => (value ? value.split(',') : []);
+
 const FaultRegisterPage = () => {
   const navigate = useNavigate();
   const notify = useNotifier();
+  useBreadcrumbs([{ label: 'Facilities', href: facilitiesPaths.dashboard }, { label: 'Faults' }]);
+
+  const { filters } = useTableState<Record<string, string>>({
+    paramPrefix: 'faults',
+    defaultFilters,
+  });
+  const status = listOf(filters.status);
+  const priority = listOf(filters.priority);
+  const openOnly = filters.show !== 'all';
+  // A primitive key for the query, because `status` is a new array on every render.
+  const statusKey = status.join(',');
+
+  // The fields hold the operator's choice until the filter is applied; the URL holds what applied.
+  const [statusValue, setStatusValue] = useState<string[]>(status);
+  const [priorityValue, setPriorityValue] = useState<string[]>(priority);
+  const [showValue, setShowValue] = useState(filters.show ?? 'open');
 
   const [siteCode, setSiteCode] = useState<string>(defaultSite);
-  const [status, setStatus] = useState<string[]>([]);
-  const [priority, setPriority] = useState<string[]>([]);
-  const [openOnly, setOpenOnly] = useState(true);
   const [reporting, setReporting] = useState(false);
 
   const faults = useApiQuery(
@@ -63,7 +97,7 @@ const FaultRegisterPage = () => {
         },
         signal,
       ),
-    [siteCode, status, openOnly],
+    [siteCode, statusKey, openOnly],
   );
 
   /*
@@ -86,52 +120,47 @@ const FaultRegisterPage = () => {
   const statusCounts = tally((fault) => fault.status);
   const priorityCounts = tally((fault) => fault.priority);
 
-  const columns: Column<FacilityFault>[] = [
+  const columns: TableColumn<FacilityFault>[] = [
     {
-      key: 'faultNumber',
+      id: 'faultNumber',
       header: 'Fault',
       width: 170,
-      cell: (fault) => <span className="font-medium text-gray-900">{fault.faultNumber}</span>,
+      cell: ({ row }) => <span className="font-medium text-foreground">{row.faultNumber}</span>,
     },
-    { key: 'title', header: 'What is wrong', cell: (fault) => fault.title },
+    { id: 'title', header: 'What is wrong', accessorKey: 'title' },
     {
-      key: 'locationCode',
+      id: 'locationCode',
       header: 'Where',
-      hideBelowLg: true,
-      cell: (fault) => orDash(fault.locationCode),
+      cell: ({ row }) => orDash(row.locationCode),
     },
     {
-      key: 'priority',
+      id: 'priority',
       header: 'Priority',
       width: 110,
-      cell: (fault) => (
-        <StatusChip value={humaniseCode(fault.priority)} tone={priorityTone(fault.priority)} />
-      ),
+      cell: ({ row }) => <StatusBadge value={row.priority} tone={priorityTone(row.priority)} />,
     },
     {
-      key: 'status',
+      id: 'status',
       header: 'Status',
       width: 160,
-      cell: (fault) => (
-        <StatusChip value={humaniseCode(fault.status)} tone={faultStatusTone(fault.status)} />
-      ),
+      cell: ({ row }) => <StatusBadge value={row.status} tone={faultStatusTone(row.status)} />,
     },
     {
-      key: 'slaDueAt',
+      id: 'slaDueAt',
       header: 'SLA',
       width: 190,
-      cell: (fault) => {
+      cell: ({ row: fault }) => {
         if (!fault.slaDueAt) {
           // Untriaged, or migrated from the pre-S153 system. Either way it has no deadline yet, and
           // saying so is more use than an empty cell - a fault with no SLA never escalates.
-          return <span className="text-theme-xs text-gray-500">Not triaged</span>;
+          return <span className="text-xs text-muted-foreground">Not triaged</span>;
         }
         return fault.overdue ? (
-          <span className="text-theme-xs font-medium text-error-600">
+          <span className="text-xs font-medium text-error-text">
             Overdue{fault.escalationLevel > 0 ? ` · level ${fault.escalationLevel}` : ''}
           </span>
         ) : (
-          <span className="text-theme-xs text-gray-600">{formatDateTime(fault.slaDueAt)}</span>
+          <span className="text-xs text-muted-foreground">{formatDateTime(fault.slaDueAt)}</span>
         );
       },
     },
@@ -139,79 +168,92 @@ const FaultRegisterPage = () => {
 
   return (
     <>
-      <PageHeader
-        title="Faults"
-        subtitle="Reported problems, what they are blocking, and what is late"
-        crumbs={[{ label: 'Facilities', to: facilitiesPaths.dashboard }, { label: 'Faults' }]}
-        actions={
-          canReportFaults() && (
-            <Button variant="primary" onClick={() => setReporting(true)}>
-              Report a fault
-            </Button>
-          )
-        }
-      />
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Faults</SectionTitle>
+          <SectionDescription>
+            Reported problems, what they are blocking, and what is late
+          </SectionDescription>
+          <SectionActions>
+            <SiteSelect value={siteCode} onChange={setSiteCode} />
+            {canReportFaults() && (
+              <Button variant="primary" onClick={() => setReporting(true)}>
+                <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+                Report a fault
+              </Button>
+            )}
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      <FilterBar
-        onReset={() => {
-          setStatus([]);
-          setPriority([]);
-        }}
-        resetDisabled={status.length === 0 && priority.length === 0}
-      >
-        <SiteSelect value={siteCode} onChange={setSiteCode} />
-        <FacetFilter
-          label="Status"
-          selected={status}
-          onChange={setStatus}
-          options={faultStatuses.map((value) => ({
-            value,
-            label: humaniseCode(value),
-            count: statusCounts[value] ?? 0,
-          }))}
-        />
-        <FacetFilter
-          label="Priority"
-          selected={priority}
-          onChange={setPriority}
-          options={faultPriorities.map((value) => ({
-            value,
-            label: humaniseCode(value),
-            count: priorityCounts[value] ?? 0,
-          }))}
-        />
-        <SelectInput
-          label="Show"
-          value={openOnly ? 'open' : 'all'}
-          onChange={(value) => setOpenOnly(value === 'open')}
-          options={[
-            { value: 'open', label: 'Open only' },
-            { value: 'all', label: 'Everything' },
-          ]}
-        />
-      </FilterBar>
-
-      <DataState
-        loading={faults.loading}
-        error={faults.error}
-        empty={visible.length === 0}
-        emptyTitle={openOnly ? 'Nothing is outstanding' : 'No faults reported'}
-        emptyHint={
-          // Same caution as the work-order queue: a requester sees only the faults they reported,
-          // so a definite statement about the site would be wrong for them.
-          openOnly
-            ? 'Nothing outstanding is visible to you. Switch to Everything to include resolved and dismissed faults.'
-            : 'No faults are visible to you. A requester sees only the ones they reported themselves.'
-        }
-        onRetry={faults.refetch}
-      >
-        <DataTable
-          rows={visible}
-          columns={columns}
-          getRowId={(fault) => fault.id}
-          onRowClick={(fault) => navigate(facilitiesPaths.faultDetail(fault.id))}
-        />
-      </DataState>
+      <PageSection>
+        <DataState loading={false} error={faults.error} onRetry={faults.refetch}>
+          <Table paramPrefix="faults" variant="soft">
+            <Card bordered>
+              <TableHeader>
+              <TableFilter>
+                  <Combobox
+                    multiple
+                    name="status"
+                    aria-label="Status"
+                    placeholder="Status"
+                    value={statusValue}
+                    onValueChange={setStatusValue}
+                    options={faultStatuses.map((value) => ({
+                      value,
+                      label: `${humaniseCode(value)} (${statusCounts[value] ?? 0})`,
+                    }))}
+                  />
+                  <Combobox
+                    multiple
+                    name="priority"
+                    aria-label="Priority"
+                    placeholder="Priority"
+                    value={priorityValue}
+                    onValueChange={setPriorityValue}
+                    options={faultPriorities.map((value) => ({
+                      value,
+                      label: `${humaniseCode(value)} (${priorityCounts[value] ?? 0})`,
+                    }))}
+                  />
+                  <Dropdown
+                    name="show"
+                    aria-label="Show"
+                    placeholder="Open only"
+                    value={showValue || null}
+                    onValueChange={(next) => setShowValue(next ?? '')}
+                    options={[
+                      { value: 'open', label: 'Open only' },
+                      { value: 'all', label: 'Everything' },
+                    ]}
+                  />
+              </TableFilter>
+              </TableHeader>
+              <TableContent
+                variant="soft"
+                columns={columns}
+                data={visible}
+                rowKey={(fault) => fault.id}
+                loading={faults.loading}
+                onRowClick={(fault) => navigate(facilitiesPaths.faultDetail(fault.id))}
+                aria-label="Faults"
+                emptyContent={
+                  <EmptyState
+                    title={openOnly ? 'Nothing is outstanding' : 'No faults reported'}
+                    description={
+                      // Same caution as the work-order queue: a requester sees only the faults they
+                      // reported, so a definite statement about the site would be wrong for them.
+                      openOnly
+                        ? 'Nothing outstanding is visible to you. Switch to Everything to include resolved and dismissed faults.'
+                        : 'No faults are visible to you. A requester sees only the ones they reported themselves.'
+                    }
+                  />
+                }
+              />
+            </Card>
+          </Table>
+        </DataState>
+      </PageSection>
 
       {reporting && (
         <ReportFaultDialog

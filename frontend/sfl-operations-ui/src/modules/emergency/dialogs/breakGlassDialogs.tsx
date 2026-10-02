@@ -6,11 +6,11 @@ import {
   listChannels,
 } from 'modules/emergency/components/EmergencyFields';
 import { humanise } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
-import { TextInput } from 'shared/components/fields';
 import { formatNumber } from 'shared/components/format';
 import { useFleetForm } from 'shared/validation/useFleetForm';
+import { Banner } from '@rfdtech/components';
+import ActionDialog from 'modules/emergency/components/ActionDialog';
+import { TextField } from 'modules/emergency/components/FormFields';
 
 interface ConfirmBreakGlassDialogProps {
   open: boolean;
@@ -59,7 +59,7 @@ export const ConfirmBreakGlassDialog = ({
   const confirmed = form.values.confirmation.trim().toUpperCase() === 'BROADCAST';
 
   return (
-    <FormDialog
+    <ActionDialog
       open={open}
       title="Send a break-glass broadcast"
       description="No approval. No recall. Closure will be blocked until this is accounted for."
@@ -97,13 +97,12 @@ export const ConfirmBreakGlassDialog = ({
         </p>
       </div>
 
-      <Alert variant="warning" title="What this leaves behind">
-        The activation is created already live, in break-glass mode. It cannot be closed until
+      <Banner variant="warning" heading="What this leaves behind"
+  subtext={<>The activation is created already live, in break-glass mode. It cannot be closed until
         somebody holding the after-action approval permission records a justification against it -
-        that is the account of why approval was bypassed, and it is what an auditor will read.
-      </Alert>
+        that is the account of why approval was bypassed, and it is what an auditor will read.</>} />
 
-      <TextInput
+      <TextField
         label="Type BROADCAST to confirm"
         value={form.values.confirmation}
         onChange={(value) => form.setValue('confirmation', value)}
@@ -111,6 +110,6 @@ export const ConfirmBreakGlassDialog = ({
         placeholder="BROADCAST"
         helperText="Deliberate friction. This is the only send in the dashboard with no second approver."
       />
-    </FormDialog>
+    </ActionDialog>
   );
 };

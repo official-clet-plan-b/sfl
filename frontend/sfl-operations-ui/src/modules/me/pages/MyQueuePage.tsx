@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router';
-import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
-import PageHeader from 'shared/components/PageHeader';
-import StatusChip from 'shared/components/StatusChip';
+import type { TableColumn } from '@rfdtech/components';
+import { LocalTable } from 'modules/me/components/LocalTable';
+import PageHeading from 'modules/dispatch/components/PageHeading';
+import Panel from 'modules/dispatch/components/Panel';
+import StatusBadge from 'modules/dispatch/components/StatusBadge';
 import { defaultSite } from 'shared/components/SiteSelect';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
@@ -40,43 +41,47 @@ const MyQueuePage = () => {
 
   const rows = orders.data?.items ?? [];
 
-  const columns: Column<WorkOrder>[] = [
-    { key: 'workOrderNumber', header: 'Job', cell: (row) => row.workOrderNumber },
-    { key: 'title', header: 'What', cell: (row) => row.title },
-    { key: 'locationCode', header: 'Where', cell: (row) => row.locationCode ?? '-' },
-    { key: 'priority', header: 'Priority', cell: (row) => <StatusChip value={row.priority} /> },
-    { key: 'status', header: 'Status', cell: (row) => <StatusChip value={row.status} /> },
+  const columns: TableColumn<WorkOrder>[] = [
+    { id: 'workOrderNumber', header: 'Job', cell: ({ row }) => row.workOrderNumber },
+    { id: 'title', header: 'What', cell: ({ row }) => row.title },
+    { id: 'locationCode', header: 'Where', cell: ({ row }) => row.locationCode ?? '-' },
+    { id: 'priority', header: 'Priority', cell: ({ row }) => <StatusBadge value={row.priority} /> },
+    { id: 'status', header: 'Status', cell: ({ row }) => <StatusBadge value={row.status} /> },
     {
-      key: 'overdue',
+      id: 'overdue',
       header: 'SLA',
       // `overdue` comes down the wire. A browser deciding for itself what is late would disagree
       // with the escalation sweep the moment a workstation clock drifted - and the sweep is the one
       // that notifies people.
-      cell: (row) => (row.overdue ? <StatusChip value="OVERDUE" tone="blocked" /> : '-'),
+      cell: ({ row }) => (row.overdue ? <StatusBadge value="OVERDUE" tone="blocked" /> : '-'),
     },
   ];
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="My work queue" subtitle="The jobs assigned to you" />
-      <DataState
-        loading={orders.loading}
-        error={orders.error}
-        empty={rows.length === 0}
-        emptyTitle="Nothing is assigned to you"
-        // Never "every job at this site is closed" - this queue is yours, and a contractor who sees
-        // only their own has no way to know what else exists.
-        emptyHint="Work assigned to you appears here. It does not show anybody else's."
-        onRetry={orders.refetch}
-      >
-        <DataTable
+    <>
+      <PageHeading
+        title="My work queue"
+        subtitle="The jobs assigned to you"
+        crumbs={[{ label: 'My work queue' }]}
+      />
+      <Panel>
+        <LocalTable
+          paramPrefix="queue"
           columns={columns}
           rows={rows}
-          getRowId={(row) => row.id}
+          rowKey={(row) => row.id}
+          loading={orders.loading}
+          error={orders.error}
+          onRetry={orders.refetch}
+          caption="Jobs assigned to you"
+          emptyTitle="Nothing is assigned to you"
+          // Never "every job at this site is closed" - this queue is yours, and a contractor who sees
+          // only their own has no way to know what else exists.
+          emptyHint="Work assigned to you appears here. It does not show anybody else's."
           onRowClick={(row) => navigate(facilitiesPaths.workOrderDetail(row.id))}
         />
-      </DataState>
-    </div>
+      </Panel>
+    </>
   );
 };
 

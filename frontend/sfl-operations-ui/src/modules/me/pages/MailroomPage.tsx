@@ -1,13 +1,31 @@
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
-import PageHeader from 'shared/components/PageHeader';
-import StatusChip from 'shared/components/StatusChip';
-import { defaultSite } from 'shared/components/SiteSelect';
+import {
+  Button,
+  MetricCard,
+  MetricCards,
+  PageSection,
+  type TableColumn,
+} from '@rfdtech/components';
+import { Plus } from 'lucide-react';
+import Greeting from 'modules/me/components/Greeting';
+import { LocalTable } from 'modules/me/components/LocalTable';
+import PageHeading from 'modules/dispatch/components/PageHeading';
+import Panel from 'modules/dispatch/components/Panel';
+import StatusBadge from 'modules/dispatch/components/StatusBadge';
+import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
+import { useNotifier } from 'shared/components/Notifier';
+import { formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { dispatchPaths } from 'shared/layout/navigation';
 import { courierItemsApi } from 'modules/dispatch/api/dispatchApi';
 import type { CourierItem } from 'modules/dispatch/api/dto';
+import { itemDistributable } from 'modules/dispatch/api/workflow';
+import {
+  DistributeInboundDialog,
+  RegisterItemDialog,
+} from 'modules/dispatch/dialogs/itemDialogs';
+import { canDistributeInbound, canRegisterInbound } from 'modules/fleet/api/access';
 
 /**
  * The mailroom officer's day - S171, Derived from the Fleet / Logistics Officer class.
@@ -32,69 +50,147 @@ import type { CourierItem } from 'modules/dispatch/api/dto';
  */
 const MailroomPage = () => {
   const navigate = useNavigate();
-  const site = defaultSite;
+  const { notifySuccess } = useNotifier();
+  const [site, setSite] = useState(defaultSite);
+  const [registering, setRegistering] = useState(false);
+  const [distributing, setDistributing] = useState<CourierItem | null>(null);
 
   const inbound = useApiQuery(
     (signal) => courierItemsApi.search({ siteCode: site, direction: 'INBOUND', size: 50 }, signal),
     [site],
   );
 
-  const rows = inbound.data?.content ?? [];
-  const awaiting = rows.filter((row) => row.status === 'RECEIVED');
+  const rows = useMemo(() => inbound.data?.content ?? [], [inbound.data]);
+  const awaiting = useMemo(() => rows.filter((row) => row.status === 'RECEIVED'), [rows]);
+  const acknowledged = useMemo(() => rows.filter((row) => Boolean(row.acknowledgedBy)), [rows]);
 
-  const columns: Column<CourierItem>[] = [
-    { key: 'itemNumber', header: 'Item', cell: (row) => row.itemNumber },
-    { key: 'sender', header: 'From', cell: (row) => row.sender ?? row.origin },
-    { key: 'recipient', header: 'For', cell: (row) => row.recipient ?? row.destination },
-    { key: 'itemType', header: 'Type', cell: (row) => <StatusChip value={row.itemType} /> },
-    { key: 'sensitivity', header: 'Sensitivity', cell: (row) => <StatusChip value={row.sensitivity} /> },
-    { key: 'status', header: 'Status', cell: (row) => <StatusChip value={row.status} /> },
+  const columns: TableColumn<CourierItem>[] = [
+    { id: 'itemNumber', header: 'Item', cell: ({ row }) => row.itemNumber },
+    { id: 'sender', header: 'From', cell: ({ row }) => row.sender ?? row.origin },
+    { id: 'recipient', header: 'For', cell: ({ row }) => row.recipient ?? row.destination },
+    { id: 'itemType', header: 'Type', cell: ({ row }) => <StatusBadge value={row.itemType} /> },
+    {
+      id: 'sensitivity',
+      header: 'Sensitivity',
+      cell: ({ row }) => <StatusBadge value={row.sensitivity} />,
+    },
+    { id: 'status', header: 'Status', cell: ({ row }) => <StatusBadge value={row.status} /> },
+    {
+      id: 'action',
+      header: '',
+      align: 'right',
+      cell: ({ row }) =>
+        canDistributeInbound() && itemDistributable(row) ? (
+          <Button size="sm" variant="outline" onClick={() => setDistributing(row)}>
+            Record distribution
+          </Button>
+        ) : null,
+    },
   ];
 
   return (
-    <div className="space-y-8">
-      <PageHeader
+    <>
+      <PageHeading
         title="Mailroom"
         subtitle={'Inbound items at ' + site + ' - register what arrives, distribute what is due'}
+        crumbs={[{ label: 'Mailroom' }]}
+        actions={
+          <>
+            <SiteSelect value={site} onChange={setSite} required />
+            {canRegisterInbound() && (
+              <Button variant="primary" onClick={() => setRegistering(true)}>
+                <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+                Register inbound mail
+              </Button>
+            )}
+          </>
+        }
       />
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-slate-800">Awaiting distribution</h2>
-        <DataState
+      <Greeting />
+
+      <PageSection>
+        <MetricCards>
+          <MetricCard
+            variant="soft"
+            loading={inbound.initialising}
+            label="Awaiting distribution"
+            value={formatNumber(awaiting.length)}
+            description="Received, not yet handed over"
+          />
+          <MetricCard
+            variant="soft"
+            loading={inbound.initialising}
+            label="Acknowledged"
+            value={formatNumber(acknowledged.length)}
+            description="Handed over with a name"
+          />
+          <MetricCard
+            variant="soft"
+            loading={inbound.initialising}
+            label="Inbound at this site"
+            value={formatNumber(rows.length)}
+            description="Everything registered here"
+          />
+        </MetricCards>
+      </PageSection>
+
+      <Panel title="Awaiting distribution" description="Hand each item over and record who took it.">
+        <LocalTable
+          paramPrefix="awaiting"
+          columns={columns}
+          rows={awaiting}
+          rowKey={(row) => row.id}
           loading={inbound.loading}
           error={inbound.error}
-          empty={awaiting.length === 0}
+          onRetry={inbound.refetch}
+          caption="Inbound items received and waiting to be distributed"
           emptyTitle="Nothing is waiting to go out"
           emptyHint="Items you register arrive here until they are distributed and acknowledged."
-          onRetry={inbound.refetch}
-        >
-          <DataTable
-            columns={columns}
-            rows={awaiting}
-            getRowId={(row) => row.id}
-            onRowClick={(row) => navigate(dispatchPaths.itemDetail(row.id))}
-          />
-        </DataState>
-      </section>
+          onRowClick={(row) => navigate(dispatchPaths.itemDetail(row.id))}
+        />
+      </Panel>
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-slate-800">All inbound at this site</h2>
-        <DataState
+      <Panel title="All inbound at this site">
+        <LocalTable
+          paramPrefix="inbound"
+          columns={columns}
+          rows={rows}
+          rowKey={(row) => row.id}
           loading={inbound.loading}
           error={inbound.error}
-          empty={rows.length === 0}
-          emptyTitle="No inbound items at this site"
           onRetry={inbound.refetch}
-        >
-          <DataTable
-            columns={columns}
-            rows={rows}
-            getRowId={(row) => row.id}
-            onRowClick={(row) => navigate(dispatchPaths.itemDetail(row.id))}
-          />
-        </DataState>
-      </section>
-    </div>
+          caption="Every inbound item at this site"
+          emptyTitle="No inbound items at this site"
+          onRowClick={(row) => navigate(dispatchPaths.itemDetail(row.id))}
+        />
+      </Panel>
+
+      {registering && (
+        <RegisterItemDialog
+          open
+          inboundOnly
+          defaultSiteCode={site}
+          onClose={() => setRegistering(false)}
+          onSaved={(item) => {
+            notifySuccess(`${item.itemNumber} registered as inbound.`);
+            inbound.refetch();
+          }}
+        />
+      )}
+
+      {distributing && (
+        <DistributeInboundDialog
+          open
+          item={distributing}
+          onClose={() => setDistributing(null)}
+          onSaved={() => {
+            notifySuccess('Distribution recorded with its acknowledgement.');
+            inbound.refetch();
+          }}
+        />
+      )}
+    </>
   );
 };
 

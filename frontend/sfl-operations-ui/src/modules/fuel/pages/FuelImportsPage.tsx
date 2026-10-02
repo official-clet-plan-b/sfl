@@ -4,7 +4,7 @@ import { FuelImportBatch, FuelImportRow } from 'modules/fuel/api/dto';
 import { CSV_OPTIONAL_HEADERS, CSV_REQUIRED_HEADERS } from 'modules/fuel/api/enums';
 import { fuelImportsApi } from 'modules/fuel/api/fuelApi';
 import { CsvImportDialog } from 'modules/fuel/dialogs/importDialogs';
-import { useClampPage, useServerPage } from 'modules/fuel/components/useServerPage';
+import { useClampPage, useServerPage } from 'shared/hooks/useServerPage';
 import { shortId } from 'modules/fuel/components/fuelFormat';
 import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';

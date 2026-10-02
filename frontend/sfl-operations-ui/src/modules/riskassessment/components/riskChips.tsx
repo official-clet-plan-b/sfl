@@ -1,6 +1,6 @@
-import StatusChip, { type Tone } from 'shared/components/StatusChip';
 import type { ReviewFlagStatus, RiskLevel, Standing, VersionStatus } from '../api/enums';
 import { standingLabel } from '../api/enums';
+import StatusBadge, { type Tone } from 'modules/emergency/components/StatusBadge';
 
 /**
  * S165's readings of its own statuses, stated locally (playbook §10): the shared table reads `OPEN` as
@@ -22,16 +22,16 @@ const flagTone: Record<ReviewFlagStatus, Tone> = { OPEN: 'caution', DEFERRED: 'n
 const versionTone: Record<VersionStatus, Tone> = { DRAFT: 'active', PUBLISHED: 'ready', SUPERSEDED: 'neutral' };
 
 export const StandingChip = ({ standing, size }: { standing: Standing; size?: 'sm' | 'md' }) => (
-  <StatusChip value={standing} tone={standingTone[standing]} label={standingLabel[standing]} size={size} />
+  <StatusBadge value={standing} tone={standingTone[standing]} label={standingLabel[standing]} size={size} />
 );
 
 export const RiskLevelChip = ({ level }: { level: RiskLevel | null }) =>
-  level ? <StatusChip value={level} tone={levelTone[level]} /> : <span className="text-gray-500">-</span>;
+  level ? <StatusBadge value={level} tone={levelTone[level]} /> : <span className="text-gray-500">-</span>;
 
 export const ReviewFlagChip = ({ status }: { status: ReviewFlagStatus }) => (
-  <StatusChip value={status} tone={flagTone[status]} />
+  <StatusBadge value={status} tone={flagTone[status]} />
 );
 
-export const VersionStatusChip = ({ status }: { status: VersionStatus }) => (
-  <StatusChip value={status} tone={versionTone[status]} label={status === 'SUPERSEDED' ? 'Superseded - not current' : undefined} />
+export const VersionStatusBadge = ({ status }: { status: VersionStatus }) => (
+  <StatusBadge value={status} tone={versionTone[status]} label={status === 'SUPERSEDED' ? 'Superseded - not current' : undefined} />
 );

@@ -1,6 +1,6 @@
 # SFL Operations UI
 
-The shared React front end for the **Safety, Facilities & Logistics Directorate** (CLET). Nine
+The shared React front end for the **Safety, Facilities & Logistics Directorate** (CLET). Ten
 systems have screens, across three services:
 
 | System | Module | Service | Port |
@@ -15,11 +15,13 @@ systems have screens, across three services:
 | S171 - Courier and dispatch | `modules/dispatch` | `sfl-fleet-logistics-service` | `8093` |
 | S174 - Emergency mass notification | `modules/emergency` | `sfl-safety-security-service` | `8092` |
 
-S166 was first and is the reference module. As of ADR 0006 this dashboard is the **only** interface -
-all five per-service static pages are now redirects into it.
+S166 is the reference module. The dashboard is the **only** interface; service landing pages redirect
+into the relevant route here.
 
-Built with React 19, Vite, TypeScript, Tailwind CSS and Recharts, with a shared component kit and
-the CLET SFL palette:
+Built with React 19, Vite, TypeScript, Tailwind CSS and Recharts. UI primitives come directly from
+`@rfdtech/components` v2.4.2, with the library stylesheet and light theme loaded at the application
+entry point. Fleet, fuel, dispatch and mailroom follow the Fleet, Transport & Logistics design;
+other modules use the same library composition and visual language.
 
 | Token        | Value     | Used for                                             |
 | ------------ | --------- | ---------------------------------------------------- |
@@ -201,9 +203,9 @@ identifier that ties it to a service log.
 
 ```
 src/
-  shared/                 # reusable across every future SFL module
+  shared/                 # API, domain helpers, shell and intentionally shared domain components
     api/                  # client, headers, correlation, envelope parsing, config
-    components/           # DataState, StatusChip, SectionCard, FormDialog, fields, format…
+    components/           # DataState, evidence/site fields, formatting and domain helpers
     errors/               # FleetApiError - status, code, fieldErrors, details
     hooks/                # useApiQuery
     layout/               # SflAppShell, navigation
@@ -211,8 +213,8 @@ src/
   modules/
     fleet/                # S166
       api/                # enums.ts, dto.ts, fleetApi.ts
-      charts/             # ECharts readiness donut + exceptions bars
-      components/         # IndicatorTile, DrilldownDrawer
+      charts/             # fleet charts composed from the shared chart primitives
+      components/         # fleet-specific detail, table and workflow composition
       dialogs/            # vehicle / driver / trip / workflow action dialogs
       pages/              # dashboard, registers, details, queues, governance
     facilities/           # S152
@@ -220,12 +222,18 @@ src/
       components/         # ReadinessBlockerList, facilitiesFormat
       dialogs/            # assessment / readiness / blocker / asset / operating-mode dialogs
       pages/              # dashboard, estate registers, readiness, audit, configuration
-  theme/                  # Aurora theme with the SFL palette (sflNavy / sflGold)
+  modules/booking         # S159 room and resource booking
+  modules/fuel            # S168 fuel and driver logbooks
+  modules/dispatch        # S171 courier, dispatch and mailroom
+  modules/emergency       # S174 emergency mass notification
+  modules/incident        # S163 HSE incident and near-miss management
+  modules/riskassessment  # S165 risk assessment library
+  modules/visitor         # S160 visitor management
+  modules/ifimp           # Phase 2 IFIMP operations
 ```
 
-Adding the next SFL module (S159 booking, Safety & Security, Asset Visibility) means
-adding `src/modules/<module>` and a navigation section - the API client, error envelope handling,
-validation and layout are already shared.
+Adding another SFL module means adding `src/modules/<module>` and a navigation section; the API
+client, error envelope handling, validation and application shell are already shared.
 
 **One thing is not optional when you do.** If the module is served by a new service, add its
 `/actor/permissions` endpoint to `SOURCES` in `shared/layout/actorPermissions.ts`. The fail-open

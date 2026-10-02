@@ -1,5 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter as DomMemoryRouter } from 'react-router-dom';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotifierProvider } from 'shared/components/Notifier';
@@ -66,11 +67,13 @@ const trip = (overrides: Record<string, unknown> = {}) =>
 
 const renderPage = () =>
   render(
-    <MemoryRouter>
-      <NotifierProvider>
-        <DriverDayPage />
-      </NotifierProvider>
-    </MemoryRouter>,
+    <DomMemoryRouter>
+      <MemoryRouter>
+        <NotifierProvider>
+          <DriverDayPage />
+        </NotifierProvider>
+      </MemoryRouter>
+    </DomMemoryRouter>,
   );
 
 describe('DriverDayPage assignments', () => {
@@ -123,7 +126,7 @@ describe('DriverDayPage assignments', () => {
   });
 
   it('completes the trip and points the driver at the logbook', async () => {
-    const { container } = renderPage();
+    renderPage();
 
     await userEvent.click(await screen.findByRole('button', { name: /complete trip/i }));
 
@@ -138,13 +141,13 @@ describe('DriverDayPage assignments', () => {
     // The document itself. A driver has no Evidence & audit screen, so an identifier to paste would
     // be a step they cannot take on a field they cannot leave blank.
     await userEvent.upload(
-      container.querySelector('input[type="file"]') as HTMLInputElement,
+      dialog.querySelector('input[type="file"]') as HTMLInputElement,
       new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0xff, 0xd9])], 'delivery-note.jpg', {
         type: 'image/jpeg',
       }),
     );
 
-    await userEvent.click(container.querySelector('button[type="submit"]') as HTMLButtonElement);
+    await userEvent.click(within(dialog).getByRole('button', { name: /^close trip$/i }));
 
     await waitFor(() =>
       expect(tripsApi.close).toHaveBeenCalledWith(

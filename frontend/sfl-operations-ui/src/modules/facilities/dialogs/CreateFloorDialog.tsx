@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
-import { NumberInput, TextInput } from 'shared/components/fields';
+import { Notice } from '@rfdtech/components';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import type { Building, CreateFloorRequest, Floor } from '../api/dto';
 import { floorLabel } from '../components/facilitiesFormat';
+import { FormDialog, NumberInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface CreateFloorDialogProps {
   building: Building;
@@ -135,17 +134,17 @@ const CreateFloorDialog = ({
         />
 
         {levelTaken && (
-          <Alert variant="warning" title="Another floor is already at this level">
-            <p className="text-theme-sm">
+          <Notice variant="warning" title="Another floor is already at this level">
+            <p className="text-sm">
               {levelTaken.floorCode} - {levelTaken.name}. Two floors at one level is allowed and
               sometimes right, in a building with separate wings. It is worth checking it is what you
               mean.
             </p>
-          </Alert>
+          </Notice>
         )}
 
         {existingFloors.length > 0 && (
-          <p className="text-theme-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Already here:{' '}
             {existingFloors
               .map((floor) => floorLabel(floor.levelNumber, floor.floorCode))

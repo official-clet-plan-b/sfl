@@ -1,33 +1,54 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
 import { DashboardDrilldownRow, TripResponse, WorkflowItemResponse } from 'modules/fleet/api/dto';
+import { canManageTrips } from 'modules/fleet/api/access';
 import { humanise } from 'modules/fleet/api/enums';
 import {
   DRILLDOWN_INDICATORS,
   DrilldownIndicator,
   dashboardApi,
+  driversApi,
   tripsApi,
+  vehiclesApi,
   workflowApi,
 } from 'modules/fleet/api/fleetApi';
+import { CreateTripDialog } from 'modules/fleet/dialogs/tripDialogs';
 import ActivityChart, { ActivityPoint } from 'modules/fleet/charts/ActivityChart';
-import ExceptionsChart from 'modules/fleet/charts/ExceptionsChart';
-import ReadinessChart from 'modules/fleet/charts/ReadinessChart';
 import DrilldownDrawer from 'modules/fleet/components/DrilldownDrawer';
+import Panel from 'modules/fleet/components/Panel';
+import FleetTable, { CellStack, FleetColumn } from 'modules/fleet/components/FleetTable';
+import StatusBadge, { tabLabel } from 'modules/fleet/components/StatusBadge';
 
-import Button from 'shared/components/Button';
+import {
+  Badge,
+  Banner,
+  Button,
+  Card,
+  Dropdown,
+  HeroBanner,
+  MetricCard,
+  MetricCards,
+  PageSection,
+  SectionActions,
+  SectionHeader,
+  SectionTitle,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@rfdtech/components';
+import { sflActor } from 'shared/api/config';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
 import Icon from 'shared/components/Icon';
-import { cn } from 'shared/components/cn';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatCard from 'shared/components/StatCard';
-import StatusChip from 'shared/components/StatusChip';
-import Tabs from 'shared/components/Tabs';
+import { useNotifier } from 'shared/components/Notifier';
+import { defaultSite, sflSites } from 'shared/components/SiteSelect';
 import { formatDateTime } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fleetPaths } from 'shared/layout/navigation';
+
+dayjs.extend(relativeTime);
 
 const ACTIVITY_DAYS = 14;
 
@@ -44,7 +65,11 @@ const bucketByDay = (
 
   for (let offset = 0; offset < days; offset += 1) {
     const day = start.add(offset, 'day');
-    buckets.set(day.format('YYYY-MM-DD'), { label: day.format('D MMM'), trips: 0, workflow: 0 });
+    buckets.set(day.format('YYYY-MM-DD'), {
+      label: day.format('D MMM'),
+      trips: 0,
+      workflow: 0,
+    });
   }
 
   const add = (iso: string | null | undefined, key: 'trips' | 'workflow') => {
@@ -63,23 +88,122 @@ const bucketByDay = (
   return [...buckets.values()];
 };
 
+interface AvailabilitySlice {
+  key: string;
+  label: string;
+  detail: string;
+  value: number;
+  /** Tailwind background for this slice's share of the bar. */
+  bar: string;
+}
+
+/** The fleet split into usable, committed and blocked, as one proportional bar over a legend. */
+const AvailabilityBar = ({
+  slices,
+  onSelect,
+}: {
+  slices: AvailabilitySlice[];
+  onSelect: (key: string) => void;
+}) => {
+  const total = slices.reduce((sum, slice) => sum + slice.value, 0);
+  return (
+    <div>
+      <div
+        className="flex h-2 w-full overflow-hidden rounded-full bg-gray-100"
+        role="img"
+        aria-label={slices.map((slice) => `${slice.value} ${slice.label.toLowerCase()}`).join(', ')}
+      >
+        {slices.map((slice) =>
+          slice.value > 0 ? (
+            <span
+              key={slice.key}
+              className={slice.bar}
+              style={{ width: `${(slice.value / total) * 100}%` }}
+            />
+          ) : null,
+        )}
+      </div>
+      <ul className="mt-4 divide-y divide-gray-200">
+        {slices.map((slice) => (
+          <li key={slice.key}>
+            <button
+              type="button"
+              onClick={() => onSelect(slice.key)}
+              className="flex w-full items-center justify-between gap-3 py-3 text-left"
+            >
+              <span className="min-w-0">
+                <span className="block font-semibold">{slice.label}</span>
+                <span className="block text-theme-xs opacity-70">{slice.detail}</span>
+              </span>
+              <span className="flex items-center gap-2 font-semibold">
+                {slice.value}
+                <Icon name="chevron-right" size={14} aria-hidden="true" />
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+interface ExceptionEntry {
+  key: string;
+  label: string;
+  value: number;
+  blocking?: boolean;
+  onSelect: () => void;
+}
+
+/** One line per exception class, with its count; a class at zero says it is clear. */
+const ExceptionList = ({ entries }: { entries: ExceptionEntry[] }) => (
+  <ul className="divide-y divide-gray-200">
+    {entries.map((entry) => (
+      <li key={entry.key}>
+        <button
+          type="button"
+          onClick={entry.onSelect}
+          className="flex w-full items-center justify-between gap-3 py-3 text-left"
+        >
+          <span className="min-w-0">
+            <span className="block font-semibold">{entry.label}</span>
+            {entry.value === 0 ? (
+              <Badge variant="success" size="sm">
+                Clear
+              </Badge>
+            ) : (
+              <Badge variant={entry.blocking ? 'error' : 'default'} size="sm">
+                {entry.blocking ? 'Blocking' : 'Needs attention'}
+              </Badge>
+            )}
+          </span>
+          <span className="flex items-center gap-2 font-semibold">
+            {entry.value}
+            <Icon name="chevron-right" size={14} aria-hidden="true" />
+          </span>
+        </button>
+      </li>
+    ))}
+  </ul>
+);
+
 /**
  * The Fleet operations workspace.
  *
- * Indicators come from the service's own dashboard snapshot; the trend and the sparklines are
- * bucketed from the trip and workflow records themselves, because the service exposes no
- * time-series endpoint. Nothing on this page is synthetic - where there is no history to show, no
- * trend is drawn.
+ * Indicators come from the service's own dashboard snapshot; the trend is bucketed from the trip and
+ * workflow records themselves, because the service exposes no time-series endpoint. Nothing on this
+ * page is synthetic - where there is no history to show, no trend is drawn.
  */
 const FleetDashboardPage = () => {
   const navigate = useNavigate();
+  const { notifySuccess } = useNotifier();
   /*
-    Fixed, not chosen. Every query below passes `siteCode: undefined`, which the services read as
-    "the actor's whole site scope" - so a manager over two sites sees both without asking, and a
-    manager over one sees theirs. The registers behind each panel still filter; a summary should not
-    need configuring before it will answer.
+    The site the summary covers. Empty is "all sites", which the services read as the actor's whole
+    site scope - so a manager over two sites can see both, and one over a single site sees theirs
+    either way. It opens on the actor's own site, the same default every register uses.
   */
-  const siteCode = '';
+  const [siteCode, setSiteCode] = useState(defaultSite);
+  const [planOpen, setPlanOpen] = useState(false);
   const operatingMode = '';
   const [drilldown, setDrilldown] = useState<DrilldownIndicator | null>(null);
   const [exceptionsTab, setExceptionsTab] = useState<'escalated' | 'compliance'>('escalated');
@@ -97,7 +221,10 @@ const FleetDashboardPage = () => {
   const snapshot = useApiQuery(
     (signal) =>
       dashboardApi.operations(
-        { siteCode: siteCode || undefined, operatingMode: operatingMode || undefined },
+        {
+          siteCode: siteCode || undefined,
+          operatingMode: operatingMode || undefined,
+        },
         signal,
       ),
     [siteCode, operatingMode],
@@ -121,7 +248,12 @@ const FleetDashboardPage = () => {
   const recentWorkflow = useApiQuery(
     (signal) =>
       workflowApi.search(
-        { siteCode: siteCode || undefined, from: windowStart, to: windowEnd, size: 200 },
+        {
+          siteCode: siteCode || undefined,
+          from: windowStart,
+          to: windowEnd,
+          size: 200,
+        },
         signal,
       ),
     [siteCode, windowStart, windowEnd],
@@ -130,6 +262,25 @@ const FleetDashboardPage = () => {
   const activeTrips = useApiQuery(
     (signal) =>
       tripsApi.search({ siteCode: siteCode || undefined, status: 'IN_PROGRESS', size: 6 }, signal),
+    [siteCode],
+  );
+
+  /**
+   * Names for the active-trips table. A trip carries a vehicle and a driver id and nothing readable,
+   * so the site's vehicles and drivers are fetched once and indexed rather than once per row.
+   */
+  const vehicleIndex = useApiQuery(
+    (signal) =>
+      vehiclesApi
+        .search({ siteCode: siteCode || undefined, size: 200 }, signal)
+        .then((page) => new Map(page.content.map((vehicle) => [vehicle.id, vehicle]))),
+    [siteCode],
+  );
+  const driverIndex = useApiQuery(
+    (signal) =>
+      driversApi
+        .search({ siteCode: siteCode || undefined, size: 200 }, signal)
+        .then((page) => new Map(page.content.map((driver) => [driver.id, driver]))),
     [siteCode],
   );
 
@@ -168,98 +319,217 @@ const FleetDashboardPage = () => {
     [recentTrips.data, recentWorkflow.data],
   );
 
-  const tripSeries = useMemo(() => activity.map((point) => point.trips), [activity]);
-  const workflowSeries = useMemo(() => activity.map((point) => point.workflow), [activity]);
+  const tripsPlanned = useMemo(
+    () => activity.reduce((total, point) => total + point.trips, 0),
+    [activity],
+  );
+  const exceptionsRaised = useMemo(
+    () => activity.reduce((total, point) => total + point.workflow, 0),
+    [activity],
+  );
 
-  const readinessSlices = useMemo(() => {
+  const availability = useMemo<AvailabilitySlice[]>(() => {
     if (!indicators || !snapshot.data) {
       return [];
     }
     const total = snapshot.data.reconciliation.vehicles;
     const available = indicators.vehiclesAvailable;
     const blocked = indicators.readinessBlockers;
+    const committed = Math.max(total - available - blocked, 0);
+    const share = (value: number) => (total > 0 ? `${Math.round((value / total) * 100)}%` : '0%');
     return [
-      { name: 'Available', value: available, tone: 'ready' as const },
       {
-        name: 'Committed',
-        value: Math.max(total - available - blocked, 0),
-        tone: 'caution' as const,
+        key: 'available',
+        label: 'Available',
+        detail: `${share(available)} of the fleet`,
+        value: available,
+        bar: 'bg-brand-800',
       },
-      { name: 'Readiness blocked', value: blocked, tone: 'blocked' as const },
+      {
+        key: 'committed',
+        label: 'Committed to a trip',
+        detail: `${share(committed)}, back when the trip closes`,
+        value: committed,
+        bar: 'bg-teal-600',
+      },
+      {
+        key: 'blocked',
+        label: 'Readiness blocked',
+        detail: `${share(blocked)}, cleared by compliance or service`,
+        value: blocked,
+        bar: 'bg-error-500',
+      },
     ];
   }, [indicators, snapshot.data]);
 
-  const exceptionBars = useMemo(
+  const selectAvailability = (key: string) => {
+    if (key === 'blocked') {
+      setDrilldown('READINESS_BLOCKERS');
+    } else {
+      navigate(key === 'available' ? fleetPaths.vehicles : fleetPaths.trips);
+    }
+  };
+
+  const exceptionEntries = useMemo<ExceptionEntry[]>(
     () =>
       indicators
         ? [
-            { label: 'Expired compliance', value: indicators.expiredCompliance, critical: true },
-            { label: 'Service due', value: indicators.serviceDue },
             {
+              key: 'expired',
+              label: 'Expired compliance',
+              value: indicators.expiredCompliance,
+              blocking: true,
+              onSelect: () => setDrilldown('EXPIRED_COMPLIANCE'),
+            },
+            {
+              key: 'service',
+              label: 'Service due or overdue',
+              value: indicators.serviceDue,
+              blocking: true,
+              onSelect: () => setDrilldown('SERVICE_DUE'),
+            },
+            {
+              key: 'conflicts',
               label: 'Assignment conflicts',
               value: indicators.assignmentConflicts,
-              critical: true,
+              onSelect: () => setDrilldown('ASSIGNMENT_CONFLICTS'),
             },
-            { label: 'Readiness blockers', value: indicators.readinessBlockers, critical: true },
-            { label: 'Open workflow', value: indicators.openWorkflowItems },
-            { label: 'Escalated', value: indicators.escalatedWorkflowItems, critical: true },
-            { label: 'Dead letters', value: indicators.integrationDeadLetters, critical: true },
+            {
+              key: 'escalated',
+              label: 'Escalated workflow',
+              value: indicators.escalatedWorkflowItems,
+              onSelect: () => navigate(fleetPaths.workflow),
+            },
+            {
+              key: 'deadLetters',
+              label: 'Integration dead letters',
+              value: indicators.integrationDeadLetters,
+              onSelect: () => navigate(fleetPaths.integrations),
+            },
           ]
         : [],
-    [indicators],
+    [indicators, navigate],
   );
 
-  const tripColumns = useMemo<Column<TripResponse>[]>(
-    () => [
+  const tripColumns = useMemo<FleetColumn<TripResponse>[]>(() => {
+    const vehicles = vehicleIndex.data;
+    const drivers = driverIndex.data;
+    return [
       {
         key: 'trip',
         header: 'Trip',
-        width: 260,
+        width: 240,
+        cell: (row) => (
+          <CellStack primary={row.tripNumber} secondary={`${row.origin} → ${row.destination}`} />
+        ),
+      },
+      {
+        key: 'assignment',
+        header: 'Vehicle and driver',
+        width: 200,
         cell: (row) => (
           <CellStack
-            primary={`${row.tripNumber} · ${row.origin} → ${row.destination}`}
-            secondary={`Started ${formatDateTime(row.actualStart ?? row.plannedStart)} · ${humanise(
-              row.operatingMode,
-            )}`}
+            primary={
+              (row.vehicleId && vehicles?.get(row.vehicleId)?.registrationNumber) || 'Not assigned'
+            }
+            secondary={(row.driverId && drivers?.get(row.driverId)?.displayName) || '-'}
           />
         ),
+      },
+      {
+        key: 'plannedEnd',
+        header: 'Due back',
+        width: 160,
+        cell: (row) => {
+          const overdue = dayjs(row.plannedEnd).isBefore(dayjs());
+          return (
+            <CellStack
+              primary={dayjs(row.plannedEnd).format('HH:mm')}
+              secondary={
+                overdue
+                  ? `Overdue by ${dayjs(row.plannedEnd).fromNow(true)}`
+                  : dayjs(row.plannedEnd).isSame(dayjs(), 'day')
+                    ? 'Today'
+                    : formatDateTime(row.plannedEnd)
+              }
+            />
+          );
+        },
       },
       {
         key: 'status',
         header: 'Status',
         width: 130,
-        align: 'right',
-        cell: (row) => <StatusChip value={row.status} />,
+        cell: (row) =>
+          dayjs(row.plannedEnd).isBefore(dayjs()) ? (
+            <StatusBadge value={row.status} label="Late return" tone="blocked" />
+          ) : (
+            <StatusBadge value={row.status} label="On route" tone="active" />
+          ),
       },
-    ],
-    [],
-  );
+    ];
+  }, [vehicleIndex.data, driverIndex.data]);
 
-  const workflowColumns = useMemo<Column<WorkflowItemResponse>[]>(
+  const workflowColumns = useMemo<FleetColumn<WorkflowItemResponse>[]>(
     () => [
       {
         key: 'item',
-        header: 'Workflow item',
-        width: 260,
+        header: 'Item',
+        width: 280,
         cell: (row) => (
           <CellStack
-            primary={`${row.workflowNumber} · ${row.title}`}
-            secondary={`SLA due ${formatDateTime(row.slaDueAt)} · level ${row.escalationLevel}`}
+            primary={row.title}
+            secondary={`${row.workflowNumber}${row.relatedRecordType ? `, ${row.relatedRecordType}` : ''}`}
           />
         ),
       },
       {
-        key: 'priority',
-        header: 'Priority',
+        key: 'waitingOn',
+        header: 'Waiting on',
+        width: 160,
+        cell: (row) => row.assignee ?? 'Unassigned',
+      },
+      {
+        key: 'openFor',
+        header: 'Open for',
         width: 120,
-        align: 'right',
-        cell: (row) => <StatusChip value={row.priority} />,
+        cell: (row) => dayjs(row.createdAt).fromNow(true),
+      },
+      {
+        key: 'sla',
+        header: 'SLA',
+        width: 200,
+        cell: (row) =>
+          row.slaBreached ? (
+            <Badge variant="error">
+              Breached by {dayjs().diff(dayjs(row.slaDueAt), 'hour')} hours
+            </Badge>
+          ) : (
+            <span>{formatDateTime(row.slaDueAt)}</span>
+          ),
+      },
+      {
+        key: 'open',
+        header: 'Open',
+        width: 90,
+        cell: (row) => (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={(event) => {
+              event.stopPropagation();
+              navigate(fleetPaths.workflowDetail(row.id));
+            }}
+          >
+            Open
+          </Button>
+        ),
       },
     ],
-    [],
+    [navigate],
   );
 
-  const complianceColumns = useMemo<Column<DashboardDrilldownRow>[]>(
+  const complianceColumns = useMemo<FleetColumn<DashboardDrilldownRow>[]>(
     () => [
       {
         key: 'record',
@@ -271,8 +541,6 @@ const FleetDashboardPage = () => {
         key: 'site',
         header: 'Site',
         width: 110,
-        align: 'right',
-        hideBelowLg: true,
         cell: (row) => row.siteCode,
       },
     ],
@@ -284,306 +552,271 @@ const FleetDashboardPage = () => {
     recentTrips.refetch();
     recentWorkflow.refetch();
     activeTrips.refetch();
+    vehicleIndex.refetch();
+    driverIndex.refetch();
     escalated.refetch();
     expiredCompliance.refetch();
   };
 
+  const role = sflActor.roles.split(',')[0]?.trim();
+  const noActiveTrips = (activeTrips.data?.content.length ?? 0) === 0 && !activeTrips.initialising;
+  const metricsLoading = snapshot.initialising;
+  const siteOptions = sflSites().map((site) => ({ value: site, label: `Site: ${site}` }));
+
   return (
-    <div>
-      <PageHeader
-        title="Fleet operations"
-        subtitle="Readiness, movement and open exceptions across your site scope."
-        crumbs={[{ label: 'Fleet' }]}
-        actions={
-          /*
-           * Refresh only. A "Plan a trip" button here could not open the create dialog - it lives
-           * on the trip queue - so it merely carried the operator to that page to press the same
-           * button again. The action belongs where it works.
-           */
-          <Button variant="outline" startIcon="refresh" onClick={refreshAll}>
-            Refresh
-          </Button>
-        }
-      />
+    <>
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Fleet dashboard</SectionTitle>
+          <SectionActions>
+            <Dropdown
+              aria-label="Site"
+              value={siteCode || null}
+              onValueChange={(value) => setSiteCode(value ?? '')}
+              options={siteOptions}
+              placeholder="All sites"
+              clearable
+            />
+            <Button variant="outline" aria-label="Refresh" title="Refresh" onClick={refreshAll}>
+              <Icon name="refresh" size={14} aria-hidden="true" />
+            </Button>
+            {/* Planning is FLEET_TRIP_MANAGE: a driver reads the dashboard and plans nothing. */}
+            {canManageTrips() && (
+              <Button variant="primary" onClick={() => setPlanOpen(true)}>
+                <Icon name="plus" size={14} aria-hidden="true" />
+                Plan a trip
+              </Button>
+            )}
+          </SectionActions>
+        </SectionHeader>
 
-      {/*
-        No filter bar.
+        <HeroBanner name={sflActor.displayName} role={role ? humanise(role) : undefined} />
+      </PageSection>
 
-        A dashboard answers "how is the fleet, right now", and both controls made that a question the
-        reader had to configure before it would answer. Site is left unset, so every figure covers the
-        whole of the actor's own scope - which is what a manager over two sites wants and what a
-        manager over one gets for free. Operating mode filtered a summary by a property most records
-        share, which narrowed the numbers without making them more useful.
+      <DataState loading={false} error={snapshot.error} onRetry={snapshot.refetch} minHeight={360}>
+        {snapshot.data?.warnings.length ? (
+          <PageSection>
+            <Banner
+              variant={snapshot.data.stale ? 'warning' : 'info'}
+              heading={snapshot.data.warnings[0]}
+              subtext={
+                snapshot.data.warnings.length > 1
+                  ? snapshot.data.warnings.slice(1).join(' ')
+                  : undefined
+              }
+            />
+          </PageSection>
+        ) : null}
 
-        Filtering still exists where it belongs: the registers behind every panel take both, and each
-        panel links through to its register.
-      */}
-      <div className="mt-5">
-        <DataState
-          loading={snapshot.initialising}
-          error={snapshot.error}
-          onRetry={snapshot.refetch}
-          minHeight={360}
-        >
-          {snapshot.data && indicators && (
-            <div className="space-y-5">
-              {snapshot.data.warnings.length > 0 && (
-                <div className="flex items-start gap-2.5 rounded-lg border border-gray-200 bg-white px-4 py-3">
-                  <Icon
-                    name={snapshot.data.stale ? 'clock' : 'info'}
-                    size={16}
-                    className={cn(
-                      'mt-0.5 shrink-0',
-                      snapshot.data.stale ? 'text-warning-700' : 'text-teal-700',
-                    )}
-                    aria-hidden="true"
-                  />
-                  <div className="min-w-0 text-theme-sm text-gray-700">
-                    {snapshot.data.warnings.map((warning) => (
-                      <p key={warning}>{warning}</p>
-                    ))}
-                  </div>
-                </div>
-              )}
+        {/*
+         * Four measures in the grey group the frame puts them in. The exception classes
+         * (compliance, service, conflicts, dead letters) live in the exceptions list beside the
+         * chart, where each states whether it blocks work, so a clean fleet reads as four quiet
+         * cards and a list of "Clear" rather than eight cards competing for the eye.
+         */}
+        <PageSection>
+          <Card className="bg-[var(--clet-surface-subtle)]">
+            <MetricCards>
+              <MetricCard
+                variant="soft"
+                loading={metricsLoading}
+                label="Vehicles available"
+                value={indicators?.vehiclesAvailable ?? 0}
+                description={`of ${snapshot.data?.reconciliation.vehicles ?? 0} in the register`}
+              />
+              <MetricCard
+                variant="soft"
+                loading={metricsLoading}
+                label="Readiness blocked"
+                value={indicators?.readinessBlockers ?? 0}
+                description="Cannot be assigned"
+              />
+              <MetricCard
+                variant="soft"
+                loading={metricsLoading || recentTrips.initialising}
+                label="Trips planned"
+                value={tripsPlanned}
+                description={`Last ${ACTIVITY_DAYS} days`}
+              />
+              <MetricCard
+                variant="soft"
+                loading={metricsLoading || recentWorkflow.initialising}
+                label="Exceptions raised"
+                value={exceptionsRaised}
+                description={`${indicators?.openWorkflowItems ?? 0} still open`}
+              />
+            </MetricCards>
+          </Card>
+        </PageSection>
 
-              {/*
-               * Eight indicators, one grid. Tone is spent only where the measure is an exception
-               * class in its own right - a blocker, an escalation, something overdue - and only
-               * while the count is non-zero, so a clean fleet reads as eight quiet cards rather
-               * than eight green ones. The figures themselves are navy throughout.
-               */}
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <StatCard
-                  label="Vehicles available"
-                  value={indicators.vehiclesAvailable}
-                  icon="truck"
-                  caption={`of ${snapshot.data.reconciliation.vehicles} in the register`}
-                />
-                <StatCard
-                  label="Readiness blocked"
-                  value={indicators.readinessBlockers}
-                  icon="alert-circle"
-                  tone={indicators.readinessBlockers > 0 ? 'critical' : 'neutral'}
-                  caption="Cannot be assigned"
-                  onClick={() => setDrilldown('READINESS_BLOCKERS')}
-                />
-                <StatCard
-                  label="Trips planned"
-                  value={tripSeries.reduce((total, count) => total + count, 0)}
-                  icon="route"
-                  caption={`Last ${ACTIVITY_DAYS} days`}
-                />
-                <StatCard
-                  label="Exceptions raised"
-                  value={workflowSeries.reduce((total, count) => total + count, 0)}
-                  icon="workflow"
-                  tone={indicators.escalatedWorkflowItems > 0 ? 'caution' : 'neutral'}
-                  caption={`${indicators.openWorkflowItems} open right now`}
-                />
-                <StatCard
-                  label="Expired compliance"
-                  value={indicators.expiredCompliance}
-                  icon="shield-check"
-                  tone={indicators.expiredCompliance > 0 ? 'critical' : 'neutral'}
-                  caption="Documents past expiry"
-                  onClick={() => setDrilldown('EXPIRED_COMPLIANCE')}
-                />
-                <StatCard
-                  label="Service due"
-                  value={indicators.serviceDue}
-                  icon="wrench"
-                  tone={indicators.serviceDue > 0 ? 'caution' : 'neutral'}
-                  caption="Due or overdue"
-                  onClick={() => setDrilldown('SERVICE_DUE')}
-                />
-                <StatCard
-                  label="Assignment conflicts"
-                  value={indicators.assignmentConflicts}
-                  icon="alert-triangle"
-                  tone={indicators.assignmentConflicts > 0 ? 'critical' : 'neutral'}
-                  caption="Double-booked vehicle or driver"
-                  onClick={() => setDrilldown('ASSIGNMENT_CONFLICTS')}
-                />
-                <StatCard
-                  label="Integration dead letters"
-                  value={indicators.integrationDeadLetters}
-                  icon="cloud"
-                  tone={indicators.integrationDeadLetters > 0 ? 'critical' : 'neutral'}
-                  caption="Awaiting replay"
-                />
-              </div>
-
-              <div className="grid gap-5 xl:grid-cols-3">
-                <SectionCard
-                  className="xl:col-span-2"
-                  title="Operational activity"
-                  subtitle={`Trips planned and exceptions raised, by day · last ${ACTIVITY_DAYS} days`}
-                >
-                  <DataState
-                    loading={recentTrips.initialising || recentWorkflow.initialising}
-                    error={recentTrips.error ?? recentWorkflow.error}
-                    onRetry={() => {
-                      recentTrips.refetch();
-                      recentWorkflow.refetch();
-                    }}
-                    minHeight={280}
-                  >
-                    <ActivityChart points={activity} />
-                  </DataState>
-                </SectionCard>
-
-                <SectionCard title="Fleet availability" subtitle="Vehicles in the current scope">
-                  <ReadinessChart slices={readinessSlices} centreLabel="Vehicles" height={280} />
-                </SectionCard>
-              </div>
-
-              <div className="grid gap-5 xl:grid-cols-3">
-                <SectionCard
-                  className="xl:col-span-2"
-                  title="Active trips"
-                  subtitle="Currently on the road"
-                  actions={
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      endIcon="chevron-right"
-                      onClick={() => navigate(fleetPaths.trips)}
-                    >
-                      View queue
-                    </Button>
-                  }
-                  flush
-                >
-                  {/*
-                    An empty road is the normal state outside working hours, and this panel used to
-                    spend a third of the dashboard saying so. When nothing is in progress it now
-                    shows the week's movements instead - the same chart the activity panel uses,
-                    over the trips already fetched - so the space answers "what has been happening"
-                    rather than repeating "nothing, right now".
-                  */}
-                  {(activeTrips.data?.content.length ?? 0) === 0 && !activeTrips.initialising ? (
-                    <div className="p-5">
-                      <p className="mb-3 text-theme-sm text-gray-600">
-                        Nothing is on the road at the moment. Movements over the last seven days:
-                      </p>
-                      <ActivityChart points={activity} height={200} />
-                    </div>
-                  ) : (
-                    <DataState
-                      loading={activeTrips.initialising}
-                      error={activeTrips.error}
-                      onRetry={activeTrips.refetch}
-                      minHeight={160}
-                    >
-                      <DataTable
-                        rows={activeTrips.data?.content ?? []}
-                        columns={tripColumns}
-                        getRowId={(row) => row.id}
-                        loading={activeTrips.loading}
-                        onRowClick={(row) => navigate(fleetPaths.tripDetail(row.id))}
-                        caption="Trips in progress in the current site scope, with their status."
-                        dense
-                      />
-                    </DataState>
-                  )}
-                </SectionCard>
-
-                <SectionCard title="Open exceptions" subtitle="What needs attention today">
-                  <ExceptionsChart bars={exceptionBars} height={270} />
-                </SectionCard>
-              </div>
-
-              <SectionCard
-                title={exceptionsTab === 'escalated' ? 'Escalated workflow' : 'Compliance exceptions'}
-                subtitle={
-                  exceptionsTab === 'escalated'
-                    ? 'Past SLA or manually escalated'
-                    : 'Records behind the expired-compliance indicator'
-                }
-                actions={
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    endIcon="chevron-right"
-                    onClick={() =>
-                      navigate(exceptionsTab === 'escalated' ? fleetPaths.workflow : fleetPaths.compliance)
-                    }
-                  >
-                    {exceptionsTab === 'escalated' ? 'View queue' : 'Compliance'}
-                  </Button>
-                }
-                flush
+        <PageSection>
+          <div className="grid gap-[var(--clet-app-layout-body-gap)] xl:grid-cols-3">
+            <Panel
+              section={false}
+              className="xl:col-span-2"
+              title="Operational activity"
+              description={`Trips planned and exceptions raised each day, last ${ACTIVITY_DAYS} days`}
+            >
+              <DataState
+                loading={recentTrips.initialising || recentWorkflow.initialising}
+                error={recentTrips.error ?? recentWorkflow.error}
+                onRetry={() => {
+                  recentTrips.refetch();
+                  recentWorkflow.refetch();
+                }}
+                minHeight={280}
               >
-                <Tabs
-                  items={[
-                    {
-                      value: 'escalated',
-                      label: 'Escalated workflow',
-                      count: escalated.data?.content.length,
-                    },
-                    {
-                      value: 'compliance',
-                      label: 'Compliance exceptions',
-                      count: expiredCompliance.data?.length,
-                    },
-                  ]}
-                  value={exceptionsTab}
-                  onChange={(value) => setExceptionsTab(value as 'escalated' | 'compliance')}
-                  variant="pill"
-                  className="px-5 pb-3"
+                <ActivityChart points={activity} />
+              </DataState>
+            </Panel>
+
+            <Panel
+              section={false}
+              title="Fleet availability"
+              description={`${snapshot.data?.reconciliation.vehicles ?? 0} vehicles ${
+                siteCode ? `at ${siteCode}` : 'in scope'
+              }`}
+            >
+              <AvailabilityBar slices={availability} onSelect={selectAvailability} />
+            </Panel>
+          </div>
+        </PageSection>
+
+        <PageSection>
+          <div className="grid gap-[var(--clet-app-layout-body-gap)] xl:grid-cols-3">
+            <Panel
+              section={false}
+              className="xl:col-span-2"
+              title="Active trips"
+              description="Trips that have started and are not yet closed"
+              actions={
+                <Button variant="outline" onClick={() => navigate(fleetPaths.trips)}>
+                  View all trips
+                </Button>
+              }
+            >
+              {/*
+                An empty road is the normal state outside working hours, and this panel used to
+                spend a third of the dashboard saying so. When nothing is in progress it now
+                shows the week's movements instead - the same chart the activity panel uses,
+                over the trips already fetched - so the space answers "what has been happening"
+                rather than repeating "nothing, right now".
+              */}
+              {noActiveTrips ? (
+                <div>
+                  <p className="mb-3 text-theme-sm opacity-70">
+                    Nothing is on the road at the moment. Movements over the last seven days:
+                  </p>
+                  <ActivityChart points={activity} height={200} />
+                </div>
+              ) : (
+                <FleetTable
+                  paramPrefix="active-trips"
+                  rows={activeTrips.data?.content ?? []}
+                  columns={tripColumns}
+                  getRowId={(row) => row.id}
+                  loading={activeTrips.initialising}
+                  error={activeTrips.error}
+                  onRetry={activeTrips.refetch}
+                  onRowClick={(row) => navigate(fleetPaths.tripDetail(row.id))}
+                  caption="Trips in progress in the current site scope, with their status."
+                  emptyTitle="Nothing on the road"
                 />
-                {exceptionsTab === 'escalated' ? (
-                  <DataState
-                    loading={escalated.initialising}
-                    error={escalated.error}
-                    empty={(escalated.data?.content.length ?? 0) === 0}
-                    emptyTitle="Nothing escalated"
-                    emptyHint="No workflow item has breached its SLA in this scope."
-                    onRetry={escalated.refetch}
-                    minHeight={160}
-                  >
-                    <DataTable
-                      rows={escalated.data?.content ?? []}
-                      columns={workflowColumns}
-                      getRowId={(row) => row.id}
-                      loading={escalated.loading}
-                      onRowClick={(row) => navigate(fleetPaths.workflowDetail(row.id))}
-                      caption="Escalated workflow items in the current site scope, with their priority."
-                      dense
-                    />
-                  </DataState>
-                ) : (
-                  <DataState
-                    loading={expiredCompliance.initialising}
-                    error={expiredCompliance.error}
-                    empty={(expiredCompliance.data?.length ?? 0) === 0}
-                    emptyTitle="No expired documents"
-                    emptyHint="Nothing in this scope is past its expiry date."
-                    onRetry={expiredCompliance.refetch}
-                    minHeight={160}
-                  >
-                    <DataTable
-                      rows={expiredCompliance.data ?? []}
-                      columns={complianceColumns}
-                      getRowId={(row) => `${row.resourceType}-${row.resourceId}`}
-                      loading={expiredCompliance.loading}
-                      caption="Compliance documents past their expiry date, with the site that holds them."
-                      dense
-                    />
-                  </DataState>
-                )}
-              </SectionCard>
-            </div>
-          )}
-        </DataState>
-      </div>
+              )}
+            </Panel>
+
+            <Panel section={false} title="Open exceptions" description="What needs attention today">
+              <ExceptionList entries={exceptionEntries} />
+            </Panel>
+          </div>
+        </PageSection>
+
+        <Panel
+          title={exceptionsTab === 'escalated' ? 'Escalated workflow' : 'Compliance exceptions'}
+          description={
+            exceptionsTab === 'escalated'
+              ? 'Past its SLA or escalated by hand'
+              : 'Records behind the expired-compliance indicator'
+          }
+          actions={
+            <Button
+              variant="outline"
+              onClick={() =>
+                navigate(
+                  exceptionsTab === 'escalated' ? fleetPaths.workflow : fleetPaths.compliance,
+                )
+              }
+            >
+              {exceptionsTab === 'escalated' ? 'View queue' : 'Compliance'}
+            </Button>
+          }
+        >
+          <Tabs
+            variant="pill"
+            value={exceptionsTab}
+            onValueChange={(value) => setExceptionsTab(value as 'escalated' | 'compliance')}
+          >
+            <TabsList>
+              <TabsTrigger value="escalated">
+                {tabLabel('Escalated workflow', escalated.data?.content.length)}
+              </TabsTrigger>
+              <TabsTrigger value="compliance">
+                {tabLabel('Compliance exceptions', expiredCompliance.data?.length)}
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="escalated">
+              <FleetTable
+                paramPrefix="escalated"
+                rows={escalated.data?.content ?? []}
+                columns={workflowColumns}
+                getRowId={(row) => row.id}
+                loading={escalated.initialising}
+                error={escalated.error}
+                onRetry={escalated.refetch}
+                onRowClick={(row) => navigate(fleetPaths.workflowDetail(row.id))}
+                caption="Escalated workflow items in the current site scope, with their SLA standing."
+                emptyTitle="Nothing escalated"
+                emptyDescription="No workflow item has breached its SLA in this scope."
+              />
+            </TabsContent>
+            <TabsContent value="compliance">
+              <FleetTable
+                paramPrefix="expired"
+                rows={expiredCompliance.data ?? []}
+                columns={complianceColumns}
+                getRowId={(row) => `${row.resourceType}-${row.resourceId}`}
+                loading={expiredCompliance.initialising}
+                error={expiredCompliance.error}
+                onRetry={expiredCompliance.refetch}
+                caption="Compliance documents past their expiry date, with the site that holds them."
+                emptyTitle="No expired documents"
+                emptyDescription="Nothing in this scope is past its expiry date."
+              />
+            </TabsContent>
+          </Tabs>
+        </Panel>
+      </DataState>
+
+      {/* Mounted only while open, so the dialog opens on the chosen site and never reopens holding a
+          half-typed trip from a previous attempt. */}
+      {planOpen && (
+        <CreateTripDialog
+          open
+          defaultSiteCode={siteCode || defaultSite}
+          onClose={() => setPlanOpen(false)}
+          onSaved={() => {
+            notifySuccess('Trip created.');
+            refreshAll();
+          }}
+        />
+      )}
 
       <DrilldownDrawer
         indicator={drilldown}
         siteCode={siteCode || undefined}
         onClose={() => setDrilldown(null)}
       />
-    </div>
+    </>
   );
 };
 

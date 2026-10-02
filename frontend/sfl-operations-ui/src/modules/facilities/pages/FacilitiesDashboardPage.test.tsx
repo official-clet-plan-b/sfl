@@ -64,10 +64,10 @@ const renderPage = () =>
 describe('FacilitiesDashboardPage', () => {
   beforeEach(() => permits.mockReturnValue(true));
 
-  it('shows a spinner while loading', () => {
+  it('shows the figures as loading while the dashboard is fetched', () => {
     getDashboard.mockReturnValue(new Promise(() => {}));
     renderPage();
-    expect(screen.getByRole('status', { hidden: true })).toBeInTheDocument();
+    expect(screen.getAllByRole('status', { hidden: true }).length).toBeGreaterThan(0);
   });
 
   it('renders the readiness figures once loaded', async () => {

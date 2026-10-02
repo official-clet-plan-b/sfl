@@ -1,12 +1,22 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import Button from 'shared/components/Button';
+import { Plus } from 'lucide-react';
+import {
+  Button,
+  Card,
+  EmptyState,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  useBreadcrumbs,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
-import FilterBar from 'shared/components/FilterBar';
-import PageHeader from 'shared/components/PageHeader';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
@@ -18,6 +28,7 @@ import {
   submitAssessment,
 } from '../api/facilitiesApi';
 import { canAssessReadiness } from '../api/workflow';
+import StatusBadge from '../components/StatusBadge';
 import SubmitAssessmentDialog from '../dialogs/SubmitAssessmentDialog';
 import { formatDateTime, readinessTone, scoreTone } from '../components/facilitiesFormat';
 
@@ -56,45 +67,54 @@ const ReadinessAssessmentsPage = () => {
     [space.data?.siteCode],
   );
 
-  const columns: Column<ReadinessAssessment>[] = [
+  useBreadcrumbs(
+    space.data
+      ? [
+          { label: 'Facilities', href: facilitiesPaths.dashboard },
+          { label: 'Spaces', href: facilitiesPaths.spaces },
+          { label: space.data.roomCode, href: facilitiesPaths.spaceDetail(space.data.id) },
+          { label: 'Assessments' },
+        ]
+      : [{ label: 'Facilities', href: facilitiesPaths.dashboard }, { label: 'Assessments' }],
+  );
+
+  const columns: TableColumn<ReadinessAssessment>[] = [
     {
-      key: 'assessedAt',
+      id: 'assessedAt',
       header: 'Assessed',
       width: 190,
-      cell: (row) => formatDateTime(row.assessedAt),
+      cell: ({ row }) => formatDateTime(row.assessedAt),
     },
-    { key: 'assessedBy', header: 'By', cell: (row) => row.assessedBy },
+    { id: 'assessedBy', header: 'By', accessorKey: 'assessedBy' },
     {
-      key: 'checklist',
+      id: 'checklist',
       header: 'Checklist',
-      hideBelowLg: true,
-      cell: (row) => (row.checklistCode ? `${row.checklistCode} v${row.checklistVersion}` : '-'),
+      cell: ({ row }) => (row.checklistCode ? `${row.checklistCode} v${row.checklistVersion}` : '-'),
     },
     {
-      key: 'mode',
+      id: 'mode',
       header: 'Mode',
       width: 130,
-      hideBelowLg: true,
-      cell: (row) => (
-        <StatusChip
+      cell: ({ row }) => (
+        <StatusBadge
           value={row.operatingMode}
           tone={row.operatingMode === 'EXAMINATION' ? 'accent' : 'neutral'}
         />
       ),
     },
     {
-      key: 'score',
+      id: 'score',
       header: 'Score',
       align: 'right',
       width: 90,
-      cell: (row) => (
+      cell: ({ row }) => (
         <span
           className={
             scoreTone(row.score) === 'blocked'
-              ? 'font-medium text-error-800'
+              ? 'font-medium text-error-text'
               : scoreTone(row.score) === 'caution'
-                ? 'font-medium text-warning-700'
-                : 'text-gray-700'
+                ? 'font-medium text-warning-text'
+                : 'text-foreground'
           }
         >
           {row.score}%
@@ -102,78 +122,70 @@ const ReadinessAssessmentsPage = () => {
       ),
     },
     {
-      key: 'outcome',
+      id: 'outcome',
       header: 'Outcome',
       width: 130,
       align: 'right',
-      cell: (row) => <StatusChip value={row.outcome} tone={readinessTone(row.outcome)} />,
+      cell: ({ row }) => <StatusBadge value={row.outcome} tone={readinessTone(row.outcome)} />,
     },
   ];
 
   return (
     <>
-      <PageHeader
-        title="Readiness assessments"
-        subtitle={
-          space.data
-            ? `${space.data.roomCode} - ${space.data.name}`
-            : 'Every inspection recorded against a space'
-        }
-        crumbs={
-          space.data
-            ? [
-                { label: 'Facilities', to: facilitiesPaths.dashboard },
-                { label: 'Spaces', to: facilitiesPaths.spaces },
-                { label: space.data.roomCode, to: facilitiesPaths.spaceDetail(space.data.id) },
-                { label: 'Assessments' },
-              ]
-            : undefined
-        }
-        actions={
-          space.data && canAssessReadiness() ? (
-            <Button variant="primary" onClick={() => setAssessing(true)}>
-              New assessment
-            </Button>
-          ) : undefined
-        }
-      />
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Readiness assessments</SectionTitle>
+          <SectionDescription>
+            {space.data
+              ? `${space.data.roomCode} - ${space.data.name}`
+              : 'Every inspection recorded against a space'}
+          </SectionDescription>
+          <SectionActions>
+            {!roomId && (
+              <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
+            )}
+            {roomId && (
+              <Button variant="ghost" size="sm" onClick={() => setParams({})}>
+                Show every space instead
+              </Button>
+            )}
+            {space.data && canAssessReadiness() && (
+              <Button variant="primary" onClick={() => setAssessing(true)}>
+                <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+                New assessment
+              </Button>
+            )}
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      {!roomId && (
-        <FilterBar>
-          <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
-        </FilterBar>
-      )}
-
-      {roomId && (
-        <div className="mb-4">
-          <Button variant="link" size="sm" onClick={() => setParams({})}>
-            Show every space instead
-          </Button>
-        </div>
-      )}
-
-      <DataState
-        loading={assessments.loading}
-        error={assessments.error}
-        empty={!assessments.data || assessments.data.items.length === 0}
-        emptyTitle="Nothing assessed yet"
-        emptyHint={
-          space.data
-            ? 'This space has never been assessed. An unassessed space reports as UNKNOWN, not ready.'
-            : 'No assessment has been recorded for this site.'
-        }
-        onRetry={assessments.refetch}
-      >
-        {assessments.data && (
-          <DataTable
-            rows={assessments.data.items}
-            columns={columns}
-            getRowId={(row) => row.id}
-            onRowClick={(row) => navigate(facilitiesPaths.assessmentDetail(row.id))}
-            caption="Readiness assessments"
-          />
-        )}
-      </DataState>
+      <PageSection>
+        <DataState loading={false} error={assessments.error} onRetry={assessments.refetch}>
+          <Table paramPrefix="assessments" variant="soft">
+            <Card bordered>
+              <TableContent
+                variant="soft"
+                columns={columns}
+                data={assessments.data?.items ?? []}
+                rowKey={(row) => row.id}
+                loading={assessments.loading}
+                onRowClick={(row) => navigate(facilitiesPaths.assessmentDetail(row.id))}
+                aria-label="Readiness assessments"
+                emptyContent={
+                  <EmptyState
+                    title="Nothing assessed yet"
+                    description={
+                      space.data
+                        ? 'This space has never been assessed. An unassessed space reports as UNKNOWN, not ready.'
+                        : 'No assessment has been recorded for this site.'
+                    }
+                  />
+                }
+              />
+            </Card>
+          </Table>
+        </DataState>
+      </PageSection>
 
       {assessing && space.data && (
         <SubmitAssessmentDialog

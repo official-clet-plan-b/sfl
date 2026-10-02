@@ -1,19 +1,32 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
+import { Plus } from 'lucide-react';
+import {
+  Banner,
+  Button,
+  Card,
+  EmptyState,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  useBreadcrumbs,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatusChip from 'shared/components/StatusChip';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
 import type { CreateFloorRequest, Floor, Space } from '../api/dto';
 import { createFloor, getBuilding, listFloors, searchSpaces } from '../api/facilitiesApi';
 import { canManageSpaces } from '../api/workflow';
+import CellStack from '../components/CellStack';
+import StatusBadge from '../components/StatusBadge';
+import TitledSection from '../components/TitledSection';
 import CreateFloorDialog from '../dialogs/CreateFloorDialog';
 import {
   floorLabel,
@@ -74,31 +87,46 @@ const BuildingDetailPage = () => {
   const chosen = floorRows.find((floor) => floor.id === selectedFloor) ?? null;
   const mayManage = canManageSpaces();
 
-  const floorColumns: Column<Floor>[] = [
+  useBreadcrumbs([
+    { label: 'Facilities', href: facilitiesPaths.dashboard },
+    { label: 'Sites', href: facilitiesPaths.sites },
+    ...(building.data
+      ? [
+          { label: building.data.siteCode, href: facilitiesPaths.siteDetail(building.data.siteId) },
+          { label: building.data.buildingCode },
+        ]
+      : [{ label: 'Building' }]),
+  ]);
+
+  const floorColumns: TableColumn<Floor>[] = [
     {
-      key: 'floorCode',
+      id: 'floorCode',
       header: 'Floor',
       width: 200,
-      cell: (floor) => (
-        <CellStack primary={floorLabel(floor.levelNumber, floor.floorCode)} secondary={floor.name} />
+      cell: ({ row }) => (
+        <CellStack primary={floorLabel(row.levelNumber, row.floorCode)} secondary={row.name} />
       ),
     },
     {
-      key: 'lifecycle',
+      id: 'lifecycle',
       header: 'Lifecycle',
       width: 120,
-      cell: (floor) => <StatusChip value={floor.lifecycleStatus} />,
+      cell: ({ row }) => <StatusBadge value={row.lifecycleStatus} />,
     },
     {
-      key: 'view',
+      id: 'view',
       header: 'Spaces',
       align: 'right',
       width: 150,
-      cell: (floor) => (
+      cell: ({ row: floor }) => (
         <Button
           size="sm"
           variant={floor.id === selectedFloor ? 'primary' : 'outline'}
-          onClick={() => setSelectedFloor(floor.id === selectedFloor ? null : floor.id)}
+          onClick={(event) => {
+            // The row itself is not a control here; only this button chooses the floor.
+            event.stopPropagation();
+            setSelectedFloor(floor.id === selectedFloor ? null : floor.id);
+          }}
         >
           {floor.id === selectedFloor ? 'Showing' : 'Show'}
         </Button>
@@ -106,35 +134,33 @@ const BuildingDetailPage = () => {
     },
   ];
 
-  const spaceColumns: Column<Space>[] = [
+  const spaceColumns: TableColumn<Space>[] = [
     {
-      key: 'roomCode',
+      id: 'roomCode',
       header: 'Code',
       width: 150,
-      cell: (space) => <span className="font-medium text-gray-900">{space.roomCode}</span>,
+      cell: ({ row }) => <span className="font-medium text-foreground">{row.roomCode}</span>,
     },
-    { key: 'name', header: 'Space', cell: (space) => space.name },
+    { id: 'name', header: 'Space', accessorKey: 'name' },
     {
-      key: 'spaceType',
+      id: 'spaceType',
       header: 'Type',
-      hideBelowLg: true,
-      cell: (space) => humaniseCode(space.spaceType),
+      cell: ({ row }) => humaniseCode(row.spaceType),
     },
     {
-      key: 'capacity',
+      id: 'capacity',
       header: 'Seats',
       align: 'right',
       width: 90,
-      hideBelowLg: true,
-      cell: (space) => orDash(space.capacity),
+      cell: ({ row }) => orDash(row.capacity),
     },
     {
-      key: 'readiness',
+      id: 'readiness',
       header: 'Readiness',
       width: 130,
       align: 'right',
-      cell: (space) => (
-        <StatusChip value={space.readinessStatus} tone={readinessTone(space.readinessStatus)} />
+      cell: ({ row }) => (
+        <StatusBadge value={row.readinessStatus} tone={readinessTone(row.readinessStatus)} />
       ),
     },
   ];
@@ -160,27 +186,26 @@ const BuildingDetailPage = () => {
       >
         {building.data && (
           <>
-            <PageHeader
-              title={building.data.name}
-              subtitle={`${building.data.buildingCode} · ${building.data.siteCode}`}
-              crumbs={[
-                { label: 'Facilities', to: facilitiesPaths.dashboard },
-                { label: 'Sites', to: facilitiesPaths.sites },
-                { label: building.data.siteCode, to: facilitiesPaths.siteDetail(building.data.siteId) },
-                { label: building.data.buildingCode },
-              ]}
-              meta={<StatusChip value={building.data.lifecycleStatus} size="md" />}
-              actions={
-                mayManage ? (
-                  <Button startIcon="plus" onClick={() => setAddingFloor(true)}>
-                    Add a floor
-                  </Button>
-                ) : undefined
-              }
-            />
+            <PageSection>
+              <SectionHeader>
+                <SectionTitle>{building.data.name}</SectionTitle>
+                <SectionDescription>
+                  {`${building.data.buildingCode} · ${building.data.siteCode}`}
+                </SectionDescription>
+                <SectionActions>
+                  <StatusBadge value={building.data.lifecycleStatus} size="md" />
+                  {mayManage && (
+                    <Button variant="primary" onClick={() => setAddingFloor(true)}>
+                      <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+                      Add a floor
+                    </Button>
+                  )}
+                </SectionActions>
+              </SectionHeader>
+            </PageSection>
 
-            <div className="space-y-5">
-              <SectionCard title="Building record">
+            <TitledSection title="Building record">
+              <Card bordered>
                 <KeyValueGrid
                   items={[
                     { label: 'Code', value: building.data.buildingCode },
@@ -191,83 +216,84 @@ const BuildingDetailPage = () => {
                     { label: 'Version', value: String(building.data.metadata.version) },
                   ]}
                 />
-              </SectionCard>
+              </Card>
+            </TitledSection>
 
-              <div className="grid gap-5 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
-                <SectionCard
-                  title="Floors"
-                  subtitle="Lowest level first. Choose one to see what is on it."
-                  flush
-                >
-                  <DataState
-                    loading={floors.loading}
-                    error={floors.error}
-                    empty={floorRows.length === 0}
-                    emptyTitle="No floors registered"
-                    emptyHint={
-                      mayManage
-                        ? 'A space is placed on a floor, so this building needs one before it can hold anything.'
-                        : 'A space is placed on a floor, so nothing can be placed in this building yet.'
-                    }
-                    minHeight={180}
-                    onRetry={floors.refetch}
-                  >
-                    <DataTable
-                      rows={floorRows}
+            <TitledSection
+              title="Floors"
+              description="Lowest level first. Choose one to see what is on it."
+            >
+              <DataState loading={false} error={floors.error} minHeight={180} onRetry={floors.refetch}>
+                <Table paramPrefix="floors" variant="soft">
+                  <Card bordered>
+                    <TableContent
+                      variant="soft"
                       columns={floorColumns}
-                      getRowId={(floor) => floor.id}
-                      dense
-                      caption="Floors in this building"
+                      data={floorRows}
+                      rowKey={(floor) => floor.id}
+                      loading={floors.loading}
+                      aria-label="Floors in this building"
+                      emptyContent={
+                        <EmptyState
+                          title="No floors registered"
+                          description={
+                            mayManage
+                              ? 'A space is placed on a floor, so this building needs one before it can hold anything.'
+                              : 'A space is placed on a floor, so nothing can be placed in this building yet.'
+                          }
+                        />
+                      }
                     />
-                  </DataState>
-                </SectionCard>
+                  </Card>
+                </Table>
+              </DataState>
+            </TitledSection>
 
-                <SectionCard
-                  title={chosen ? `Spaces on ${floorLabel(chosen.levelNumber, chosen.floorCode)}` : 'Spaces'}
-                  subtitle={
-                    chosen
-                      ? chosen.name
-                      : 'Everything in this building. Choose a floor to narrow it.'
-                  }
-                  actions={
-                    chosen ? (
-                      <Button size="sm" variant="ghost" onClick={() => setSelectedFloor(null)}>
-                        Show the whole building
-                      </Button>
-                    ) : undefined
-                  }
-                  flush
-                >
-                  <DataState
-                    loading={spaces.loading}
-                    error={spaces.error}
-                    empty={!spaces.data || spaces.data.items.length === 0}
-                    emptyTitle={chosen ? 'Nothing on this floor' : 'No spaces in this building'}
-                    emptyHint="Spaces are registered against a floor from the space register."
-                    minHeight={180}
-                    onRetry={spaces.refetch}
-                  >
-                    {spaces.data && (
-                      <DataTable
-                        rows={spaces.data.items}
-                        columns={spaceColumns}
-                        getRowId={(space) => space.id}
-                        onRowClick={(space) => navigate(facilitiesPaths.spaceDetail(space.id))}
-                        dense
-                        caption="Spaces"
-                      />
-                    )}
-                  </DataState>
-                </SectionCard>
-              </div>
+            <TitledSection
+              title={chosen ? `Spaces on ${floorLabel(chosen.levelNumber, chosen.floorCode)}` : 'Spaces'}
+              description={
+                chosen ? chosen.name : 'Everything in this building. Choose a floor to narrow it.'
+              }
+              actions={
+                chosen ? (
+                  <Button size="sm" variant="ghost" onClick={() => setSelectedFloor(null)}>
+                    Show the whole building
+                  </Button>
+                ) : undefined
+              }
+            >
+              <DataState loading={false} error={spaces.error} minHeight={180} onRetry={spaces.refetch}>
+                <Table paramPrefix="building-spaces" variant="soft">
+                  <Card bordered>
+                    <TableContent
+                      variant="soft"
+                      columns={spaceColumns}
+                      data={spaces.data?.items ?? []}
+                      rowKey={(space) => space.id}
+                      loading={spaces.loading}
+                      onRowClick={(space) => navigate(facilitiesPaths.spaceDetail(space.id))}
+                      aria-label="Spaces"
+                      emptyContent={
+                        <EmptyState
+                          title={chosen ? 'Nothing on this floor' : 'No spaces in this building'}
+                          description="Spaces are registered against a floor from the space register."
+                        />
+                      }
+                    />
+                  </Card>
+                </Table>
+              </DataState>
+            </TitledSection>
 
-              {floorRows.length > 0 && spaces.data && spaces.data.totalElements > 100 && (
-                <Alert variant="info" title="Showing the first 100 spaces">
-                  This building has {spaces.data.totalElements.toLocaleString()}. Choose a floor, or
-                  use the space register, which pages properly.
-                </Alert>
-              )}
-            </div>
+            {floorRows.length > 0 && spaces.data && spaces.data.totalElements > 100 && (
+              <PageSection>
+                <Banner
+                  variant="info"
+                  heading="Showing the first 100 spaces"
+                  subtext={`This building has ${spaces.data.totalElements.toLocaleString()}. Choose a floor, or use the space register, which pages properly.`}
+                />
+              </PageSection>
+            )}
           </>
         )}
       </DataState>

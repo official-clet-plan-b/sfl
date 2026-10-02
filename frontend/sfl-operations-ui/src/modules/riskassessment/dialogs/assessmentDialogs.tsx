@@ -1,10 +1,7 @@
 import { useMemo, useState } from 'react';
 import { sflActor } from 'shared/api/config';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
 import { useNotifier } from 'shared/components/Notifier';
 import SiteSelect from 'shared/components/SiteSelect';
-import { SelectInput, TextAreaInput, TextInput } from 'shared/components/fields';
 import { formatDate } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import type { AssessmentDetail, HazardInput, ReviewInterval, VersionView } from '../api/dto';
@@ -13,6 +10,9 @@ import { needsIndependentReviewer, previewAssessmentLevel, publishBlockers, sign
 import HazardEditor from '../components/HazardEditor';
 import { hazardsIncomplete, toHazardInput, toRequestHazards } from '../components/hazardForm';
 import { RiskLevelChip } from '../components/riskChips';
+import { Banner } from '@rfdtech/components';
+import ActionDialog from 'modules/emergency/components/ActionDialog';
+import { TextField, TextAreaField, SelectField } from 'modules/emergency/components/FormFields';
 
 const NEW_ACTIVITY = '__new__';
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -92,7 +92,7 @@ export const CreateAssessmentDialog = ({ siteCode: initialSite, activityType: pr
   };
 
   return (
-    <FormDialog
+    <ActionDialog
       open
       title="New risk assessment"
       description="Creates the assessment and its first draft. Nothing can link to it until a version is published."
@@ -105,7 +105,7 @@ export const CreateAssessmentDialog = ({ siteCode: initialSite, activityType: pr
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <SiteSelect value={siteCode} onChange={setSiteCode} required />
-        <SelectInput
+        <SelectField
           label="Template"
           value={templateId}
           allowEmpty
@@ -114,7 +114,7 @@ export const CreateAssessmentDialog = ({ siteCode: initialSite, activityType: pr
           helperText={template ? `${template.hazards.length} hazards and their controls will be copied into the draft.` : undefined}
           onChange={setTemplateId}
         />
-        <SelectInput
+        <SelectField
           label="Activity type"
           value={activityChoice}
           allowEmpty
@@ -124,14 +124,14 @@ export const CreateAssessmentDialog = ({ siteCode: initialSite, activityType: pr
           onChange={setActivityChoice}
         />
         {activityChoice === NEW_ACTIVITY ? (
-          <TextInput label="New activity type" value={newActivity} maxLength={80} required onChange={setNewActivity} helperText="e.g. Roof access. Stored as ROOF_ACCESS." />
+          <TextField label="New activity type" value={newActivity} maxLength={80} required onChange={setNewActivity} helperText="e.g. Roof access. Stored as ROOF_ACCESS." />
         ) : (
-          <TextInput label="S152 location code" value={locationCode} maxLength={80} onChange={setLocationCode} helperText="Optional room, space or zone code." />
+          <TextField label="S152 location code" value={locationCode} maxLength={80} onChange={setLocationCode} helperText="Optional room, space or zone code." />
         )}
         {activityChoice === NEW_ACTIVITY && (
-          <TextInput label="S152 location code" value={locationCode} maxLength={80} onChange={setLocationCode} helperText="Optional room, space or zone code." />
+          <TextField label="S152 location code" value={locationCode} maxLength={80} onChange={setLocationCode} helperText="Optional room, space or zone code." />
         )}
-        <TextInput
+        <TextField
           label="Title"
           className="sm:col-span-2"
           value={title}
@@ -140,25 +140,23 @@ export const CreateAssessmentDialog = ({ siteCode: initialSite, activityType: pr
           placeholder={template?.name}
           onChange={setTitle}
         />
-        <TextAreaInput label="Summary" className="sm:col-span-2" value={summary} maxLength={4000} rows={3} onChange={setSummary} />
+        <TextAreaField label="Summary" className="sm:col-span-2" value={summary} maxLength={4000} rows={3} onChange={setSummary} />
       </div>
       {!scoped && siteCode && (
-        <Alert variant="info" title="Scope the assessment">
-          Choose an activity type, a location, or both. An assessment scoped to neither covers nothing.
-        </Alert>
+        <Banner variant="info" heading="Scope the assessment"
+  subtext={<>Choose an activity type, a location, or both. An assessment scoped to neither covers nothing.</>} />
       )}
       <div>
         <p className="mb-3 text-theme-sm font-semibold text-gray-900">Hazards</p>
         {template && hazards.length === 0 ? (
-          <Alert variant="info" title="The template's hazards will be used">
-            Leave this empty to copy the {template.hazards.length} hazards from {template.name}. Add hazards here to use yours instead.
-          </Alert>
+          <Banner variant="info" heading="The template's hazards will be used"
+  subtext={<>Leave this empty to copy the {template.hazards.length} hazards from {template.name}. Add hazards here to use yours instead.</>} />
         ) : null}
         <div className="mt-3">
           <HazardEditor hazards={hazards} onChange={setHazards} />
         </div>
       </div>
-    </FormDialog>
+    </ActionDialog>
   );
 };
 
@@ -200,7 +198,7 @@ export const EditDraftDialog = ({ assessmentId, draft, onClose, onSaved }: Draft
   };
 
   return (
-    <FormDialog
+    <ActionDialog
       open
       title={`Edit draft version ${draft.version.versionNumber}`}
       submitLabel="Save draft"
@@ -216,10 +214,10 @@ export const EditDraftDialog = ({ assessmentId, draft, onClose, onSaved }: Draft
       onClose={onClose}
       onSubmit={() => void submit()}
     >
-      <TextInput label="Title" value={title} maxLength={200} required onChange={setTitle} />
-      <TextAreaInput label="Summary" value={summary} maxLength={4000} rows={3} onChange={setSummary} />
+      <TextField label="Title" value={title} maxLength={200} required onChange={setTitle} />
+      <TextAreaField label="Summary" value={summary} maxLength={4000} rows={3} onChange={setSummary} />
       <HazardEditor hazards={hazards} onChange={setHazards} />
-    </FormDialog>
+    </ActionDialog>
   );
 };
 
@@ -259,7 +257,7 @@ export const PublishDialog = ({ assessmentId, draft, currentVersion, onClose, on
   };
 
   return (
-    <FormDialog
+    <ActionDialog
       open
       title={`Publish version ${draft.version.versionNumber}`}
       submitLabel="Publish"
@@ -269,14 +267,13 @@ export const PublishDialog = ({ assessmentId, draft, currentVersion, onClose, on
       onSubmit={() => void submit()}
     >
       {blockers.length > 0 ? (
-        <Alert variant="error" title="Hazard Without Control">
-          Every identified hazard needs at least one control measure. Resolve these first:
+        <Banner variant="danger" heading="Hazard Without Control"
+  subtext={<>Every identified hazard needs at least one control measure. Resolve these first:
           <ul className="mt-2 list-disc pl-5">
             {blockers.map((blocker) => (
               <li key={blocker}>{blocker}</li>
             ))}
-          </ul>
-        </Alert>
+          </ul></>} />
       ) : (
         <>
           <dl className="grid gap-3 text-theme-sm sm:grid-cols-2">
@@ -294,19 +291,17 @@ export const PublishDialog = ({ assessmentId, draft, currentVersion, onClose, on
             </div>
           </dl>
           {currentVersion !== null && (
-            <Alert variant="info" title={`Version ${currentVersion} will be superseded`}>
-              It stays readable in the version history, marked not current. Nothing that links to this assessment will use it
-              again.
-            </Alert>
+            <Banner variant="info" heading={`Version ${currentVersion} will be superseded`}
+  subtext={<>It stays readable in the version history, marked not current. Nothing that links to this assessment will use it
+              again.</>} />
           )}
           {needsIndependentReviewer(draft.riskLevel) && (
-            <Alert variant="warning" title="Not current until independently signed off">
-              At {draft.riskLevel} the assessment cannot be linked until someone other than its author signs it off.
-            </Alert>
+            <Banner variant="warning" heading="Not current until independently signed off"
+  subtext={<>At {draft.riskLevel} the assessment cannot be linked until someone other than its author signs it off.</>} />
           )}
         </>
       )}
-    </FormDialog>
+    </ActionDialog>
   );
 };
 
@@ -336,12 +331,12 @@ export const OpenRevisionDialog = ({ assessmentId, currentVersion, onClose, onOp
     }
   };
   return (
-    <FormDialog open title="Revise the assessment" submitLabel="Open draft" submitting={submitting} onClose={onClose} onSubmit={() => void submit()}>
+    <ActionDialog open title="Revise the assessment" submitLabel="Open draft" submitting={submitting} onClose={onClose} onSubmit={() => void submit()}>
       <p className="text-theme-sm text-gray-700">
         Version {currentVersion} stays current - and linkable - until the new draft is published. The draft starts as a copy of
         it, and you become its author.
       </p>
-    </FormDialog>
+    </ActionDialog>
   );
 };
 
@@ -380,7 +375,7 @@ export const SignOffDialog = ({ assessmentId, current, onClose, onSignedOff }: S
   };
 
   return (
-    <FormDialog
+    <ActionDialog
       open
       title={`Sign off version ${current.version.versionNumber}`}
       submitLabel="Sign off"
@@ -390,9 +385,8 @@ export const SignOffDialog = ({ assessmentId, current, onClose, onSignedOff }: S
       onSubmit={() => void submit()}
     >
       {refused ? (
-        <Alert variant="error" title="A named competent reviewer is required">
-          You wrote this version. At {current.riskLevel} it must be signed off by someone other than its author.
-        </Alert>
+        <Banner variant="danger" heading="A named competent reviewer is required"
+  subtext={<>You wrote this version. At {current.riskLevel} it must be signed off by someone other than its author.</>} />
       ) : (
         <p className="text-theme-sm text-gray-700">
           Signing off renews the review date to <strong>{dueDateAfter(interval?.intervalDays) ?? '…'}</strong>
@@ -400,7 +394,7 @@ export const SignOffDialog = ({ assessmentId, current, onClose, onSignedOff }: S
           becomes current again.
         </p>
       )}
-      <TextAreaInput label="Review notes" value={notes} maxLength={2000} rows={4} onChange={setNotes} disabled={refused} />
-    </FormDialog>
+      <TextAreaField label="Review notes" value={notes} maxLength={2000} rows={4} onChange={setNotes} disabled={refused} />
+    </ActionDialog>
   );
 };

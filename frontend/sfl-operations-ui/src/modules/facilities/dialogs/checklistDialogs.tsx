@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
-import FormDialog from 'shared/components/FormDialog';
+import { Button, Notice } from '@rfdtech/components';
+import { Plus } from 'lucide-react';
 import SiteSelect from 'shared/components/SiteSelect';
-import { Checkbox, NumberInput, SelectInput, TextAreaInput, TextInput } from 'shared/components/fields';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import type {
   ChecklistItemRequest,
@@ -15,6 +13,7 @@ import { blockerSeverities, operatingModes, spaceTypes } from '../api/enums';
 import type { BlockerSeverity, OperatingMode, SpaceType } from '../api/enums';
 import { humaniseCode } from '../components/facilitiesFormat';
 import { StaleWriteNotice } from './common';
+import { Checkbox, FormDialog, NumberInput, SelectInput, TextAreaInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
 
 /**
  * Creating and editing a readiness checklist.
@@ -95,10 +94,10 @@ const ItemEditor = ({ items, onChange }: ItemEditorProps) => {
       {items.map((item, index) => (
         <div
           key={index}
-          className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3"
+          className="space-y-3 rounded-lg border border-border bg-surface-muted/20 px-4 py-3"
         >
           <div className="flex items-start justify-between gap-3">
-            <span className="text-theme-xs font-medium tracking-wide text-gray-500 uppercase">
+            <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
               Item {index + 1}
             </span>
             <Button
@@ -156,7 +155,8 @@ const ItemEditor = ({ items, onChange }: ItemEditorProps) => {
         </div>
       ))}
 
-      <Button variant="outline" startIcon="plus" onClick={() => onChange([...items, emptyItem()])}>
+      <Button variant="outline" onClick={() => onChange([...items, emptyItem()])}>
+        <Plus size={14} aria-hidden="true" />
         Add an item
       </Button>
     </div>
@@ -271,14 +271,14 @@ export const CreateChecklistDialog = ({
         />
 
         <div>
-          <h3 className="mb-2 text-theme-sm font-medium text-gray-800">Items</h3>
+          <h3 className="mb-2 text-sm font-medium text-foreground">Items</h3>
           <ItemEditor items={items} onChange={setItems} />
         </div>
 
         {touched && itemError && (
-          <Alert variant="error" title="The items are not complete">
-            <p className="text-theme-sm">{itemError}</p>
-          </Alert>
+          <Notice variant="error" title="The items are not complete">
+            <p className="text-sm">{itemError}</p>
+          </Notice>
         )}
       </div>
     </FormDialog>
@@ -388,7 +388,7 @@ export const EditChecklistDialog = ({
         />
 
         <div>
-          <h3 className="mb-2 text-theme-sm font-medium text-gray-800">Items</h3>
+          <h3 className="mb-2 text-sm font-medium text-foreground">Items</h3>
           <ItemEditor
             items={items}
             onChange={(next) => {
@@ -399,19 +399,19 @@ export const EditChecklistDialog = ({
         </div>
 
         {itemsTouched && (
-          <Alert variant="warning" title="Editing the items publishes a new version">
-            <p className="text-theme-sm">
+          <Notice variant="warning" title="Editing the items publishes a new version">
+            <p className="text-sm">
               Every item is replaced by the list above and the checklist version moves to{' '}
               {checklist.version + 1}. Assessments already taken keep the version they were taken at,
               so this changes what is asked next rather than what was answered.
             </p>
-          </Alert>
+          </Notice>
         )}
 
         {touched && itemError && (
-          <Alert variant="error" title="The items are not complete">
-            <p className="text-theme-sm">{itemError}</p>
-          </Alert>
+          <Notice variant="error" title="The items are not complete">
+            <p className="text-sm">{itemError}</p>
+          </Notice>
         )}
 
         <StaleWriteNotice error={formError} />

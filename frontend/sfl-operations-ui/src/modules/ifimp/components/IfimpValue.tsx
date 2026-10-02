@@ -1,5 +1,5 @@
-import StatusChip from 'shared/components/StatusChip';
 import { cn } from 'shared/components/cn';
+import StatusBadge from 'modules/facilities/components/StatusBadge';
 
 export const humaniseIfimpField = (key: string) =>
   key
@@ -15,7 +15,7 @@ const isIsoInstant = (value: string) =>
 
 const primitive = (value: string | number | boolean) => {
   if (typeof value === 'boolean') {
-    return <StatusChip value={value ? 'Yes' : 'No'} tone={value ? 'ready' : 'neutral'} />;
+    return <StatusBadge value={value ? 'Yes' : 'No'} tone={value ? 'ready' : 'neutral'} />;
   }
   if (typeof value === 'number') {
     return <span>{value.toLocaleString()}</span>;
@@ -25,7 +25,7 @@ const primitive = (value: string | number | boolean) => {
   }
   const statusLike = /^[A-Z][A-Z0-9_ -]+$/.test(value);
   return statusLike
-    ? <StatusChip value={humaniseIfimpField(value)} />
+    ? <StatusBadge value={humaniseIfimpField(value)} />
     : <span className="whitespace-pre-wrap break-words">{value}</span>;
 };
 
@@ -38,15 +38,15 @@ interface Props {
 /** Readable Phase 2 values: nested API objects become labelled cards, never raw JSON blobs. */
 const IfimpValue = ({ value, compact = false, depth = 0 }: Props) => {
   if (value === null || value === undefined || value === '') {
-    return <span className="text-gray-400">—</span>;
+    return <span className="text-muted-foreground">—</span>;
   }
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
     return primitive(value);
   }
   if (Array.isArray(value)) {
-    if (value.length === 0) return <span className="text-gray-500">None</span>;
+    if (value.length === 0) return <span className="text-muted-foreground">None</span>;
     if (compact && value.some(isRecord)) {
-      return <span className="text-gray-600">{value.length.toLocaleString()} {value.length === 1 ? 'record' : 'records'}</span>;
+      return <span className="text-muted-foreground">{value.length.toLocaleString()} {value.length === 1 ? 'record' : 'records'}</span>;
     }
     return (
       <div className={cn('flex gap-2', value.some(isRecord) ? 'flex-col' : 'flex-wrap')}>
@@ -54,8 +54,8 @@ const IfimpValue = ({ value, compact = false, depth = 0 }: Props) => {
           <div
             key={isRecord(item) && item.id != null ? String(item.id) : index}
             className={cn(
-              isRecord(item) && 'rounded-lg border border-gray-200 bg-white p-3',
-              !isRecord(item) && 'rounded-full bg-gray-100 px-2.5 py-1 text-theme-xs text-gray-700',
+              isRecord(item) && 'rounded-lg border border-border p-3',
+              !isRecord(item) && 'rounded-full bg-surface-muted px-2.5 py-1 text-xs text-foreground',
             )}
           >
             <IfimpValue value={item} compact={compact} depth={depth + 1} />
@@ -66,21 +66,21 @@ const IfimpValue = ({ value, compact = false, depth = 0 }: Props) => {
   }
   if (isRecord(value)) {
     const entries = Object.entries(value);
-    if (entries.length === 0) return <span className="text-gray-500">None</span>;
+    if (entries.length === 0) return <span className="text-muted-foreground">None</span>;
     if (compact || depth > 2) {
       const identifying = value.name ?? value.title ?? value.code ?? value.reference ?? value.status;
       return identifying == null
-        ? <span className="text-gray-600">{entries.length} fields</span>
+        ? <span className="text-muted-foreground">{entries.length} fields</span>
         : <IfimpValue value={identifying} compact />;
     }
     return (
       <dl className="grid min-w-0 grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-2">
         {entries.map(([key, entry]) => (
           <div key={key} className={cn('min-w-0', isRecord(entry) || Array.isArray(entry) ? 'sm:col-span-2' : '')}>
-            <dt className="text-[11px] font-semibold tracking-wide text-gray-500 uppercase">
+            <dt className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
               {humaniseIfimpField(key)}
             </dt>
-            <dd className="mt-1 text-theme-sm text-gray-800">
+            <dd className="mt-1 text-sm text-foreground">
               <IfimpValue value={entry} depth={depth + 1} />
             </dd>
           </div>

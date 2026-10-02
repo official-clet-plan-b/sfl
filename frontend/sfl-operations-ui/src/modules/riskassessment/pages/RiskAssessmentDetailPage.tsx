@@ -1,12 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import Tabs from 'shared/components/Tabs';
 import WorkflowTimeline, { type TimelineEntry } from 'shared/components/WorkflowTimeline';
 import { formatDate, formatDateTime } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
@@ -17,9 +12,14 @@ import { currencyReasonLabel } from '../api/enums';
 import { riskAssessmentApi } from '../api/riskAssessmentApi';
 import { currentOf, draftOf, riskWorkflow } from '../api/workflow';
 import HazardTable from '../components/HazardTable';
-import { ReviewFlagChip, RiskLevelChip, StandingChip, VersionStatusChip } from '../components/riskChips';
+import { ReviewFlagChip, RiskLevelChip, StandingChip, VersionStatusBadge } from '../components/riskChips';
 import { EditDraftDialog, OpenRevisionDialog, PublishDialog, SignOffDialog } from '../dialogs/assessmentDialogs';
 import { CompleteReviewDialog, DeferFlagDialog } from '../dialogs/reviewFlagDialogs';
+import { Button, Banner } from '@rfdtech/components';
+import Tabs from 'shared/components/Tabs';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import Panel from 'modules/emergency/components/Panel';
+import Icon from 'shared/components/Icon';
 
 type Action = 'edit' | 'publish' | 'revise' | 'sign-off' | null;
 
@@ -62,16 +62,15 @@ const VersionPanel = ({ view }: { view: VersionView }) => {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <VersionStatusChip status={version.status} />
+        <VersionStatusBadge status={version.status} />
         <RiskLevelChip level={view.riskLevel} />
         {version.status !== 'DRAFT' && !view.current && view.currencyReason && (
           <span className="text-theme-xs font-medium text-gray-700">Not current: {currencyReasonLabel[view.currencyReason]}</span>
         )}
       </div>
       {version.status === 'SUPERSEDED' && (
-        <Alert variant="info" title="Superseded - kept for the record">
-          Version {version.versionNumber} was replaced on {formatDateTime(version.supersededAt)}. Nothing can newly link to it.
-        </Alert>
+        <Banner variant="info" heading="Superseded - kept for the record"
+  subtext={<>Version {version.versionNumber} was replaced on {formatDateTime(version.supersededAt)}. Nothing can newly link to it.</>} />
       )}
       <KeyValueGrid
         columns={4}
@@ -109,15 +108,15 @@ const RiskAssessmentDetailPage = () => {
 
   return (
     <div>
-      <PageHeader
+      <PageHeading
         title={assessment ? `${assessment.reference} · ${assessment.title}` : 'Risk assessment'}
         subtitle={assessment ? [assessment.activityType, assessment.locationCode && `location ${assessment.locationCode}`, assessment.siteCode].filter(Boolean).join(' · ') : undefined}
         crumbs={[{ label: 'Assessment register', to: riskAssessmentPaths.register }, { label: assessment?.reference ?? 'Assessment' }]}
         actions={assessment ? (
           <>
-            {riskWorkflow.canEditDraft(assessment) && permits('RISK_ASSESSMENT_AUTHOR') && <Button variant="outline" startIcon="edit" onClick={() => setAction('edit')}>Edit draft</Button>}
+            {riskWorkflow.canEditDraft(assessment) && permits('RISK_ASSESSMENT_AUTHOR') && <Button variant="outline" onClick={() => setAction('edit')}><Icon name="edit" size={14} aria-hidden="true" />Edit draft</Button>}
             {riskWorkflow.canOpenRevision(assessment) && permits('RISK_ASSESSMENT_AUTHOR') && <Button variant="outline" onClick={() => setAction('revise')}>Revise</Button>}
-            {riskWorkflow.canSignOff(assessment) && permits('RISK_ASSESSMENT_SIGN_OFF') && <Button variant="outline" startIcon="check-circle" onClick={() => setAction('sign-off')}>Sign off</Button>}
+            {riskWorkflow.canSignOff(assessment) && permits('RISK_ASSESSMENT_SIGN_OFF') && <Button variant="outline" onClick={() => setAction('sign-off')}><Icon name="check-circle" size={14} aria-hidden="true" />Sign off</Button>}
             {riskWorkflow.canPublish(assessment) && permits('RISK_ASSESSMENT_PUBLISH') && <Button variant="primary" onClick={() => setAction('publish')}>Publish v{assessment.draftVersion}</Button>}
           </>
         ) : undefined}
@@ -126,17 +125,15 @@ const RiskAssessmentDetailPage = () => {
         {detail && assessment && (
           <div className="space-y-5">
             {assessment.standing === 'LAPSED' && (
-              <Alert variant="error" title="Lapsed Assessment">
-                The review date ({formatDate(assessment.reviewDueAt)}) passed without a renewed sign-off. It is not current and cannot be
-                newly linked to a permit, project or event until it is signed off again.
-              </Alert>
+              <Banner variant="danger" heading="Lapsed Assessment"
+  subtext={<>The review date ({formatDate(assessment.reviewDueAt)}) passed without a renewed sign-off. It is not current and cannot be
+                newly linked to a permit, project or event until it is signed off again.</>} />
             )}
             {assessment.standing === 'AWAITING_INDEPENDENT_SIGN_OFF' && (
-              <Alert variant="warning" title="Awaiting independent sign-off">
-                At {assessment.riskLevel} this assessment is not current until someone other than its author signs it off.
-              </Alert>
+              <Banner variant="warning" heading="Awaiting independent sign-off"
+  subtext={<>At {assessment.riskLevel} this assessment is not current until someone other than its author signs it off.</>} />
             )}
-            <SectionCard title="Standing" actions={<StandingChip standing={assessment.standing} size="md" />}>
+            <Panel title="Standing" actions={<StandingChip standing={assessment.standing} size="md" />}>
               <KeyValueGrid
                 columns={4}
                 items={[
@@ -150,9 +147,9 @@ const RiskAssessmentDetailPage = () => {
                   { label: 'Open review flags', value: detail.reviewFlags.filter((flag) => flag.status !== 'CLEARED').length },
                 ]}
               />
-            </SectionCard>
+            </Panel>
 
-            <SectionCard title="Versions" subtitle="Every version is kept. Superseded versions stay readable and are marked not current.">
+            <Panel title="Versions" subtitle="Every version is kept. Superseded versions stay readable and are marked not current.">
               <Tabs
                 variant="pill"
                 value={shown ? String(shown.version.versionNumber) : ''}
@@ -160,10 +157,10 @@ const RiskAssessmentDetailPage = () => {
                 items={detail.versions.map((view) => ({ value: String(view.version.versionNumber), label: `v${view.version.versionNumber} · ${view.version.status.toLowerCase()}` }))}
               />
               <div className="mt-4">{shown && <VersionPanel view={shown} />}</div>
-            </SectionCard>
+            </Panel>
 
             <div className="grid gap-5 lg:grid-cols-2">
-              <SectionCard title="Review flags" subtitle="Raised by incidents that happened under this assessment.">
+              <Panel title="Review flags" subtitle="Raised by incidents that happened under this assessment.">
                 {detail.reviewFlags.length ? (
                   <div className="space-y-3">
                     {detail.reviewFlags.map((flag) => (
@@ -189,10 +186,10 @@ const RiskAssessmentDetailPage = () => {
                 ) : (
                   <p className="text-theme-sm text-gray-600">No incident has flagged this assessment.</p>
                 )}
-              </SectionCard>
-              <SectionCard title="History" subtitle="Assembled from the versions, sign-offs and flags above.">
+              </Panel>
+              <Panel title="History" subtitle="Assembled from the versions, sign-offs and flags above.">
                 <WorkflowTimeline entries={timeline(detail)} emptyMessage="No history yet." />
-              </SectionCard>
+              </Panel>
             </div>
           </div>
         )}
@@ -205,7 +202,7 @@ const RiskAssessmentDetailPage = () => {
       {flagAction?.kind === 'complete' && <CompleteReviewDialog flag={flagAction.flag} onClose={() => setFlagAction(null)} onDone={done} />}
       {flagAction?.kind === 'defer' && <DeferFlagDialog flag={flagAction.flag} onClose={() => setFlagAction(null)} onDone={done} />}
       {!query.initialising && query.error?.status === 404 && (
-        <Button variant="link" onClick={() => navigate(riskAssessmentPaths.register)}>Back to the register</Button>
+        <Button variant="ghost" onClick={() => navigate(riskAssessmentPaths.register)}>Back to the register</Button>
       )}
     </div>
   );

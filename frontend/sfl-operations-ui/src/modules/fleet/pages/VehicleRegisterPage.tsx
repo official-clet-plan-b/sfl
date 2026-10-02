@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { Button, Input, PageSection } from '@rfdtech/components';
 import { VehicleResponse } from 'modules/fleet/api/dto';
 import {
-  VEHICLE_AVAILABILITY_STATUSES,
   VEHICLE_CATEGORIES,
   VEHICLE_LIFECYCLE_STATUSES,
   VEHICLE_SERVICE_STATUSES,
@@ -13,56 +13,30 @@ import {
   humanise,
 } from 'modules/fleet/api/enums';
 import { vehiclesApi } from 'modules/fleet/api/fleetApi';
+import FleetTable, {
+  CellStack,
+  FilterDropdown,
+  FleetColumn,
+  useRegisterState,
+} from 'modules/fleet/components/FleetTable';
+import RegisterHeader from 'modules/fleet/components/RegisterHeader';
+import StatusBadge from 'modules/fleet/components/StatusBadge';
 import { RegisterVehicleDialog } from 'modules/fleet/dialogs/vehicleDialogs';
-import { defaultPageSize } from 'shared/api/config';
-import Button from 'shared/components/Button';
-import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar, { ActiveFilter } from 'shared/components/FilterBar';
+import Icon from 'shared/components/Icon';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import SearchInput from 'shared/components/SearchInput';
-import StatusChip from 'shared/components/StatusChip';
+import { defaultSite } from 'shared/components/SiteSelect';
 import { formatOdometer } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fleetPaths } from 'shared/layout/navigation';
 import { canManageVehicles } from '../api/access';
 
-interface Filters {
-  siteCode: string;
-  registrationNumber: string;
-  status: VehicleLifecycleStatus | '';
-  serviceStatus: VehicleServiceStatus | '';
-  availability: VehicleAvailabilityStatus | '';
-  category: VehicleCategory | '';
-  responsibleUnit: string;
-}
-
-const emptyFilters: Filters = {
-  siteCode: defaultSite,
-  registrationNumber: '',
-  status: '',
-  serviceStatus: '',
-  availability: '',
-  category: '',
-  responsibleUnit: '',
-};
-
-/**
- * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
- * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
- * option already active clears it, same as the dropdown it replaces; toggling a different one while
- * one is active swaps to the new choice instead of appearing to hold both.
- */
-const pickSingle = <T extends string>(current: T | '', next: string[]): T | '' => {
-  if (next.length === 0) {
-    return '';
-  }
-  return (next.find((value) => value !== current) ?? next[0]) as T;
-};
+/** The one-click views of the register; each is an availability status. */
+const VIEWS: { value: string; label: string; availability?: VehicleAvailabilityStatus }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'available', label: 'Available', availability: 'AVAILABLE' },
+  { value: 'trip', label: 'On a trip', availability: 'IN_USE' },
+  { value: 'withheld', label: 'Withheld', availability: 'UNAVAILABLE' },
+];
 
 /**
  * The vehicle register.
@@ -73,42 +47,67 @@ const pickSingle = <T extends string>(current: T | '', next: string[]): T | '' =
 const VehicleRegisterPage = () => {
   const navigate = useNavigate();
   const { notifySuccess } = useNotifier();
-  const [filters, setFilters] = useState<Filters>(emptyFilters);
-  const [pagination, setPagination] = useState({ page: 0, pageSize: defaultPageSize });
   const [registerOpen, setRegisterOpen] = useState(false);
 
-  const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => {
-    setFilters((current) => ({ ...current, [key]: value }));
-    setPagination((current) => ({ ...current, page: 0 }));
-  };
-
-  // Reset is a filter change like any other: leaving the page index behind asks the server for a
-  // page the narrowed result set no longer has, and the table comes back empty.
-  const resetFilters = () => {
-    setFilters(emptyFilters);
-    setPagination((current) => ({ ...current, page: 0 }));
-  };
+  // The register's state lives in the URL, so the filters that explain a short list are on the
+  // page's address as well as in the filter control. Every change returns to the first page -
+  // leaving the page index behind asks the server for a page the narrowed result set no longer has.
+  const state = useRegisterState('vehicles');
+  const { filters, setFilter } = state;
+  const view = VIEWS.find((entry) => entry.value === filters.view) ?? VIEWS[0];
+  const status = (filters.status ?? '') as VehicleLifecycleStatus | '';
+  const serviceStatus = (filters.service ?? '') as VehicleServiceStatus | '';
+  const category = (filters.category ?? '') as VehicleCategory | '';
+  const responsibleUnit = filters.unit ?? '';
 
   const query = useApiQuery(
     (signal) =>
       vehiclesApi.search(
         {
-          siteCode: filters.siteCode || undefined,
-          registrationNumber: filters.registrationNumber || undefined,
-          status: filters.status || undefined,
-          serviceStatus: filters.serviceStatus || undefined,
-          availability: filters.availability || undefined,
-          category: filters.category || undefined,
-          responsibleUnit: filters.responsibleUnit || undefined,
-          page: pagination.page,
-          size: pagination.pageSize,
+          siteCode: state.site || undefined,
+          registrationNumber: state.search || undefined,
+          status: status || undefined,
+          serviceStatus: serviceStatus || undefined,
+          availability: view.availability,
+          category: category || undefined,
+          responsibleUnit: responsibleUnit || undefined,
+          page: state.apiPage,
+          size: state.pageSize,
         },
         signal,
       ),
-    [filters, pagination.page, pagination.pageSize],
+    [
+      state.site,
+      state.search,
+      status,
+      serviceStatus,
+      view.value,
+      category,
+      responsibleUnit,
+      state.apiPage,
+      state.pageSize,
+    ],
   );
 
-  const columns = useMemo<Column<VehicleResponse>[]>(
+  /** How many vehicles each view holds, so the tab says what is behind it before it is opened. */
+  const counts = useApiQuery(
+    async (signal) => {
+      const totals = await Promise.all(
+        VIEWS.map((entry) =>
+          vehiclesApi
+            .search(
+              { siteCode: state.site || undefined, availability: entry.availability, size: 1 },
+              signal,
+            )
+            .then((page) => [entry.value, page.totalElements] as const),
+        ),
+      );
+      return Object.fromEntries(totals);
+    },
+    [state.site],
+  );
+
+  const columns = useMemo<FleetColumn<VehicleResponse>[]>(
     () => [
       {
         key: 'registrationNumber',
@@ -127,31 +126,23 @@ const VehicleRegisterPage = () => {
         width: 150,
         cell: (row) => humanise(row.category),
       },
-      // The register is normally read one site at a time, so the site column is laptop-optional.
-      {
-        key: 'siteCode',
-        header: 'Site',
-        width: 100,
-        hideBelowLg: true,
-        cell: (row) => row.siteCode,
-      },
       {
         key: 'lifecycleStatus',
         header: 'Lifecycle',
         width: 130,
-        cell: (row) => <StatusChip value={row.lifecycleStatus} />,
+        cell: (row) => <StatusBadge value={row.lifecycleStatus} />,
       },
       {
         key: 'serviceStatus',
         header: 'Service',
         width: 140,
-        cell: (row) => <StatusChip value={row.serviceStatus} />,
+        cell: (row) => <StatusBadge value={row.serviceStatus} />,
       },
       {
         key: 'availabilityStatus',
         header: 'Availability',
         width: 130,
-        cell: (row) => <StatusChip value={row.availabilityStatus} />,
+        cell: (row) => <StatusBadge value={row.availabilityStatus} />,
       },
       {
         key: 'odometerValue',
@@ -172,141 +163,124 @@ const VehicleRegisterPage = () => {
         width: 130,
         cell: (row) =>
           row.emergencyOnly ? (
-            <StatusChip value="EMERGENCY_ONLY" label="Emergency only" tone="accent" />
+            <StatusBadge value="EMERGENCY_ONLY" label="Emergency only" tone="accent" />
           ) : (
-            <span className="text-theme-xs text-gray-600">None</span>
+            <span className="text-theme-xs opacity-70">None</span>
           ),
       },
     ],
     [],
   );
 
-  /*
-    Seven controls, six of them dropdowns, and a closed dropdown says nothing. This register is
-    where that costs the most: filtered to a category and a service status, the table can be two
-    rows and look like a broken query. The chips say which two constraints did it.
-  */
-  const clearFilter = (key: keyof Filters) => () => setFilter(key, emptyFilters[key]);
-  const chip = (key: keyof Filters, label: string, value: string): ActiveFilter[] =>
-    filters[key] === emptyFilters[key]
-      ? []
-      : [{ key, label, value, onClear: clearFilter(key) }];
-
-  const activeFilters: ActiveFilter[] = [
-    ...chip('siteCode', 'Site', filters.siteCode === '' ? 'All sites' : filters.siteCode),
-    ...chip('registrationNumber', 'Registration', filters.registrationNumber),
-    ...chip('status', 'Lifecycle', humanise(filters.status)),
-    ...chip('serviceStatus', 'Service', humanise(filters.serviceStatus)),
-    ...chip('availability', 'Availability', humanise(filters.availability)),
-    ...chip('category', 'Category', humanise(filters.category)),
-    ...chip('responsibleUnit', 'Unit', filters.responsibleUnit),
-  ];
-
   return (
-    <div>
-      <PageHeader
+    <>
+      <RegisterHeader
         title="Vehicle register"
-        subtitle="Every vehicle in your site scope, with its lifecycle, service and availability standing."
-        crumbs={[{ label: 'Fleet', to: fleetPaths.dashboard }, { label: 'Vehicle register' }]}
+        siteCode={state.site}
+        onSiteChange={state.setSite}
         actions={
           <>
-            <Button variant="outline" startIcon="refresh" onClick={query.refetch}>
-              Refresh
+            <Button
+              variant="outline"
+              aria-label="Refresh"
+              title="Refresh"
+              onClick={() => {
+                query.refetch();
+                counts.refetch();
+              }}
+            >
+              <Icon name="refresh" size={14} aria-hidden="true" />
             </Button>
             {/* Hidden, not disabled: a driver will never hold FLEET_VEHICLE_MANAGE, and a
                 permanently greyed control is a question they cannot answer. */}
             {canManageVehicles() && (
-              <Button variant="accent" startIcon="plus" onClick={() => setRegisterOpen(true)}>
-                Register vehicle
+              <Button variant="primary" onClick={() => setRegisterOpen(true)}>
+                <Icon name="plus" size={14} aria-hidden="true" />
+                Register a vehicle
               </Button>
             )}
           </>
         }
       />
 
-      <SectionCard flush>
-        <FilterBar onReset={resetFilters} active={activeFilters}>
-          <SiteSelect
-            value={filters.siteCode}
-            onChange={(value) => setFilter('siteCode', value)}
-            allowEmpty
-          />
-          <SearchInput
-            label="Registration number"
-            value={filters.registrationNumber}
-            onChange={(value) => setFilter('registrationNumber', value)}
-            placeholder="GT-1234-24"
-          />
-          <FacetFilter
-            label="Lifecycle"
-            selected={filters.status ? [filters.status] : []}
-            onChange={(next) => setFilter('status', pickSingle(filters.status, next))}
-            options={VEHICLE_LIFECYCLE_STATUSES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <FacetFilter
-            label="Service status"
-            selected={filters.serviceStatus ? [filters.serviceStatus] : []}
-            onChange={(next) => setFilter('serviceStatus', pickSingle(filters.serviceStatus, next))}
-            options={VEHICLE_SERVICE_STATUSES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <FacetFilter
-            label="Availability"
-            selected={filters.availability ? [filters.availability] : []}
-            onChange={(next) => setFilter('availability', pickSingle(filters.availability, next))}
-            options={VEHICLE_AVAILABILITY_STATUSES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <FacetFilter
-            label="Category"
-            selected={filters.category ? [filters.category] : []}
-            onChange={(next) => setFilter('category', pickSingle(filters.category, next))}
-            options={VEHICLE_CATEGORIES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <SearchInput
-            label="Responsible unit"
-            value={filters.responsibleUnit}
-            onChange={(value) => setFilter('responsibleUnit', value)}
-          />
-        </FilterBar>
-
-        <DataState
-          loading={query.initialising}
+      <PageSection>
+        <FleetTable
+          paramPrefix="vehicles"
+          rows={query.data?.content ?? []}
+          columns={columns}
+          getRowId={(row) => row.id}
+          loading={query.loading}
           error={query.error}
-          empty={(query.data?.content.length ?? 0) === 0 && !query.loading}
-          emptyTitle="No vehicles match these filters"
-          emptyHint="Adjust the filters, or register the first vehicle for this site."
           onRetry={query.refetch}
-          minHeight={280}
-        >
-          <DataTable
-            rows={query.data?.content ?? []}
-            columns={columns}
-            getRowId={(row) => row.id}
-            loading={query.loading}
-            onRowClick={(row) => navigate(fleetPaths.vehicleDetail(row.id))}
-            page={pagination.page}
-            pageSize={pagination.pageSize}
-            totalElements={query.data?.totalElements ?? 0}
-            onPageChange={(page) => setPagination((current) => ({ ...current, page }))}
-            onPageSizeChange={(pageSize) => setPagination({ page: 0, pageSize })}
-            emptyMessage="No vehicles match these filters."
-          />
-        </DataState>
-      </SectionCard>
+          onRowClick={(row) => navigate(fleetPaths.vehicleDetail(row.id))}
+          totalElements={query.data?.totalElements ?? 0}
+          pageSize={state.pageSize}
+          searchPlaceholder="Search registration number"
+          caption="Vehicle register"
+          tabs={VIEWS.map((entry) => ({
+            value: entry.value,
+            label: entry.label,
+            count: counts.data?.[entry.value],
+          }))}
+          tab={view.value}
+          onTabChange={(value) => setFilter('view', value === 'all' ? '' : value)}
+          filters={
+            <>
+              <FilterDropdown
+                name="status"
+                label="Lifecycle"
+                value={status}
+                onChange={(value) => setFilter('status', value)}
+                options={VEHICLE_LIFECYCLE_STATUSES.map((value) => ({
+                  value,
+                  label: humanise(value),
+                }))}
+              />
+              <FilterDropdown
+                name="service"
+                label="Service status"
+                value={serviceStatus}
+                onChange={(value) => setFilter('service', value)}
+                options={VEHICLE_SERVICE_STATUSES.map((value) => ({
+                  value,
+                  label: humanise(value),
+                }))}
+              />
+              <FilterDropdown
+                name="category"
+                label="Type"
+                value={category}
+                onChange={(value) => setFilter('category', value)}
+                options={VEHICLE_CATEGORIES.map((value) => ({ value, label: humanise(value) }))}
+              />
+              <Input
+                name="unit"
+                aria-label="Responsible unit"
+                placeholder="Responsible unit"
+                defaultValue={responsibleUnit}
+              />
+            </>
+          }
+          emptyTitle="No vehicles match these filters"
+          emptyDescription="Adjust the filters, or register the first vehicle for this site."
+        />
+      </PageSection>
 
       {/* Mounted only while open, so the dialog picks up the current site filter as its default
           and cannot reopen holding a half-typed registration from a previous attempt. */}
       {registerOpen && (
         <RegisterVehicleDialog
           open
-          defaultSiteCode={filters.siteCode || defaultSite}
+          defaultSiteCode={state.site || defaultSite}
           onClose={() => setRegisterOpen(false)}
           onSaved={() => {
             notifySuccess('Vehicle registered.');
             query.refetch();
+            counts.refetch();
           }}
         />
       )}
-    </div>
+    </>
   );
 };
 

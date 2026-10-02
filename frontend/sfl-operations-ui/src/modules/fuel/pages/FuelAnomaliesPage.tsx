@@ -1,5 +1,19 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
+import {
+  Button,
+  MetricCard,
+  MetricCards,
+  PageSection,
+  SectionActions,
+  SectionHeader,
+  SectionTitle,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  type TableColumn,
+} from '@rfdtech/components';
+import { Clock, RefreshCw } from 'lucide-react';
 import { FuelAnomalyCase } from 'modules/fuel/api/dto';
 import {
   ANOMALY_SEVERITIES,
@@ -11,21 +25,13 @@ import {
 } from 'modules/fuel/api/enums';
 import { fuelAnomaliesApi, fuelDashboardApi } from 'modules/fuel/api/fuelApi';
 import { anomalySlaBreached } from 'modules/fuel/api/workflow';
-import { useClampPage, useServerPage } from 'modules/fuel/components/useServerPage';
+import { useClampPage, useRegisterPaging } from 'modules/fuel/components/useRegisterPaging';
 import { formatDueIn } from 'modules/fuel/components/fuelFormat';
+import { CellStack, ErrorBanner, FuelBadge, Panel, RegisterTable } from 'modules/fuel/components/fuelUi';
+import { EnumField } from 'modules/fuel/components/fuelFields';
+import { metricLink } from 'modules/fuel/components/metricLink';
 import { humanise } from 'modules/fleet/api/enums';
-import Button from 'shared/components/Button';
-import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar from 'shared/components/FilterBar';
-import Icon from 'shared/components/Icon';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatCard from 'shared/components/StatCard';
-import StatusChip from 'shared/components/StatusChip';
-import { SelectInput, TextInput } from 'shared/components/fields';
 import { formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fuelPaths } from 'shared/layout/navigation';
@@ -35,20 +41,8 @@ const QUEUE_VIEWS = [
   { value: 'BREACHED', label: 'Breaching SLA' },
   { value: 'MATERIAL', label: 'Material only' },
   { value: 'UNASSIGNED', label: 'Unassigned' },
+  { value: 'ALL', label: 'Every case' },
 ];
-
-/**
- * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
- * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
- * option already active clears it, same as the dropdown it replaces; toggling a different one while
- * one is active swaps to the new choice instead of appearing to hold both.
- */
-const pickSingle = <T extends string>(current: T | '', next: string[]): T | '' => {
-  if (next.length === 0) {
-    return '';
-  }
-  return (next.find((value) => value !== current) ?? next[0]) as T;
-};
 
 /**
  * The fuel anomaly queue.
@@ -73,7 +67,6 @@ const FuelAnomaliesPage = () => {
   const [view, setView] = useState('OPEN');
   const [type, setType] = useState<AnomalyType | ''>('');
   const [severity, setSeverity] = useState<AnomalySeverity | ''>('');
-  const [assignee, setAssignee] = useState('');
 
   /** The four views, expressed as the query parameters the service accepts. */
   const viewParams = useMemo(() => {
@@ -86,13 +79,15 @@ const FuelAnomaliesPage = () => {
         return { openOnly: true, material: true };
       case 'UNASSIGNED':
         return { openOnly: true, unassigned: true };
+      case 'ALL':
+        return {};
       default:
         return {};
     }
   }, [view]);
 
-  const filterKey = `${siteCode}|${status}|${view}|${type}|${severity}|${assignee}`;
-  const paging = useServerPage(filterKey);
+  const filterKey = `${siteCode}|${status}|${view}|${type}|${severity}`;
+  const paging = useRegisterPaging('fuel-anomalies', filterKey);
 
   const query = useApiQuery(
     (signal) =>
@@ -102,14 +97,14 @@ const FuelAnomaliesPage = () => {
           status: status || undefined,
           type: type || undefined,
           severity: severity || undefined,
-          assignee: assignee.trim() || undefined,
+          assignee: paging.search || undefined,
           ...viewParams,
           page: paging.page,
           size: paging.size,
         },
         signal,
       ),
-    [filterKey, paging.page, paging.size],
+    [filterKey, paging.search, paging.page, paging.size],
   );
 
   useClampPage(paging.page, query.data?.totalPages, paging.setPage);
@@ -120,13 +115,13 @@ const FuelAnomaliesPage = () => {
     [siteCode],
   );
 
-  const columns = useMemo<Column<FuelAnomalyCase>[]>(
+  const columns = useMemo<TableColumn<FuelAnomalyCase>[]>(
     () => [
       {
-        key: 'case',
+        id: 'case',
         header: 'Case',
-        width: 260,
-        cell: (row) => (
+        minWidth: 240,
+        cell: ({ row }) => (
           <CellStack
             primary={`${row.anomalyNumber} · ${humanise(row.type)}`}
             secondary={row.detectedRules.map((rule) => humanise(rule)).join(', ') || 'no rule recorded'}
@@ -134,197 +129,192 @@ const FuelAnomaliesPage = () => {
         ),
       },
       {
-        key: 'sla',
+        id: 'sla',
         header: 'SLA',
         width: 150,
-        cell: (row) => (
-          <span
-            className={
-              anomalySlaBreached(row) ? 'font-semibold text-error-800' : 'text-gray-700'
-            }
-          >
+        cell: ({ row }) => (
+          <span className={anomalySlaBreached(row) ? 'font-semibold text-(--clet-error-text)' : undefined}>
             {anomalySlaBreached(row) && (
-              <Icon name="clock" size={13} className="mr-1 inline align-[-2px]" />
+              <Clock size={13} aria-hidden className="mr-1 inline align-[-2px]" />
             )}
             {formatDueIn(row.slaDueAt)}
           </span>
         ),
       },
       {
-        key: 'assignee',
+        id: 'assignee',
         header: 'Assignee',
         width: 150,
-        hideBelowLg: true,
-        cell: (row) => row.assignee ?? <span className="text-gray-500">Unassigned</span>,
+        cell: ({ row }) =>
+          row.assignee ?? <span className="text-(--clet-text-secondary)">Unassigned</span>,
       },
       {
-        key: 'severity',
+        id: 'severity',
         header: 'Severity',
         width: 110,
-        cell: (row) => <StatusChip value={row.severity} />,
+        cell: ({ row }) => <FuelBadge value={row.severity} />,
       },
       {
-        key: 'material',
+        id: 'material',
         header: 'Material',
         width: 100,
         align: 'center',
-        hideBelowLg: true,
-        cell: (row) =>
+        cell: ({ row }) =>
           row.material ? (
-            <StatusChip value="HIGH" label="Material" tone="caution" />
+            <FuelBadge value="HIGH" label="Material" tone="caution" />
           ) : (
-            <span className="text-gray-500">-</span>
+            <span className="text-(--clet-text-secondary)">-</span>
           ),
       },
       {
-        key: 'escalation',
+        id: 'escalation',
         header: 'Level',
         width: 80,
         align: 'right',
-        hideBelowLg: true,
-        cell: (row) => row.escalationLevel,
+        cell: ({ row }) => row.escalationLevel,
       },
       {
-        key: 'status',
+        id: 'status',
         header: 'Status',
         width: 160,
         align: 'right',
-        cell: (row) => <StatusChip value={row.status} />,
+        cell: ({ row }) => <FuelBadge value={row.status} />,
       },
     ],
     [],
   );
 
-  const filtersApplied = Boolean(status || type || severity || assignee || view !== 'OPEN');
+  const filtersApplied = Boolean(status || type || severity || paging.search);
 
   return (
-    <div>
-      <PageHeader
-        title="Fuel anomaly cases"
-        subtitle="The exception queue: assign, explain, decide and close."
-        crumbs={[{ label: 'Fuel', to: fuelPaths.dashboard }, { label: 'Anomaly cases' }]}
-        actions={
-          <Button
-            variant="outline"
-            startIcon="refresh"
-            onClick={() => {
-              query.refetch();
-              indicators.refetch();
-            }}
-          >
-            Refresh
-          </Button>
-        }
-      />
+    <>
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Fuel anomaly cases</SectionTitle>
+          <SectionActions>
+            <SiteSelect value={siteCode} onChange={setSiteCode} required />
+            <Button
+              variant="outline"
+              onClick={() => {
+                query.refetch();
+                indicators.refetch();
+              }}
+            >
+              <RefreshCw size={14} strokeWidth={1.5} aria-hidden />
+              Refresh
+            </Button>
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Open cases"
-          value={formatNumber(indicators.data?.openAnomalies ?? 0)}
-          icon="alert-triangle"
-          tone={(indicators.data?.openAnomalies ?? 0) > 0 ? 'caution' : 'neutral'}
-          caption="Neither closed nor cancelled"
-          onClick={() => setView('OPEN')}
-        />
-        <StatCard
-          label="Breaching SLA"
-          value={formatNumber(indicators.data?.anomaliesBreachingSla ?? 0)}
-          icon="clock"
-          tone={(indicators.data?.anomaliesBreachingSla ?? 0) > 0 ? 'critical' : 'neutral'}
-          caption="Past the policy’s target"
-          onClick={() => setView('BREACHED')}
-        />
-        <StatCard
-          label="Material"
-          value={formatNumber(indicators.data?.materialOpenAnomalies ?? 0)}
-          icon="coins"
-          tone={(indicators.data?.materialOpenAnomalies ?? 0) > 0 ? 'critical' : 'neutral'}
-          caption="Surfaced to finance and audit"
-          onClick={() => setView('MATERIAL')}
-        />
-        <StatCard
-          label="Unassigned"
-          value={formatNumber(indicators.data?.unassignedAnomalies ?? 0)}
-          icon="user-plus"
-          tone={(indicators.data?.unassignedAnomalies ?? 0) > 0 ? 'caution' : 'neutral'}
-          caption="Nobody is accountable yet"
-          onClick={() => setView('UNASSIGNED')}
-        />
-      </div>
+      <PageSection>
+        <MetricCards>
+          <MetricCard
+            variant="soft"
+            loading={indicators.initialising}
+            label="Open cases"
+            value={formatNumber(indicators.data?.openAnomalies ?? 0)}
+            description="Neither closed nor cancelled"
+            {...metricLink(() => setView('OPEN'))}
+          />
+          <MetricCard
+            variant="soft"
+            loading={indicators.initialising}
+            label="Breaching SLA"
+            value={formatNumber(indicators.data?.anomaliesBreachingSla ?? 0)}
+            description="Past the policy’s target"
+            {...metricLink(() => setView('BREACHED'))}
+          />
+          <MetricCard
+            variant="soft"
+            loading={indicators.initialising}
+            label="Material"
+            value={formatNumber(indicators.data?.materialOpenAnomalies ?? 0)}
+            description="Surfaced to finance and audit"
+            {...metricLink(() => setView('MATERIAL'))}
+          />
+          <MetricCard
+            variant="soft"
+            loading={indicators.initialising}
+            label="Unassigned"
+            value={formatNumber(indicators.data?.unassignedAnomalies ?? 0)}
+            description="Nobody is accountable yet"
+            {...metricLink(() => setView('UNASSIGNED'))}
+          />
+        </MetricCards>
+      </PageSection>
 
-      <SectionCard flush>
-        <FilterBar
-          onReset={() => {
-            setStatus('');
-            setView('OPEN');
-            setType('');
-            setSeverity('');
-            setAssignee('');
-          }}
-          resetDisabled={!filtersApplied}
+      <PageSection>
+        <Panel
+          title="Anomaly cases"
+          description="A case closes only with an explanation and a recorded decision, oldest SLA first."
         >
-          <SiteSelect value={siteCode} onChange={setSiteCode} required />
-          <FacetFilter
-            label="Status"
-            selected={status ? [status] : []}
-            onChange={(next) => setStatus(pickSingle(status, next))}
-            options={ANOMALY_STATUSES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <SelectInput
-            label="View"
-            value={view}
-            onChange={setView}
-            options={QUEUE_VIEWS}
-            allowEmpty
-            emptyLabel="Every case"
-          />
-          <FacetFilter
-            label="Type"
-            selected={type ? [type] : []}
-            onChange={(next) => setType(pickSingle(type, next))}
-            options={ANOMALY_TYPES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <FacetFilter
-            label="Severity"
-            selected={severity ? [severity] : []}
-            onChange={(next) => setSeverity(pickSingle(severity, next))}
-            options={ANOMALY_SEVERITIES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <TextInput
-            label="Assignee"
-            value={assignee}
-            onChange={setAssignee}
-            placeholder="Part of a name"
-          />
-        </FilterBar>
-      </SectionCard>
+          <Tabs variant="pill" value={view || 'ALL'} onValueChange={setView}>
+            <TabsList>
+              {QUEUE_VIEWS.map((entry) => (
+                <TabsTrigger key={entry.value} value={entry.value}>
+                  {entry.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
 
-      <div className="mt-5">
-        <SectionCard flush>
-          <DataState
-            loading={query.initialising}
-            error={query.error}
-            onRetry={query.refetch}
-            minHeight={300}
-          >
-            <DataTable
-              rows={query.data?.content ?? []}
-              columns={columns}
-              getRowId={(row) => row.id}
-              loading={query.loading}
-              onRowClick={(row) => navigate(fuelPaths.anomalyDetail(row.id))}
-              caption="Fuel anomaly cases matching the current filters, ordered by SLA due time, with assignee, severity, materiality, escalation level and status."
-              emptyMessage="No case matches these filters."
-              page={query.data?.page ?? paging.page}
-              pageSize={query.data?.size ?? paging.size}
-              totalElements={query.data?.totalElements ?? 0}
-              onPageChange={paging.setPage}
-              onPageSizeChange={paging.setSize}
-            />
-          </DataState>
-        </SectionCard>
-      </div>
-    </div>
+          {query.error && <ErrorBanner error={query.error} onRetry={query.refetch} className="mt-4" />}
+
+          <RegisterTable
+            paramPrefix="fuel-anomalies"
+            columns={columns}
+            rows={query.data?.content ?? []}
+            rowKey={(row) => row.id}
+            loading={query.loading}
+            onRowClick={(row) => navigate(fuelPaths.anomalyDetail(row.id))}
+            empty={{
+              title: 'None open',
+              description: 'Cases raised by reconciliation and by the overnight sweep appear here.',
+              filteredTitle: 'No case matches these filters',
+            }}
+            filtersApplied={filtersApplied}
+            totalPages={query.data?.totalPages ?? 0}
+            totalItems={query.data?.totalElements ?? 0}
+            pageSize={paging.size}
+            searchPlaceholder="Search by assignee"
+            onResetFilters={() => {
+              setStatus('');
+              setType('');
+              setSeverity('');
+            }}
+            filters={
+              <>
+                <EnumField
+                  label="Status"
+                  value={status}
+                  options={ANOMALY_STATUSES}
+                  onChange={setStatus}
+                  allowEmpty
+                  emptyLabel="Any status"
+                />
+                <EnumField
+                  label="Type"
+                  value={type}
+                  options={ANOMALY_TYPES}
+                  onChange={setType}
+                  allowEmpty
+                  emptyLabel="Any type"
+                />
+                <EnumField
+                  label="Severity"
+                  value={severity}
+                  options={ANOMALY_SEVERITIES}
+                  onChange={setSeverity}
+                  allowEmpty
+                  emptyLabel="Any severity"
+                />
+              </>
+            }
+          />
+        </Panel>
+      </PageSection>
+    </>
   );
 };
 

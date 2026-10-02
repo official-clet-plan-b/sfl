@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import FormDialog from 'shared/components/FormDialog';
-import { SelectInput, TextAreaInput } from 'shared/components/fields';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import type { ReadinessBlocker, Space } from '../api/dto';
 import type { LocationReadinessStatus } from '../api/enums';
 import { setReadinessAction } from '../api/workflow';
 import { humaniseCode } from '../components/facilitiesFormat';
+import { FormDialog, SelectInput, TextAreaInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface SetReadinessDialogProps {
   space: Space;

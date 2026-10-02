@@ -1,65 +1,87 @@
-import { useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router";
+import {
+  Button,
+  EmptyState,
+  PageSection,
+  Table,
+  TableContent,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  type TableColumn,
+} from "@rfdtech/components";
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle2,
+  ChevronRight,
+  Lock,
+  Plus,
+  RefreshCw,
+  Route,
+  ShieldAlert,
+  Truck,
+} from "lucide-react";
 import {
   CustodyHandover,
   DispatchExceptionCase,
   DispatchManifestItem,
   DispatchReceipt,
   ReturnReconciliation,
-} from 'modules/dispatch/api/dto';
-import { CUSTODY_HOPS, HOP_DESCRIPTIONS } from 'modules/dispatch/api/enums';
+} from "modules/dispatch/api/dto";
+import { CUSTODY_HOPS, HOP_DESCRIPTIONS } from "modules/dispatch/api/enums";
 import {
   custodyApi,
   dispatchExceptionsApi,
   manifestsApi,
   receiptsApi,
   returnsApi,
-} from 'modules/dispatch/api/dispatchApi';
+} from "modules/dispatch/api/dispatchApi";
 import {
   exceptionOpen,
   manifestActionAllowed,
   manifestClosureBlockers,
   manifestReceivable,
   manifestReturnReconcilable,
-} from 'modules/dispatch/api/workflow';
+} from "modules/dispatch/api/workflow";
 import {
   AddManifestItemDialog,
   AssignTripDialog,
   CloseManifestDialog,
   SealManifestDialog,
-} from 'modules/dispatch/dialogs/manifestDialogs';
+} from "modules/dispatch/dialogs/manifestDialogs";
 import {
   ConfirmReceiptDialog,
   ReconcileReturnDialog,
   RecordHandoverDialog,
-} from 'modules/dispatch/dialogs/custodyDialogs';
-import { shortId, siteOf } from 'modules/fuel/components/fuelFormat';
-import { humanise } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
-import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import Icon from 'shared/components/Icon';
-import KeyValueGrid from 'shared/components/KeyValueGrid';
-import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatusChip from 'shared/components/StatusChip';
-import Tabs from 'shared/components/Tabs';
-import { formatDateTime, formatNumber } from 'shared/components/format';
-import { useApiQuery } from 'shared/hooks/useApiQuery';
-import { fleetPaths } from 'shared/layout/navigation';
-import { dispatchPaths } from 'shared/layout/navigation';
-import { canCreateManifests } from 'modules/fleet/api/access';
+} from "modules/dispatch/dialogs/custodyDialogs";
+import { shortId, siteOf } from "modules/fuel/components/fuelFormat";
+import { humanise } from "modules/fleet/api/enums";
+import CellStack from "modules/dispatch/components/CellStack";
+import { Callout } from "modules/dispatch/components/formKit";
+import PageHeading from "modules/dispatch/components/PageHeading";
+import Panel from "modules/dispatch/components/Panel";
+import StatusBadge from "modules/dispatch/components/StatusBadge";
+import DataState from "shared/components/DataState";
+import KeyValueGrid from "shared/components/KeyValueGrid";
+import { useNotifier } from "shared/components/Notifier";
+import { ApiQueryState } from "shared/hooks/useApiQuery";
+import { formatDateTime, formatNumber } from "shared/components/format";
+import { useApiQuery } from "shared/hooks/useApiQuery";
+import { fleetPaths } from "shared/layout/navigation";
+import { dispatchPaths } from "shared/layout/navigation";
+import { canCreateManifests } from "modules/fleet/api/access";
 
 type DialogKey =
-  | 'addItem'
-  | 'seal'
-  | 'assignTrip'
-  | 'close'
-  | 'handover'
-  | 'receipt'
-  | 'return'
+  | "addItem"
+  | "seal"
+  | "assignTrip"
+  | "close"
+  | "handover"
+  | "receipt"
+  | "return"
   | null;
 
 /**
@@ -71,24 +93,39 @@ type DialogKey =
  * tabs, and this page can state them all in one place before offering the action.
  */
 const ManifestDetailPage = () => {
-  const { manifestId = '' } = useParams();
+  const { manifestId = "" } = useParams();
   const navigate = useNavigate();
   const { notifySuccess, notifyError } = useNotifier();
   const [dialog, setDialog] = useState<DialogKey>(null);
   const [working, setWorking] = useState<string | null>(null);
-  const [tab, setTab] = useState('items');
+  const [tab, setTab] = useState("items");
 
   const manifest = useApiQuery(
     (signal) => manifestsApi.findById(manifestId, signal),
     [manifestId],
   );
-  const items = useApiQuery((signal) => manifestsApi.items(manifestId, signal), [manifestId]);
-  const handovers = useApiQuery((signal) => custodyApi.handovers(manifestId, signal), [manifestId]);
-  const gaps = useApiQuery((signal) => custodyApi.gaps(manifestId, signal), [manifestId]);
-  const receipts = useApiQuery((signal) => receiptsApi.list(manifestId, signal), [manifestId]);
-  const returns = useApiQuery((signal) => returnsApi.list(manifestId, signal), [manifestId]);
+  const items = useApiQuery(
+    (signal) => manifestsApi.items(manifestId, signal),
+    [manifestId],
+  );
+  const handovers = useApiQuery(
+    (signal) => custodyApi.handovers(manifestId, signal),
+    [manifestId],
+  );
+  const gaps = useApiQuery(
+    (signal) => custodyApi.gaps(manifestId, signal),
+    [manifestId],
+  );
+  const receipts = useApiQuery(
+    (signal) => receiptsApi.list(manifestId, signal),
+    [manifestId],
+  );
+  const returns = useApiQuery(
+    (signal) => returnsApi.list(manifestId, signal),
+    [manifestId],
+  );
 
-  const site = manifest.data ? siteOf(manifest.data.siteCode) : '';
+  const site = manifest.data ? siteOf(manifest.data.siteCode) : "";
 
   /**
    * Exception cases against this consignment.
@@ -107,13 +144,22 @@ const ManifestDetailPage = () => {
   const exceptions = useApiQuery(
     (signal) =>
       site
-        ? dispatchExceptionsApi.search({ siteCode: site, dispatchId: manifestId, size: 100 }, signal)
+        ? dispatchExceptionsApi.search(
+            { siteCode: site, dispatchId: manifestId, size: 100 },
+            signal,
+          )
         : Promise.resolve(undefined),
     [site, manifestId],
   );
 
-  const relatedCases = useMemo(() => exceptions.data?.content ?? [], [exceptions.data]);
-  const openCases = useMemo(() => relatedCases.filter(exceptionOpen), [relatedCases]);
+  const relatedCases = useMemo(
+    () => exceptions.data?.content ?? [],
+    [exceptions.data],
+  );
+  const openCases = useMemo(
+    () => relatedCases.filter(exceptionOpen),
+    [relatedCases],
+  );
 
   const closureBlockers = manifestClosureBlockers(gaps.data, openCases.length);
 
@@ -127,15 +173,15 @@ const ManifestDetailPage = () => {
     exceptions.refetch();
   };
 
-  const advance = async (action: 'dispatch' | 'inTransit') => {
+  const advance = async (action: "dispatch" | "inTransit") => {
     setWorking(action);
     try {
-      if (action === 'dispatch') {
+      if (action === "dispatch") {
         await manifestsApi.dispatch(manifestId);
-        notifySuccess('Manifest dispatched.');
+        notifySuccess("Manifest dispatched.");
       } else {
         await manifestsApi.inTransit(manifestId);
-        notifySuccess('Manifest marked in transit.');
+        notifySuccess("Manifest marked in transit.");
       }
       refreshAll();
     } catch (error) {
@@ -147,54 +193,63 @@ const ManifestDetailPage = () => {
 
   const record = manifest.data;
 
-  const itemColumns = useMemo<Column<DispatchManifestItem>[]>(
+  const itemColumns = useMemo<TableColumn<DispatchManifestItem>[]>(
     () => [
       {
-        key: 'line',
-        header: 'Line',
+        id: "line",
+        header: "Line",
         width: 80,
-        cell: (row) => <span className="font-semibold text-gray-900">{row.sequenceNo}</span>,
-      },
-      {
-        key: 'item',
-        header: 'Courier item',
-        width: 220,
-        cell: (row) => (
-          <CellStack primary={shortId(row.courierItemId)} secondary={row.expectedSealId ?? 'no seal expected'} />
+        cell: ({ row }) => (
+          <span className="font-semibold text-foreground">
+            {row.sequenceNo}
+          </span>
         ),
       },
       {
-        key: 'quantity',
-        header: 'Expected',
-        width: 110,
-        align: 'right',
-        cell: (row) => formatNumber(row.expectedQuantity),
+        id: "item",
+        header: "Courier item",
+        width: 220,
+        cell: ({ row }) => (
+          <CellStack
+            primary={shortId(row.courierItemId)}
+            secondary={row.expectedSealId ?? "no seal expected"}
+          />
+        ),
       },
       {
-        key: 'returned',
-        header: 'Return',
+        id: "quantity",
+        header: "Expected",
+        width: 110,
+        align: "right",
+        cell: ({ row }) => formatNumber(row.expectedQuantity),
+      },
+      {
+        id: "returned",
+        header: "Return",
         width: 200,
-        align: 'right',
-        cell: (row) => (
+        align: "right",
+        cell: ({ row }) => (
           <div className="flex items-center justify-end gap-1.5">
-            {row.returnSealState && <StatusChip value={row.returnSealState} />}
-            <StatusChip value={row.returnStatus} />
+            {row.returnSealState && <StatusBadge value={row.returnSealState} />}
+            <StatusBadge value={row.returnStatus} />
           </div>
         ),
       },
       {
-        key: 'open',
-        header: '',
+        id: "open",
+        header: "",
         width: 100,
-        align: 'right',
-        cell: (row) => (
+        align: "right",
+        cell: ({ row }) => (
           <Button
             size="sm"
             variant="ghost"
-            endIcon="chevron-right"
-            onClick={() => navigate(dispatchPaths.itemDetail(row.courierItemId))}
+            onClick={() =>
+              navigate(dispatchPaths.itemDetail(row.courierItemId))
+            }
           >
             Open
+            <ChevronRight size={14} strokeWidth={1.5} aria-hidden="true" />
           </Button>
         ),
       },
@@ -202,21 +257,24 @@ const ManifestDetailPage = () => {
     [navigate],
   );
 
-  const handoverColumns = useMemo<Column<CustodyHandover>[]>(
+  const handoverColumns = useMemo<TableColumn<CustodyHandover>[]>(
     () => [
       {
-        key: 'hop',
-        header: 'Hop',
+        id: "hop",
+        header: "Hop",
         width: 200,
-        cell: (row) => (
-          <CellStack primary={humanise(row.hop)} secondary={`#${row.sequenceNo}`} />
+        cell: ({ row }) => (
+          <CellStack
+            primary={humanise(row.hop)}
+            secondary={`#${row.sequenceNo}`}
+          />
         ),
       },
       {
-        key: 'custodians',
-        header: 'Handover',
+        id: "custodians",
+        header: "Handover",
         width: 260,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack
             primary={`${row.transferringCustodian} → ${row.receivingCustodian}`}
             secondary={formatDateTime(row.occurredAt)}
@@ -224,241 +282,273 @@ const ManifestDetailPage = () => {
         ),
       },
       {
-        key: 'seal',
-        header: 'Seal',
+        id: "seal",
+        header: "Seal",
         width: 110,
-        cell: (row) => <StatusChip value={row.sealState} />,
+        cell: ({ row }) => <StatusBadge value={row.sealState} />,
       },
       {
-        key: 'count',
-        header: 'Verified',
+        id: "count",
+        header: "Verified",
         width: 100,
-        align: 'right',
-        cell: (row) =>
+        align: "right",
+        cell: ({ row }) =>
           row.verifiedCount === null ? (
-            <span className="text-gray-500">not counted</span>
+            <span className="text-muted-foreground">not counted</span>
           ) : (
             formatNumber(row.verifiedCount)
           ),
       },
       {
-        key: 'evidence',
-        header: 'Evidence',
+        id: "evidence",
+        header: "Evidence",
         width: 100,
-        align: 'center',
-        hideBelowLg: true,
-        cell: (row) =>
+        align: "center",
+        cell: ({ row }) =>
           row.evidenceId ? (
-            <StatusChip value="ACTIVE" label="Held" tone="ready" />
+            <StatusBadge value="ACTIVE" label="Held" tone="ready" />
           ) : (
-            <span className="text-gray-500">-</span>
+            <span className="text-muted-foreground">-</span>
           ),
       },
       {
-        key: 'notes',
-        header: 'Notes',
+        id: "notes",
+        header: "Notes",
         width: 220,
-        hideBelowLg: true,
-        cell: (row) => row.notes ?? <span className="text-gray-500">-</span>,
+        cell: ({ row }) =>
+          row.notes ?? <span className="text-muted-foreground">-</span>,
       },
     ],
     [],
   );
 
-  const receiptColumns = useMemo<Column<DispatchReceipt>[]>(
+  const receiptColumns = useMemo<TableColumn<DispatchReceipt>[]>(
     () => [
       {
-        key: 'outcome',
-        header: 'Outcome',
+        id: "outcome",
+        header: "Outcome",
         width: 180,
-        cell: (row) => (
+        cell: ({ row }) => (
           <div className="flex items-center gap-1.5">
-            <StatusChip value={row.outcome} />
-            {row.varianceType && <StatusChip value={row.varianceType} tone="blocked" />}
+            <StatusBadge value={row.outcome} />
+            {row.varianceType && (
+              <StatusBadge value={row.varianceType} tone="blocked" />
+            )}
           </div>
         ),
       },
       {
-        key: 'counts',
-        header: 'Counts',
+        id: "counts",
+        header: "Counts",
         width: 160,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack
             primary={`${row.verifiedCount} verified`}
-            secondary={row.expectedCount === null ? 'no expectation set' : `${row.expectedCount} expected`}
-          />
-        ),
-      },
-      {
-        key: 'seal',
-        header: 'Seal',
-        width: 150,
-        cell: (row) => (
-          <div className="flex items-center gap-1.5">
-            <StatusChip value={row.sealState} />
-            {!row.sealVerified && <StatusChip value="WARNING" label="Unverified" tone="caution" />}
-          </div>
-        ),
-      },
-      {
-        key: 'recipient',
-        header: 'Received by',
-        width: 180,
-        cell: (row) => (
-          <CellStack primary={row.recipientName} secondary={formatDateTime(row.capturedAt)} />
-        ),
-      },
-      {
-        key: 'capture',
-        header: 'Capture',
-        width: 120,
-        align: 'right',
-        hideBelowLg: true,
-        cell: (row) =>
-          row.edgeCaptured ? (
-            <StatusChip value="OFFLINE" label="Edge" tone="accent" />
-          ) : (
-            <span className="text-gray-500">Online</span>
-          ),
-      },
-    ],
-    [],
-  );
-
-  const returnColumns = useMemo<Column<ReturnReconciliation>[]>(
-    () => [
-      {
-        key: 'outcome',
-        header: 'Outcome',
-        width: 140,
-        cell: (row) => <StatusChip value={row.outcome} />,
-      },
-      {
-        key: 'counts',
-        header: 'Counts',
-        width: 200,
-        cell: (row) => (
-          <CellStack
-            primary={`${row.returnedCount} returned of ${row.expectedCount ?? '-'}`}
             secondary={
-              row.shortfall > 0
-                ? `${row.shortfall} short`
-                : row.extras > 0
-                  ? `${row.extras} more than expected`
-                  : 'counts agree'
+              row.expectedCount === null
+                ? "no expectation set"
+                : `${row.expectedCount} expected`
             }
           />
         ),
       },
       {
-        key: 'seals',
-        header: 'Broken seals',
-        width: 130,
-        align: 'right',
-        cell: (row) =>
-          row.brokenSeals > 0 ? (
-            <span className="font-semibold text-error-800">{row.brokenSeals}</span>
-          ) : (
-            <span className="text-gray-500">0</span>
-          ),
-      },
-      {
-        key: 'by',
-        header: 'Reconciled',
-        width: 200,
-        cell: (row) => (
-          <CellStack primary={row.reconciledBy} secondary={formatDateTime(row.reconciledAt)} />
+        id: "seal",
+        header: "Seal",
+        width: 150,
+        cell: ({ row }) => (
+          <div className="flex items-center gap-1.5">
+            <StatusBadge value={row.sealState} />
+            {!row.sealVerified && (
+              <StatusBadge value="WARNING" label="Unverified" tone="caution" />
+            )}
+          </div>
         ),
       },
       {
-        key: 'notes',
-        header: 'Notes',
-        width: 220,
-        hideBelowLg: true,
-        cell: (row) => row.notes ?? <span className="text-gray-500">-</span>,
-      },
-    ],
-    [],
-  );
-
-  const caseColumns = useMemo<Column<DispatchExceptionCase>[]>(
-    () => [
-      {
-        key: 'case',
-        header: 'Case',
-        width: 260,
-        cell: (row) => (
+        id: "recipient",
+        header: "Received by",
+        width: 180,
+        cell: ({ row }) => (
           <CellStack
-            primary={`${row.exceptionNumber} · ${humanise(row.type)}`}
-            secondary={row.detectedRules.map((rule) => humanise(rule)).join(', ') || 'no rule recorded'}
+            primary={row.recipientName}
+            secondary={formatDateTime(row.capturedAt)}
           />
         ),
       },
       {
-        key: 'severity',
-        header: 'Severity',
-        width: 110,
-        cell: (row) => <StatusChip value={row.severity} />,
-      },
-      {
-        key: 'assignee',
-        header: 'Assignee',
-        width: 150,
-        hideBelowLg: true,
-        cell: (row) => row.assignee ?? <span className="text-gray-500">Unassigned</span>,
-      },
-      {
-        key: 'status',
-        header: 'Status',
-        width: 160,
-        align: 'right',
-        cell: (row) => <StatusChip value={row.status} />,
+        id: "capture",
+        header: "Capture",
+        width: 120,
+        align: "right",
+        cell: ({ row }) =>
+          row.edgeCaptured ? (
+            <StatusBadge value="OFFLINE" label="Edge" tone="accent" />
+          ) : (
+            <span className="text-muted-foreground">Online</span>
+          ),
       },
     ],
     [],
   );
 
+  const returnColumns = useMemo<TableColumn<ReturnReconciliation>[]>(
+    () => [
+      {
+        id: "outcome",
+        header: "Outcome",
+        width: 140,
+        cell: ({ row }) => <StatusBadge value={row.outcome} />,
+      },
+      {
+        id: "counts",
+        header: "Counts",
+        width: 200,
+        cell: ({ row }) => (
+          <CellStack
+            primary={`${row.returnedCount} returned of ${row.expectedCount ?? "-"}`}
+            secondary={
+              row.shortfall > 0
+                ? `${row.shortfall} short`
+                : row.extras > 0
+                  ? `${row.extras} more than expected`
+                  : "counts agree"
+            }
+          />
+        ),
+      },
+      {
+        id: "seals",
+        header: "Broken seals",
+        width: 130,
+        align: "right",
+        cell: ({ row }) =>
+          row.brokenSeals > 0 ? (
+            <span className="font-semibold text-error">{row.brokenSeals}</span>
+          ) : (
+            <span className="text-muted-foreground">0</span>
+          ),
+      },
+      {
+        id: "by",
+        header: "Reconciled",
+        width: 200,
+        cell: ({ row }) => (
+          <CellStack
+            primary={row.reconciledBy}
+            secondary={formatDateTime(row.reconciledAt)}
+          />
+        ),
+      },
+      {
+        id: "notes",
+        header: "Notes",
+        width: 220,
+        cell: ({ row }) =>
+          row.notes ?? <span className="text-muted-foreground">-</span>,
+      },
+    ],
+    [],
+  );
+
+  const caseColumns = useMemo<TableColumn<DispatchExceptionCase>[]>(
+    () => [
+      {
+        id: "case",
+        header: "Case",
+        width: 260,
+        cell: ({ row }) => (
+          <button
+            type="button"
+            className="text-left"
+            onClick={(event) => {
+              event.stopPropagation();
+              navigate(dispatchPaths.exceptionDetail(row.id));
+            }}
+          >
+            <CellStack
+              primary={`${row.exceptionNumber} · ${humanise(row.type)}`}
+              secondary={
+                row.detectedRules.map((rule) => humanise(rule)).join(", ") ||
+                "no rule recorded"
+              }
+            />
+          </button>
+        ),
+      },
+      {
+        id: "severity",
+        header: "Severity",
+        width: 110,
+        cell: ({ row }) => <StatusBadge value={row.severity} />,
+      },
+      {
+        id: "assignee",
+        header: "Assignee",
+        width: 150,
+        cell: ({ row }) =>
+          row.assignee ?? (
+            <span className="text-muted-foreground">Unassigned</span>
+          ),
+      },
+      {
+        id: "status",
+        header: "Status",
+        width: 160,
+        align: "right",
+        cell: ({ row }) => <StatusBadge value={row.status} />,
+      },
+    ],
+    [navigate],
+  );
+
   return (
-    <div>
-      <PageHeader
-        title={record?.manifestNumber ?? 'Manifest'}
-        subtitle={record ? `${record.route} · ${record.assignedHandler}` : undefined}
+    <>
+      <PageHeading
+        title={record?.manifestNumber ?? "Manifest"}
+        subtitle={
+          record ? `${record.route} · ${record.assignedHandler}` : undefined
+        }
         crumbs={[
-          { label: 'Dispatch', to: dispatchPaths.dashboard },
-          { label: 'Manifests', to: dispatchPaths.manifests },
-          { label: record?.manifestNumber ?? '…' },
+          { label: "Dispatch", to: dispatchPaths.dashboard },
+          { label: "Manifests", to: dispatchPaths.manifests },
+          { label: record?.manifestNumber ?? "…" },
         ]}
         actions={
           <Button
             variant="outline"
-            startIcon="arrow-left"
             onClick={() => navigate(dispatchPaths.manifests)}
           >
+            <ArrowLeft size={14} strokeWidth={1.5} aria-hidden="true" />
             Register
           </Button>
         }
         meta={
           record && (
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusChip value={record.status} />
-              <StatusChip
+            <>
+              <StatusBadge value={record.status} />
+              <StatusBadge
                 value="NEUTRAL"
-                label={`${record.itemCount} item${record.itemCount === 1 ? '' : 's'}`}
+                label={`${record.itemCount} item${record.itemCount === 1 ? "" : "s"}`}
                 tone="neutral"
               />
-              <StatusChip
+              <StatusBadge
                 value="NEUTRAL"
-                label={`${record.sealIds.length} seal${record.sealIds.length === 1 ? '' : 's'}`}
-                tone={record.status !== 'DRAFT' && record.sealIds.length === 0 ? 'caution' : 'neutral'}
+                label={`${record.sealIds.length} seal${record.sealIds.length === 1 ? "" : "s"}`}
+                tone={
+                  record.status !== "DRAFT" && record.sealIds.length === 0
+                    ? "caution"
+                    : "neutral"
+                }
               />
               {openCases.length > 0 && (
-                <StatusChip
+                <StatusBadge
                   value="BLOCKED"
-                  label={`${openCases.length} open case${openCases.length === 1 ? '' : 's'}`}
+                  label={`${openCases.length} open case${openCases.length === 1 ? "" : "s"}`}
                   tone="blocked"
                 />
               )}
-            </div>
+            </>
           )
         }
       />
@@ -470,135 +560,194 @@ const ManifestDetailPage = () => {
         minHeight={300}
       >
         {record && (
-          <div className="space-y-5">
-            {record.status === 'DRAFT' && (
-              <Alert variant="info" title="This manifest is still a draft">
-                Items can be added and removed now. Sealing freezes the contents and cannot be undone.
-              </Alert>
-            )}
-            {record.status === 'CLOSED' && (
-              <Alert variant="success" title="This manifest is closed">
-                {record.closureReason ?? 'No closure reason was recorded.'}
-              </Alert>
-            )}
-            {record.status === 'EXCEPTION' && (
-              <Alert variant="error" title="This manifest is in exception">
-                Resolve the open cases below before it can continue.
-              </Alert>
+          <>
+            {(record.status === "DRAFT" ||
+              record.status === "CLOSED" ||
+              record.status === "EXCEPTION") && (
+              <PageSection>
+                {record.status === "DRAFT" && (
+                  <Callout tone="info" title="This manifest is still a draft">
+                    Items can be added and removed now. Sealing freezes the
+                    contents and cannot be undone.
+                  </Callout>
+                )}
+                {record.status === "CLOSED" && (
+                  <Callout tone="success" title="This manifest is closed">
+                    {record.closureReason ?? "No closure reason was recorded."}
+                  </Callout>
+                )}
+                {record.status === "EXCEPTION" && (
+                  <Callout tone="danger" title="This manifest is in exception">
+                    Resolve the open cases below before it can continue.
+                  </Callout>
+                )}
+              </PageSection>
             )}
 
-            <SectionCard title="Actions">
+            <Panel title="Actions">
               <div className="flex flex-wrap items-center gap-2">
                 {/* State allows it; the grant decides whether this person is offered it. */}
-                {manifestActionAllowed(record, 'addItem') && canCreateManifests() && (
-                  <Button variant="primary" startIcon="plus" onClick={() => setDialog('addItem')}>
-                    Add item
-                  </Button>
-                )}
-                {manifestActionAllowed(record, 'seal') && (
-                  <Button variant="accent" startIcon="lock" onClick={() => setDialog('seal')}>
+                {manifestActionAllowed(record, "addItem") &&
+                  canCreateManifests() && (
+                    <Button
+                      variant="primary"
+                      onClick={() => setDialog("addItem")}
+                    >
+                      <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+                      Add item
+                    </Button>
+                  )}
+                {manifestActionAllowed(record, "seal") && (
+                  <Button variant="secondary" onClick={() => setDialog("seal")}>
+                    <Lock size={14} strokeWidth={1.5} aria-hidden="true" />
                     Seal manifest
                   </Button>
                 )}
-                {manifestActionAllowed(record, 'assignTrip') && (
-                  <Button variant="outline" startIcon="route" onClick={() => setDialog('assignTrip')}>
-                    {record.tripId ? 'Reassign movement' : 'Assign movement'}
+                {manifestActionAllowed(record, "assignTrip") && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setDialog("assignTrip")}
+                  >
+                    <Route size={14} strokeWidth={1.5} aria-hidden="true" />
+                    {record.tripId ? "Reassign movement" : "Assign movement"}
                   </Button>
                 )}
-                {manifestActionAllowed(record, 'dispatch') && (
+                {manifestActionAllowed(record, "dispatch") && (
                   <Button
                     variant="primary"
-                    startIcon="truck"
-                    loading={working === 'dispatch'}
-                    onClick={() => advance('dispatch')}
+                    loading={working === "dispatch"}
+                    onClick={() => advance("dispatch")}
                   >
+                    <Truck size={14} strokeWidth={1.5} aria-hidden="true" />
                     Dispatch
                   </Button>
                 )}
-                {manifestActionAllowed(record, 'inTransit') && (
+                {manifestActionAllowed(record, "inTransit") && (
                   <Button
                     variant="outline"
-                    startIcon="route"
-                    loading={working === 'inTransit'}
-                    onClick={() => advance('inTransit')}
+                    loading={working === "inTransit"}
+                    onClick={() => advance("inTransit")}
                   >
+                    <Route size={14} strokeWidth={1.5} aria-hidden="true" />
                     Mark in transit
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  startIcon="shield-lock"
-                  onClick={() => setDialog('handover')}
-                >
+                <Button variant="outline" onClick={() => setDialog("handover")}>
+                  <ShieldAlert size={14} strokeWidth={1.5} aria-hidden="true" />
                   Record handover
                 </Button>
                 {manifestReceivable(record) && (
                   <Button
-                    variant="accent"
-                    startIcon="check-circle"
-                    onClick={() => setDialog('receipt')}
+                    variant="secondary"
+                    onClick={() => setDialog("receipt")}
                   >
+                    <CheckCircle2
+                      size={14}
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                    />
                     Confirm receipt
                   </Button>
                 )}
                 {manifestReturnReconcilable(record) && (
-                  <Button variant="outline" startIcon="refresh" onClick={() => setDialog('return')}>
+                  <Button variant="outline" onClick={() => setDialog("return")}>
+                    <RefreshCw size={14} strokeWidth={1.5} aria-hidden="true" />
                     Reconcile return
                   </Button>
                 )}
-                {manifestActionAllowed(record, 'close') && (
-                  <Button variant="accent" startIcon="lock" onClick={() => setDialog('close')}>
+                {manifestActionAllowed(record, "close") && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setDialog("close")}
+                  >
+                    <Lock size={14} strokeWidth={1.5} aria-hidden="true" />
                     Close manifest
                   </Button>
                 )}
                 {record.tripId && (
                   <Button
                     variant="ghost"
-                    startIcon="route"
-                    endIcon="chevron-right"
-                    onClick={() => navigate(fleetPaths.tripDetail(record.tripId as string))}
+                    onClick={() =>
+                      navigate(fleetPaths.tripDetail(record.tripId as string))
+                    }
                   >
+                    <Route size={14} strokeWidth={1.5} aria-hidden="true" />
                     Trip
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                    />
                   </Button>
                 )}
               </div>
 
-              {manifestActionAllowed(record, 'close') && closureBlockers.length > 0 && (
-                <Alert variant="warning" title="Closure is blocked" className="mt-4">
-                  <ul className="mt-1 list-disc space-y-1 pl-4">
-                    {closureBlockers.map((blocker) => (
-                      <li key={blocker}>{blocker}</li>
-                    ))}
-                  </ul>
-                </Alert>
-              )}
-            </SectionCard>
+              {manifestActionAllowed(record, "close") &&
+                closureBlockers.length > 0 && (
+                  <Callout
+                    tone="warning"
+                    title="Closure is blocked"
+                    className="mt-4"
+                  >
+                    <ul className="mt-1 list-disc space-y-1 pl-4">
+                      {closureBlockers.map((blocker) => (
+                        <li key={blocker}>{blocker}</li>
+                      ))}
+                    </ul>
+                  </Callout>
+                )}
+            </Panel>
 
-            <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
-              <SectionCard title="Consignment">
+            <div className="mt-6 grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+              <Panel title="Consignment">
                 <KeyValueGrid
                   items={[
-                    { label: 'Manifest number', value: record.manifestNumber },
-                    { label: 'Site', value: siteOf(record.siteCode) },
-                    { label: 'Route', value: record.route },
-                    { label: 'Handler', value: record.assignedHandler },
-                    { label: 'Destination centre', value: record.destinationCentre ?? '-' },
-                    { label: 'Examination context', value: record.examinationContext ?? '-' },
-                    { label: 'Items', value: formatNumber(record.itemCount) },
+                    { label: "Manifest number", value: record.manifestNumber },
+                    { label: "Site", value: siteOf(record.siteCode) },
+                    { label: "Route", value: record.route },
+                    { label: "Handler", value: record.assignedHandler },
                     {
-                      label: 'Seals',
-                      value: record.sealIds.length > 0 ? record.sealIds.join(', ') : 'None recorded',
+                      label: "Destination centre",
+                      value: record.destinationCentre ?? "-",
+                    },
+                    {
+                      label: "Examination context",
+                      value: record.examinationContext ?? "-",
+                    },
+                    { label: "Items", value: formatNumber(record.itemCount) },
+                    {
+                      label: "Seals",
+                      value:
+                        record.sealIds.length > 0
+                          ? record.sealIds.join(", ")
+                          : "None recorded",
                       span: 2,
                     },
-                    { label: 'Dispatched at', value: formatDateTime(record.dispatchedAt) },
-                    { label: 'Received at', value: formatDateTime(record.receivedAt) },
-                    { label: 'Reconciled at', value: formatDateTime(record.reconciledAt) },
-                    { label: 'Closure reason', value: record.closureReason ?? '-', span: 2 },
+                    {
+                      label: "Dispatched at",
+                      value: formatDateTime(record.dispatchedAt),
+                    },
+                    {
+                      label: "Received at",
+                      value: formatDateTime(record.receivedAt),
+                    },
+                    {
+                      label: "Reconciled at",
+                      value: formatDateTime(record.reconciledAt),
+                    },
+                    {
+                      label: "Closure reason",
+                      value: record.closureReason ?? "-",
+                      span: 2,
+                    },
                   ]}
                 />
-              </SectionCard>
+              </Panel>
 
-              <SectionCard title="Chain of custody" subtitle="What the policy makes of the chain">
+              <Panel
+                title="Chain of custody"
+                description="What the policy makes of the chain"
+              >
                 <DataState
                   loading={gaps.initialising}
                   error={gaps.error}
@@ -607,71 +756,92 @@ const ManifestDetailPage = () => {
                 >
                   {gaps.data && (
                     <>
-                      <Alert variant={gaps.data.closable ? 'success' : 'warning'}>
+                      <Callout
+                        tone={gaps.data.closable ? "success" : "warning"}
+                      >
                         {gaps.data.closable
-                          ? 'The chain is complete and clean. It does not block closure.'
-                          : 'The chain is not yet closable. The manifest cannot close until it is.'}
-                      </Alert>
+                          ? "The chain is complete and clean. It does not block closure."
+                          : "The chain is not yet closable. The manifest cannot close until it is."}
+                      </Callout>
 
                       {gaps.data.gaps.length > 0 && (
                         <div className="mt-3">
-                          <p className="text-theme-xs font-semibold text-gray-600">Recorded gaps</p>
+                          <p className="text-xs font-semibold text-muted-foreground">
+                            Recorded gaps
+                          </p>
                           <ul className="mt-1.5 space-y-1.5">
-                            {gaps.data.gaps.map((gap) => {
-                              return (
-                                <li key={gap.handoverId + gap.reason} className="flex items-start gap-2">
-                                  <Icon
-                                    name="alert-circle"
-                                    size={14}
-                                    className="mt-0.5 shrink-0 text-error-800"
-                                  />
-                                  <span className="text-theme-sm text-gray-700">
-                                    <span className="font-medium text-gray-900">
-                                      {humanise(gap.reason)}
-                                    </span>
-                                    {` at ${humanise(gap.hop).toLowerCase()}`}
-                                    {Object.keys(gap.detail).length > 0 &&
-                                      ` - ${Object.entries(gap.detail)
-                                        .map(([key, value]) => `${humanise(key).toLowerCase()} ${value}`)
-                                        .join(', ')}`}
+                            {gaps.data.gaps.map((gap) => (
+                              <li
+                                key={gap.handoverId + gap.reason}
+                                className="flex items-start gap-2"
+                              >
+                                <AlertCircle
+                                  size={14}
+                                  className="mt-0.5 shrink-0 text-error"
+                                  aria-hidden="true"
+                                />
+                                <span className="text-sm text-foreground">
+                                  <span className="font-medium">
+                                    {humanise(gap.reason)}
                                   </span>
-                                </li>
-                              );
-                            })}
+                                  {` at ${humanise(gap.hop).toLowerCase()}`}
+                                  {Object.keys(gap.detail).length > 0 &&
+                                    ` - ${Object.entries(gap.detail)
+                                      .map(
+                                        ([key, value]) =>
+                                          `${humanise(key).toLowerCase()} ${value}`,
+                                      )
+                                      .join(", ")}`}
+                                </span>
+                              </li>
+                            ))}
                           </ul>
                         </div>
                       )}
 
                       <div className="mt-4">
-                        <p className="text-theme-xs font-semibold text-gray-600">
+                        <p className="text-xs font-semibold text-muted-foreground">
                           Hops required for closure
                         </p>
                         <ul className="mt-1.5 space-y-1.5">
                           {CUSTODY_HOPS.map((hop) => {
-                            const recorded = (handovers.data ?? []).some((h) => h.hop === hop);
-                            const required = gaps.data!.missingClosureHops.includes(hop) || recorded;
+                            const recorded = (handovers.data ?? []).some(
+                              (h) => h.hop === hop,
+                            );
+                            const required =
+                              gaps.data!.missingClosureHops.includes(hop) ||
+                              recorded;
                             if (!required) {
                               return null;
                             }
+                            const HopIcon = recorded
+                              ? CheckCircle2
+                              : AlertCircle;
                             return (
                               <li key={hop} className="flex items-start gap-2">
-                                <Icon
-                                  name={recorded ? 'check-circle' : 'alert-circle'}
+                                <HopIcon
                                   size={14}
                                   className={
                                     recorded
-                                      ? 'mt-0.5 shrink-0 text-success-700'
-                                      : 'mt-0.5 shrink-0 text-warning-700'
+                                      ? "mt-0.5 shrink-0 text-success"
+                                      : "mt-0.5 shrink-0 text-warning"
                                   }
+                                  aria-hidden="true"
                                 />
-                                <span className="min-w-0 text-theme-sm">
+                                <span className="min-w-0 text-sm">
                                   <span
-                                    className={recorded ? 'text-gray-900' : 'font-medium text-gray-900'}
+                                    className={
+                                      recorded
+                                        ? "text-foreground"
+                                        : "font-medium text-foreground"
+                                    }
                                   >
                                     {humanise(hop)}
                                   </span>
-                                  <span className="block text-theme-xs text-gray-600">
-                                    {recorded ? 'Recorded.' : HOP_DESCRIPTIONS[hop]}
+                                  <span className="block text-xs text-muted-foreground">
+                                    {recorded
+                                      ? "Recorded."
+                                      : HOP_DESCRIPTIONS[hop]}
                                   </span>
                                 </span>
                               </li>
@@ -682,221 +852,235 @@ const ManifestDetailPage = () => {
                     </>
                   )}
                 </DataState>
-              </SectionCard>
+              </Panel>
             </div>
 
-            <SectionCard flush>
-              <Tabs
-                items={[
-                  { value: 'items', label: 'Items', count: items.data?.length ?? 0 },
-                  { value: 'custody', label: 'Custody', count: handovers.data?.length ?? 0 },
-                  { value: 'receipts', label: 'Receipts', count: receipts.data?.length ?? 0 },
-                  { value: 'returns', label: 'Return leg', count: returns.data?.length ?? 0 },
-                  { value: 'cases', label: 'Exception cases', count: relatedCases.length },
-                ]}
-                value={tab}
-                onChange={setTab}
-              />
+            <Panel className="mt-6">
+              <Tabs variant="pill" value={tab} onValueChange={setTab}>
+                <TabsList>
+                  <TabsTrigger value="items">
+                    Items <TabCount value={items.data?.length ?? 0} />
+                  </TabsTrigger>
+                  <TabsTrigger value="custody">
+                    Custody <TabCount value={handovers.data?.length ?? 0} />
+                  </TabsTrigger>
+                  <TabsTrigger value="receipts">
+                    Receipts <TabCount value={receipts.data?.length ?? 0} />
+                  </TabsTrigger>
+                  <TabsTrigger value="returns">
+                    Return leg <TabCount value={returns.data?.length ?? 0} />
+                  </TabsTrigger>
+                  <TabsTrigger value="cases">
+                    Exception cases <TabCount value={relatedCases.length} />
+                  </TabsTrigger>
+                </TabsList>
 
-              {tab === 'items' && (
-                <DataState
-                  loading={items.initialising}
-                  error={items.error}
-                  empty={(items.data?.length ?? 0) === 0}
-                  emptyTitle="No items on this manifest"
-                  emptyHint="Add at least one before sealing."
-                  onRetry={items.refetch}
-                  minHeight={200}
-                >
-                  <DataTable
+                <TabsContent value="items">
+                  <ManifestList
+                    prefix="manifest-items"
+                    query={items}
                     rows={items.data ?? []}
                     columns={itemColumns}
-                    getRowId={(row) => row.id}
-                    loading={items.loading}
                     caption="The items on this manifest, with the seal and quantity expected for each and what the return leg made of it."
-                    dense
+                    emptyTitle="No items on this manifest"
+                    emptyHint="Add at least one before sealing."
                   />
-                </DataState>
-              )}
+                </TabsContent>
 
-              {tab === 'custody' && (
-                <DataState
-                  loading={handovers.initialising}
-                  error={handovers.error}
-                  empty={(handovers.data?.length ?? 0) === 0}
-                  emptyTitle="No handover recorded"
-                  emptyHint="The chain of custody starts with the first handover."
-                  onRetry={handovers.refetch}
-                  minHeight={200}
-                >
-                  <DataTable
+                <TabsContent value="custody">
+                  <ManifestList
+                    prefix="manifest-custody"
+                    query={handovers}
                     rows={handovers.data ?? []}
                     columns={handoverColumns}
-                    getRowId={(row) => row.id}
-                    loading={handovers.loading}
                     caption="Recorded custody handovers for this consignment, with the custodians, seal state, verified count and evidence for each."
-                    dense
+                    emptyTitle="No handover recorded"
+                    emptyHint="The chain of custody starts with the first handover."
                   />
-                </DataState>
-              )}
+                </TabsContent>
 
-              {tab === 'receipts' && (
-                <DataState
-                  loading={receipts.initialising}
-                  error={receipts.error}
-                  empty={(receipts.data?.length ?? 0) === 0}
-                  emptyTitle="No receipt confirmed"
-                  emptyHint="The destination confirms receipt when the consignment arrives."
-                  onRetry={receipts.refetch}
-                  minHeight={200}
-                >
-                  <DataTable
+                <TabsContent value="receipts">
+                  <ManifestList
+                    prefix="manifest-receipts"
+                    query={receipts}
                     rows={receipts.data ?? []}
                     columns={receiptColumns}
-                    getRowId={(row) => row.id}
-                    loading={receipts.loading}
                     caption="Receipt confirmations for this consignment, with the derived outcome, counts, seal state and who received it."
-                    dense
+                    emptyTitle="No receipt confirmed"
+                    emptyHint="The destination confirms receipt when the consignment arrives."
                   />
-                </DataState>
-              )}
+                </TabsContent>
 
-              {tab === 'returns' && (
-                <DataState
-                  loading={returns.initialising}
-                  error={returns.error}
-                  empty={(returns.data?.length ?? 0) === 0}
-                  emptyTitle="No return reconciled"
-                  emptyHint="The return leg is reconciled once the consignment comes back."
-                  onRetry={returns.refetch}
-                  minHeight={200}
-                >
-                  <DataTable
+                <TabsContent value="returns">
+                  <ManifestList
+                    prefix="manifest-returns"
+                    query={returns}
                     rows={returns.data ?? []}
                     columns={returnColumns}
-                    getRowId={(row) => row.id}
-                    loading={returns.loading}
                     caption="Return reconciliations for this consignment, with counts, shortfall, broken seals and outcome."
-                    dense
+                    emptyTitle="No return reconciled"
+                    emptyHint="The return leg is reconciled once the consignment comes back."
                   />
-                </DataState>
-              )}
+                </TabsContent>
 
-              {tab === 'cases' && (
-                <DataState
-                  loading={exceptions.initialising}
-                  error={exceptions.error}
-                  empty={relatedCases.length === 0}
-                  emptyTitle="No exception case"
-                  emptyHint="Nothing has been raised against this consignment."
-                  onRetry={exceptions.refetch}
-                  minHeight={200}
-                >
-                  <DataTable
+                <TabsContent value="cases">
+                  <ManifestList
+                    prefix="manifest-cases"
+                    query={exceptions}
                     rows={relatedCases}
                     columns={caseColumns}
-                    getRowId={(row) => row.id}
-                    loading={exceptions.loading}
-                    onRowClick={(row) => navigate(dispatchPaths.exceptionDetail(row.id))}
+                    onRowClick={(row) =>
+                      navigate(dispatchPaths.exceptionDetail(row.id))
+                    }
                     caption="Exception cases raised against this consignment, with the rule that raised each, its severity, assignee and status."
-                    dense
+                    emptyTitle="No exception case"
+                    emptyHint="Nothing has been raised against this consignment."
                   />
-                  <div className="px-5 pt-2 pb-4">
-                    <p className="text-theme-xs text-gray-600">
-                      Matched from the exception cases returned for {site} - the exception endpoint
-                      has no manifest filter, so a case beyond that window would not appear here.
-                    </p>
-                  </div>
-                </DataState>
-              )}
-            </SectionCard>
+                </TabsContent>
+              </Tabs>
+            </Panel>
 
-            {dialog === 'addItem' && (
+            {dialog === "addItem" && (
               <AddManifestItemDialog
                 open
                 manifest={record}
-                existingItemIds={(items.data ?? []).map((row) => row.courierItemId)}
+                existingItemIds={(items.data ?? []).map(
+                  (row) => row.courierItemId,
+                )}
                 onClose={() => setDialog(null)}
                 onSaved={() => {
-                  notifySuccess('Item added to the manifest.');
+                  notifySuccess("Item added to the manifest.");
                   refreshAll();
                 }}
               />
             )}
-            {dialog === 'seal' && (
+            {dialog === "seal" && (
               <SealManifestDialog
                 open
                 manifest={record}
                 itemCount={items.data?.length ?? 0}
                 onClose={() => setDialog(null)}
                 onSaved={() => {
-                  notifySuccess('Manifest sealed. Its contents are now frozen.');
+                  notifySuccess(
+                    "Manifest sealed. Its contents are now frozen.",
+                  );
                   refreshAll();
                 }}
               />
             )}
-            {dialog === 'assignTrip' && (
+            {dialog === "assignTrip" && (
               <AssignTripDialog
                 open
                 manifest={record}
                 onClose={() => setDialog(null)}
                 onSaved={() => {
-                  notifySuccess('Movement assignment saved.');
+                  notifySuccess("Movement assignment saved.");
                   refreshAll();
                 }}
               />
             )}
-            {dialog === 'handover' && (
+            {dialog === "handover" && (
               <RecordHandoverDialog
                 open
                 manifest={record}
                 recorded={handovers.data ?? []}
                 onClose={() => setDialog(null)}
                 onSaved={() => {
-                  notifySuccess('Handover recorded on the custody chain.');
+                  notifySuccess("Handover recorded on the custody chain.");
                   refreshAll();
                 }}
               />
             )}
-            {dialog === 'receipt' && (
+            {dialog === "receipt" && (
               <ConfirmReceiptDialog
                 open
                 manifest={record}
                 onClose={() => setDialog(null)}
                 onSaved={() => {
-                  notifySuccess('Receipt confirmed.');
+                  notifySuccess("Receipt confirmed.");
                   refreshAll();
                 }}
               />
             )}
-            {dialog === 'return' && (
+            {dialog === "return" && (
               <ReconcileReturnDialog
                 open
                 manifest={record}
                 onClose={() => setDialog(null)}
                 onSaved={() => {
-                  notifySuccess('Return leg reconciled.');
+                  notifySuccess("Return leg reconciled.");
                   refreshAll();
                 }}
               />
             )}
-            {dialog === 'close' && (
+            {dialog === "close" && (
               <CloseManifestDialog
                 open
                 manifest={record}
                 blockers={closureBlockers}
                 onClose={() => setDialog(null)}
                 onSaved={() => {
-                  notifySuccess('Manifest closed.');
+                  notifySuccess("Manifest closed.");
                   refreshAll();
                 }}
               />
             )}
-          </div>
+          </>
         )}
       </DataState>
-    </div>
+    </>
   );
 };
+
+const TabCount = ({ value }: { value: number }) => (
+  <span className="ml-1 text-xs text-muted-foreground">{value}</span>
+);
+
+interface ManifestListProps<T> {
+  prefix: string;
+  query: ApiQueryState<unknown>;
+  rows: T[];
+  columns: TableColumn<T>[];
+  caption: string;
+  emptyTitle: string;
+  emptyHint: string;
+  onRowClick?: (row: T) => void;
+}
+
+/** One of the manifest's own collections: a failure is reported by the page's error state, not as an empty table. */
+function ManifestList<T extends { id: string }>({
+  prefix,
+  query,
+  rows,
+  columns,
+  caption,
+  emptyTitle,
+  emptyHint,
+  onRowClick,
+}: ManifestListProps<T>) {
+  return (
+    <DataState
+      loading={false}
+      error={query.error}
+      onRetry={query.refetch}
+      minHeight={200}
+    >
+      <Table paramPrefix={prefix} variant="soft">
+        <TableContent
+          variant="soft"
+          columns={columns}
+          data={rows}
+          rowKey={(row) => row.id}
+          loading={query.initialising}
+          onRowClick={onRowClick ? (row) => onRowClick(row) : undefined}
+          aria-label={caption}
+          emptyContent={
+            <EmptyState title={emptyTitle} description={emptyHint} />
+          }
+        />
+      </Table>
+    </DataState>
+  );
+}
 
 export default ManifestDetailPage;

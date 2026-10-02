@@ -1,3 +1,4 @@
+import { Notice } from '@rfdtech/components';
 import { cn } from './cn';
 
 /**
@@ -39,33 +40,35 @@ const FormSummary = ({ items, className }: FormSummaryProps) => {
   }
 
   return (
-    <dl
-      className={cn(
-        'flex flex-wrap items-baseline gap-x-5 gap-y-1.5 border-t border-gray-200 bg-gray-50 px-6 py-3',
-        className,
-      )}
+    // `group` rather than the Notice's own live-region role: this restates the form on every
+    // keystroke, and announcing each of those would drown out the field being typed in.
+    <Notice
+      role="group"
+      className={cn('rounded-none border-x-0 border-b-0 px-6 py-3', className)}
     >
-      {shown.map((item) => {
-        const value = item.value?.trim();
-        return (
-          <div key={item.label} className="flex min-w-0 items-baseline gap-1.5">
-            <dt className="text-theme-xs text-gray-500">{item.label}</dt>
-            <dd
-              className={cn(
-                'truncate text-theme-sm',
-                value
-                  ? item.emphasis
-                    ? 'font-semibold text-brand-900'
-                    : 'font-medium text-gray-800'
-                  : 'text-gray-400',
-              )}
-            >
-              {value || '-'}
-            </dd>
-          </div>
-        );
-      })}
-    </dl>
+      <dl className="flex flex-wrap items-baseline gap-x-5 gap-y-1.5">
+        {shown.map((item) => {
+          const value = item.value?.trim();
+          return (
+            <div key={item.label} className="flex min-w-0 items-baseline gap-1.5">
+              <dt className="text-xs text-muted-foreground">{item.label}</dt>
+              <dd
+                className={cn(
+                  'truncate text-sm',
+                  value
+                    ? item.emphasis
+                      ? 'font-semibold text-primary'
+                      : 'font-medium text-foreground'
+                    : 'text-muted-foreground',
+                )}
+              >
+                {value || '-'}
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+    </Notice>
   );
 };
 

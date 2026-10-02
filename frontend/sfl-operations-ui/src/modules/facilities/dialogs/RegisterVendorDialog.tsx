@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import FormDialog from 'shared/components/FormDialog';
-import { DateField } from 'shared/components/DateField';
-import { NumberInput, TextInput } from 'shared/components/fields';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import type { RegisterVendorRequest } from '../api/dto';
+import { DateField, FormDialog, NumberInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface RegisterVendorDialogProps {
   siteCode: string;

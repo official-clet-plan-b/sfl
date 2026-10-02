@@ -1,7 +1,13 @@
 import { FormEvent, useMemo, useState } from 'react';
 import logo from 'assets/sfl-logo.png';
-import Alert from 'shared/components/Alert';
-import FloatingField from 'shared/components/FloatingField';
+import {
+  Button,
+  Field,
+  FieldControl,
+  FieldLabel,
+  Input,
+  Notice,
+} from '@rfdtech/components';
 import { SEEDED_PASSWORD, accountsForServingPlatform } from 'shared/auth/accounts';
 import { signInWithConfiguredProvider } from 'shared/auth/provider';
 import { directorate } from 'shared/layout/navigation';
@@ -9,16 +15,12 @@ import { directorate } from 'shared/layout/navigation';
 /**
  * Sign in.
  *
- * <h2>Why this is built on the dashboard's own kit</h2>
+ * <h2>Why this is built on the component library</h2>
  *
- * The component this page was specified from is a shadcn block, and it is not used verbatim for two
- * concrete reasons rather than taste.
- *
- * Its classes are shadcn's CSS-variable tokens - `bg-background`, `text-muted-foreground`,
- * `border-input`, `ring-ring`. **This project defines none of them.** Its Tailwind theme is a bespoke
- * scale, so pasting the block would have produced an unstyled form: transparent surfaces, invisible
- * borders, default type. And it ships its own `Button`, `Input`, `Label` and `cn`, all four of which
- * already exist in `shared/components/`.
+ * The page was specified from a shadcn block, which is not used verbatim: it ships its own `Button`,
+ * `Input` and `Label`, and `@rfdtech/components` already provides all three in the dashboard's
+ * theme. The form is the library's `Field` family around its `Input`, so the sign-in screen is
+ * themed by the same tokens as everything behind it.
  *
  * <h2>One error message for a wrong email and a wrong password</h2>
  *
@@ -93,7 +95,7 @@ const LoginPage = () => {
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: 'url(images/homepage-campus-night.jpg)' }}
       />
-      <div aria-hidden="true" className="absolute inset-0 bg-gray-950/70" />
+      <div aria-hidden="true" className="absolute inset-0 bg-primary/70" />
 
       <div className="relative w-full max-w-[34rem]">
         {/*
@@ -103,69 +105,66 @@ const LoginPage = () => {
         */}
         <div className="mb-7 flex flex-col items-center text-center">
           <img src={logo} alt="" aria-hidden="true" className="h-16 w-16 object-contain" />
-          <p className="mt-4 text-title-md font-extrabold tracking-tight text-white">
+          <p className="mt-4 text-title-md font-extrabold tracking-tight text-primary-foreground">
             {directorate.parentOrganisation}
           </p>
-          <h1 className="mt-1 text-theme-xl font-medium tracking-tight text-gray-200">
+          <h1 className="mt-1 text-theme-xl font-medium tracking-tight text-primary-foreground/80">
             {directorate.name}
           </h1>
         </div>
 
-        <div className="rounded-2xl bg-white px-10 py-9 shadow-theme-lg sm:px-12">
-          <h2 className="text-center text-title-sm font-bold text-gray-900">Welcome Back</h2>
-          <p className="mx-auto mt-2 max-w-sm text-center text-theme-sm text-gray-600">
+        <div className="rounded-2xl bg-background px-10 py-9 shadow-lg sm:px-12">
+          <h2 className="text-center text-title-sm font-bold text-foreground">Welcome Back</h2>
+          <p className="mx-auto mt-2 max-w-sm text-center text-sm text-muted-foreground">
             Sign in to your account to access CLET services securely from this browser.
           </p>
 
           <form onSubmit={submit} noValidate className="mt-8 space-y-4">
-            <FloatingField
-              label="Email"
-              type="email"
-              name="username"
-              autoComplete="username"
-              value={email}
-              onChange={(value) => {
-                setEmail(value);
-                setError(null);
-              }}
-              autoFocus
-              required
-              error={Boolean(error)}
-            />
+            <Field invalid={Boolean(error)}>
+              <FieldLabel>Email</FieldLabel>
+              <FieldControl>
+                <Input
+                  type="email"
+                  name="username"
+                  autoComplete="username"
+                  value={email}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setError(null);
+                  }}
+                  autoFocus
+                  required
+                />
+              </FieldControl>
+            </Field>
 
-            <FloatingField
-              label="Password"
-              type="password"
-              name="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(value) => {
-                setPassword(value);
-                setError(null);
-              }}
-              required
-              error={Boolean(error)}
-            />
+            <Field invalid={Boolean(error)}>
+              <FieldLabel>Password</FieldLabel>
+              <FieldControl>
+                <Input
+                  type="password"
+                  name="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setError(null);
+                  }}
+                  required
+                />
+              </FieldControl>
+            </Field>
 
             {error && (
-              <Alert variant="error" title="Could not sign you in">
-                <p className="text-theme-sm">{error}</p>
-              </Alert>
+              <Notice variant="error" title="Could not sign you in">
+                <p className="text-sm">{error}</p>
+              </Notice>
             )}
 
             <div className="pt-2">
-              {/*
-                Blue rather than the platform's `primary`, which is brand navy at #0a1931 and reads
-                as near-black on a white card. `teal-500` is the palette's blue despite the name -
-                the ramp is a sky/blue scale - at #0284c7, which carries 4.6:1 against white for the
-                label and holds its meaning as the one thing to press on this page.
-              */}
-              <button
-                type="submit"
-                className="mx-auto flex h-12 w-full items-center justify-center rounded-xl bg-teal-500 text-theme-sm font-semibold text-white transition-colors hover:bg-teal-600 active:bg-teal-700 focus-visible:ring-2 focus-visible:ring-teal-400 focus-visible:ring-offset-2 focus-visible:outline-none"
-              >
+              <Button type="submit" variant="primary" size="lg" className="w-full">
                 Sign in
-              </button>
+              </Button>
             </div>
           </form>
 
@@ -174,23 +173,23 @@ const LoginPage = () => {
             accounts, and hiding the list would mean the only way to use the form is to read the
             source - while the accounts are in the bundle either way.
           */}
-          <div className="mt-7 border-t border-gray-200 pt-4 text-center">
-            <button
-              type="button"
+          <div className="mt-7 border-t border-border pt-4 text-center">
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setAccountsOpen((open) => !open)}
               aria-expanded={accountsOpen}
-              className="text-theme-sm font-medium text-teal-600 hover:underline"
             >
               {accountsOpen
                 ? 'Hide accounts'
                 : `Show the ${platformAccounts.length} account${platformAccounts.length === 1 ? '' : 's'} for this service`}
-            </button>
+            </Button>
 
             {accountsOpen && (
               <>
-                <p className="mt-2 text-theme-xs text-gray-600">
+                <p className="mt-2 text-xs text-muted-foreground">
                   Every account uses the password{' '}
-                  <code className="rounded bg-gray-100 px-1 font-medium">{SEEDED_PASSWORD}</code>.
+                  <code className="rounded bg-muted px-1 font-medium">{SEEDED_PASSWORD}</code>.
                   Choose one to fill the form.
                 </p>
                 <ul className="custom-scrollbar mt-3 max-h-64 space-y-1 overflow-y-auto pr-1 text-left">
@@ -199,12 +198,12 @@ const LoginPage = () => {
                       <button
                         type="button"
                         onClick={() => fillFrom(account.email)}
-                        className="w-full rounded-md px-2 py-1.5 text-left transition-colors hover:bg-gray-50"
+                        className="w-full rounded-md px-2 py-1.5 text-left transition-colors hover:bg-(--clet-hover)"
                       >
-                        <span className="block text-theme-sm font-medium text-gray-900">
+                        <span className="block text-sm font-medium text-foreground">
                           {account.email}
                         </span>
-                        <span className="block text-theme-xs text-gray-500">
+                        <span className="block text-xs text-muted-foreground">
                           {account.description}
                         </span>
                       </button>

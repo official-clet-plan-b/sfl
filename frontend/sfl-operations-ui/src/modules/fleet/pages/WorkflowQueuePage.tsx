@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import { Button, Input, PageSection } from '@rfdtech/components';
 import { WorkflowItemResponse } from 'modules/fleet/api/dto';
 import {
   FLEET_WORKFLOW_STATUSES,
@@ -13,41 +16,67 @@ import {
   humanise,
 } from 'modules/fleet/api/enums';
 import { workflowApi } from 'modules/fleet/api/fleetApi';
+import FleetTable, {
+  CellStack,
+  FilterDropdown,
+  FleetColumn,
+  useRegisterState,
+} from 'modules/fleet/components/FleetTable';
+import RegisterHeader from 'modules/fleet/components/RegisterHeader';
+import StatusBadge from 'modules/fleet/components/StatusBadge';
+import { useReferenceNames } from 'modules/fleet/components/useReferenceNames';
 import { RaiseWorkflowItemDialog } from 'modules/fleet/dialogs/workflowDialogs';
-import { defaultPageSize } from 'shared/api/config';
-import Button from 'shared/components/Button';
-import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar from 'shared/components/FilterBar';
+import { sflActor } from 'shared/api/config';
+import Icon from 'shared/components/Icon';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
-import { Checkbox, TextInput } from 'shared/components/fields';
+import { defaultSite } from 'shared/components/SiteSelect';
 import { formatDateTime } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fleetPaths } from 'shared/layout/navigation';
 
-/**
- * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
- * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
- * option already active clears it, same as the dropdown it replaces; toggling a different one while
- * one is active swaps to the new choice instead of appearing to hold both.
- */
-const pickSingle = <T extends string>(current: T | '', next: string[]): T | '' => {
-  if (next.length === 0) {
-    return '';
-  }
-  return (next.find((value) => value !== current) ?? next[0]) as T;
+dayjs.extend(relativeTime);
+
+/** The one-click views of the queue; each is a request the filters could already make. */
+const VIEWS = [
+  { value: 'all', label: 'All' },
+  { value: 'overdue', label: 'Overdue' },
+  { value: 'escalated', label: 'Escalated' },
+  { value: 'mine', label: 'Assigned to me' },
+] as const;
+
+/** The SLA line: when it falls due, and how far past or short of that it is. */
+const SlaCell = ({ row }: { row: WorkflowItemResponse }) => {
+  const due = dayjs(row.slaDueAt);
+  const hours = Math.abs(due.diff(dayjs(), 'hour'));
+  return (
+    <div className="min-w-0">
+      <div className={row.slaBreached ? 'font-semibold text-error-700' : 'font-semibold'}>
+        {formatDateTime(row.slaDueAt)}
+      </div>
+      <div className="text-theme-xs opacity-70">
+        {row.slaBreached
+          ? `Overdue by ${hours < 1 ? 'under an hour' : due.fromNow(true)}`
+          : `Due in ${due.fromNow(true)}`}
+        {row.escalationLevel > 0 ? ` · level ${row.escalationLevel}` : ''}
+      </div>
+    </div>
+  );
 };
 
-interface Filters {
-  siteCode: string;
-  status: FleetWorkflowStatus | '';
-  type: FleetWorkflowType | '';
-  priority: WorkflowPriority | '';
+/** The fleet workflow queue - defects, renewals, exceptions and their SLA standing. */
+const WorkflowQueuePage = () => {
+  const navigate = useNavigate();
+  const { notifySuccess } = useNotifier();
+  const [raiseOpen, setRaiseOpen] = useState(false);
+
+  // The register's state lives in the URL. Every filter change returns to the first page - leaving
+  // the page index behind asks the server for a page the narrowed result set no longer has.
+  const state = useRegisterState('workflow');
+  const { filters, setFilter } = state;
+  const view = VIEWS.find((entry) => entry.value === filters.view) ?? VIEWS[0];
+  const status = (filters.status ?? '') as FleetWorkflowStatus | '';
+  const type = (filters.type ?? '') as FleetWorkflowType | '';
+  const priority = (filters.priority ?? '') as WorkflowPriority | '';
   /**
    * Severity, which the queue could not filter on.
    *
@@ -55,243 +84,241 @@ interface Filters {
    * shown it - so a supervisor looking for the critical defects could see which rows were critical
    * and had no way to ask for only those.
    */
-  severity: WorkflowSeverity | '';
-  assignee: string;
-  overdueOnly: boolean;
-  escalatedOnly: boolean;
-}
-
-const emptyFilters: Filters = {
-  siteCode: defaultSite,
-  status: '',
-  type: '',
-  priority: '',
-  severity: '',
-  assignee: '',
-  overdueOnly: false,
-  escalatedOnly: false,
-};
-
-/** The fleet workflow queue - defects, renewals, exceptions and their SLA standing. */
-const WorkflowQueuePage = () => {
-  const navigate = useNavigate();
-  const { notifySuccess } = useNotifier();
-  const [filters, setFilters] = useState<Filters>(emptyFilters);
-  const [pagination, setPagination] = useState({ page: 0, pageSize: defaultPageSize });
-  const [raiseOpen, setRaiseOpen] = useState(false);
-
-  const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => {
-    setFilters((current) => ({ ...current, [key]: value }));
-    setPagination((current) => ({ ...current, page: 0 }));
-  };
-
-  // Reset is a filter change like any other: leaving the page index behind asks the server for a
-  // page the narrowed result set no longer has, and the table comes back empty.
-  const resetFilters = () => {
-    setFilters(emptyFilters);
-    setPagination((current) => ({ ...current, page: 0 }));
-  };
+  const severity = (filters.severity ?? '') as WorkflowSeverity | '';
+  const typedAssignee = filters.assignee ?? '';
+  const assignee = view.value === 'mine' ? sflActor.user : typedAssignee;
+  const overdueOnly = view.value === 'overdue';
+  const escalatedOnly = view.value === 'escalated';
+  const names = useReferenceNames(state.site);
 
   const query = useApiQuery(
     (signal) =>
       workflowApi.search(
         {
-          siteCode: filters.siteCode || undefined,
-          status: filters.status || undefined,
-          type: filters.type || undefined,
-          priority: filters.priority || undefined,
-          severity: filters.severity || undefined,
-          assignee: filters.assignee || undefined,
-          overdueOnly: filters.overdueOnly || undefined,
-          escalatedOnly: filters.escalatedOnly || undefined,
-          page: pagination.page,
-          size: pagination.pageSize,
+          siteCode: state.site || undefined,
+          status: status || undefined,
+          type: type || undefined,
+          priority: priority || undefined,
+          severity: severity || undefined,
+          assignee: assignee || undefined,
+          overdueOnly: overdueOnly || undefined,
+          escalatedOnly: escalatedOnly || undefined,
+          page: state.apiPage,
+          size: state.pageSize,
         },
         signal,
       ),
-    [filters, pagination.page, pagination.pageSize],
+    [
+      state.site,
+      status,
+      type,
+      priority,
+      severity,
+      assignee,
+      overdueOnly,
+      escalatedOnly,
+      state.apiPage,
+      state.pageSize,
+    ],
   );
 
-  const columns = useMemo<Column<WorkflowItemResponse>[]>(
+  /** How many items each view holds, so the tab says what is behind it before it is opened. */
+  const counts = useApiQuery(
+    async (signal) => {
+      const site = state.site || undefined;
+      const [all, overdue, escalated, mine] = await Promise.all([
+        workflowApi.search({ siteCode: site, size: 1 }, signal),
+        workflowApi.search({ siteCode: site, overdueOnly: true, size: 1 }, signal),
+        workflowApi.search({ siteCode: site, escalatedOnly: true, size: 1 }, signal),
+        workflowApi.search({ siteCode: site, assignee: sflActor.user, size: 1 }, signal),
+      ]);
+      return {
+        all: all.totalElements,
+        overdue: overdue.totalElements,
+        escalated: escalated.totalElements,
+        mine: mine.totalElements,
+      };
+    },
+    [state.site],
+  );
+
+  const columns = useMemo<FleetColumn<WorkflowItemResponse>[]>(
     () => [
       {
         key: 'workflowNumber',
         header: 'Item',
-        width: 230,
-        cell: (row) => <CellStack primary={row.workflowNumber} secondary={row.title} />,
+        width: 260,
+        cell: (row) => (
+          <CellStack
+            primary={row.title}
+            secondary={`${row.workflowNumber} · ${humanise(row.workflowType)}`}
+          />
+        ),
       },
       {
-        key: 'workflowType',
-        header: 'Type',
+        key: 'related',
+        header: 'Vehicle or record',
         width: 170,
-        cell: (row) => humanise(row.workflowType),
-      },
-      {
-        key: 'status',
-        header: 'Status',
-        width: 130,
-        cell: (row) => <StatusChip value={row.status} />,
+        cell: (row) => {
+          const vehicle =
+            row.relatedRecordType === 'Vehicle' && row.relatedRecordId
+              ? names.vehicles?.get(row.relatedRecordId)
+              : undefined;
+          return vehicle
+            ? vehicle.registrationNumber
+            : row.relatedRecordType
+              ? humanise(row.relatedRecordType)
+              : '-';
+        },
       },
       {
         key: 'priority',
         header: 'Priority',
         width: 110,
-        cell: (row) => <StatusChip value={row.priority} />,
+        cell: (row) => <StatusBadge value={row.priority} />,
       },
       {
         key: 'severity',
         header: 'Severity',
         width: 110,
-        cell: (row) => <StatusChip value={row.severity} />,
-      },
-      {
-        key: 'slaDueAt',
-        header: 'SLA',
-        width: 200,
-        cell: (row) => (
-          <div className="min-w-0">
-            <div className={row.slaBreached ? 'font-semibold text-error-600' : 'text-gray-800'}>
-              {formatDateTime(row.slaDueAt)}
-            </div>
-            <div className="text-theme-xs text-gray-500">
-              {row.slaBreached ? 'Breached' : 'Within target'} · level {row.escalationLevel}
-            </div>
-          </div>
-        ),
+        cell: (row) => <StatusBadge value={row.severity} />,
       },
       {
         key: 'assignee',
         header: 'Assignee',
         width: 150,
-        cell: (row) =>
-          row.assignee ?? <span className="text-theme-xs text-gray-600">Unassigned</span>,
+        cell: (row) => row.assignee ?? <span className="opacity-70">Unassigned</span>,
       },
       {
-        key: 'siteCode',
-        header: 'Site',
-        width: 100,
-        hideBelowLg: true,
-        cell: (row) => row.siteCode,
+        key: 'slaDueAt',
+        header: 'SLA',
+        width: 200,
+        cell: (row) => <SlaCell row={row} />,
+      },
+      {
+        key: 'status',
+        header: 'Status',
+        width: 130,
+        cell: (row) => <StatusBadge value={row.status} />,
       },
     ],
-    [],
+    [names.vehicles],
   );
 
-  const filtersActive = JSON.stringify(filters) !== JSON.stringify(emptyFilters);
-  const rows = query.data?.content ?? [];
-
   return (
-    <div>
-      <PageHeader
+    <>
+      <RegisterHeader
         title="Workflow queue"
-        subtitle="Defects, compliance renewals, trip exceptions and integration failures with their SLA standing."
-        crumbs={[{ label: 'Fleet', to: fleetPaths.dashboard }, { label: 'Workflow queue' }]}
+        siteCode={state.site}
+        onSiteChange={state.setSite}
         actions={
           <>
-            <Button variant="outline" startIcon="refresh" onClick={query.refetch}>
-              Refresh
+            <Button
+              variant="outline"
+              aria-label="Refresh"
+              title="Refresh"
+              onClick={() => {
+                query.refetch();
+                counts.refetch();
+                names.refetch();
+              }}
+            >
+              <Icon name="refresh" size={14} aria-hidden="true" />
             </Button>
-            <Button variant="accent" startIcon="plus" onClick={() => setRaiseOpen(true)}>
+            <Button variant="primary" onClick={() => setRaiseOpen(true)}>
+              <Icon name="plus" size={14} aria-hidden="true" />
               Raise item
             </Button>
           </>
         }
       />
 
-      <SectionCard flush>
-        <FilterBar
-          onReset={resetFilters}
-          resetDisabled={!filtersActive}
-          trailing={
-            <div className="flex flex-col gap-1.5">
-              <Checkbox
-                checked={filters.overdueOnly}
-                onChange={(checked) => setFilter('overdueOnly', checked)}
-                label="Overdue"
-              />
-              <Checkbox
-                checked={filters.escalatedOnly}
-                onChange={(checked) => setFilter('escalatedOnly', checked)}
-                label="Escalated"
-              />
-            </div>
-          }
-        >
-          <SiteSelect
-            value={filters.siteCode}
-            onChange={(value) => setFilter('siteCode', value)}
-            allowEmpty
-          />
-          <FacetFilter
-            label="Status"
-            selected={filters.status ? [filters.status] : []}
-            onChange={(next) => setFilter('status', pickSingle(filters.status, next))}
-            options={FLEET_WORKFLOW_STATUSES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <FacetFilter
-            label="Type"
-            selected={filters.type ? [filters.type] : []}
-            onChange={(next) => setFilter('type', pickSingle(filters.type, next))}
-            options={FLEET_WORKFLOW_TYPES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <FacetFilter
-            label="Priority"
-            selected={filters.priority ? [filters.priority] : []}
-            onChange={(next) => setFilter('priority', pickSingle(filters.priority, next))}
-            options={WORKFLOW_PRIORITIES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <FacetFilter
-            label="Severity"
-            selected={filters.severity ? [filters.severity] : []}
-            onChange={(next) => setFilter('severity', pickSingle(filters.severity, next))}
-            options={WORKFLOW_SEVERITIES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <TextInput
-            label="Assignee"
-            value={filters.assignee}
-            onChange={(value) => setFilter('assignee', value)}
-          />
-        </FilterBar>
-
-        <DataState
-          loading={query.initialising}
+      <PageSection>
+        <FleetTable
+          paramPrefix="workflow"
+          rows={query.data?.content ?? []}
+          columns={columns}
+          getRowId={(row) => row.id}
+          loading={query.loading}
           error={query.error}
-          empty={rows.length === 0 && !query.loading}
-          emptyTitle="No workflow items match these filters"
-          emptyHint="A clear queue is a good sign - or widen the filters to check."
           onRetry={query.refetch}
-          minHeight={280}
-        >
-          <DataTable
-            rows={rows}
-            columns={columns}
-            getRowId={(row) => row.id}
-            loading={query.loading}
-            onRowClick={(row) => navigate(fleetPaths.workflowDetail(row.id))}
-            page={pagination.page}
-            pageSize={pagination.pageSize}
-            totalElements={query.data?.totalElements ?? 0}
-            onPageChange={(page) => setPagination((current) => ({ ...current, page }))}
-            onPageSizeChange={(pageSize) => setPagination({ page: 0, pageSize })}
-            emptyMessage="No workflow items match these filters."
-          />
-        </DataState>
-      </SectionCard>
+          onRowClick={(row) => navigate(fleetPaths.workflowDetail(row.id))}
+          totalElements={query.data?.totalElements ?? 0}
+          pageSize={state.pageSize}
+          caption="Workflow queue"
+          heading={{
+            title: 'Workflow items',
+            description:
+              'Defects, compliance renewals, trip exceptions and integration failures with their SLA standing.',
+          }}
+          tabs={VIEWS.map((entry) => ({
+            value: entry.value,
+            label: entry.label,
+            count: counts.data?.[entry.value],
+          }))}
+          tab={view.value}
+          onTabChange={(value) => setFilter('view', value === 'all' ? '' : value)}
+          filters={
+            <>
+              <FilterDropdown
+                name="status"
+                label="Status"
+                value={status}
+                onChange={(value) => setFilter('status', value)}
+                options={FLEET_WORKFLOW_STATUSES.map((value) => ({
+                  value,
+                  label: humanise(value),
+                }))}
+              />
+              <FilterDropdown
+                name="type"
+                label="Type"
+                value={type}
+                onChange={(value) => setFilter('type', value)}
+                options={FLEET_WORKFLOW_TYPES.map((value) => ({ value, label: humanise(value) }))}
+              />
+              <FilterDropdown
+                name="priority"
+                label="Priority"
+                value={priority}
+                onChange={(value) => setFilter('priority', value)}
+                options={WORKFLOW_PRIORITIES.map((value) => ({ value, label: humanise(value) }))}
+              />
+              <FilterDropdown
+                name="severity"
+                label="Severity"
+                value={severity}
+                onChange={(value) => setFilter('severity', value)}
+                options={WORKFLOW_SEVERITIES.map((value) => ({ value, label: humanise(value) }))}
+              />
+              <Input
+                name="assignee"
+                aria-label="Assignee"
+                placeholder="Assignee"
+                defaultValue={typedAssignee}
+              />
+            </>
+          }
+          emptyTitle="No workflow items match these filters"
+          emptyDescription="A clear queue is a good sign - or widen the filters to check."
+        />
+      </PageSection>
 
       {/* Mounted only while open, so the dialog picks up the current site filter as its default
           and cannot reopen holding a half-typed item from a previous attempt. */}
       {raiseOpen && (
         <RaiseWorkflowItemDialog
           open
-          defaultSiteCode={filters.siteCode || defaultSite}
+          defaultSiteCode={state.site || defaultSite}
           onClose={() => setRaiseOpen(false)}
           onSaved={() => {
             notifySuccess('Workflow item raised.');
             query.refetch();
+            counts.refetch();
           }}
         />
       )}
-    </div>
+    </>
   );
 };
 

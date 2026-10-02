@@ -1,21 +1,32 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
+import { Plus } from 'lucide-react';
+import {
+  Banner,
+  Button,
+  Card,
+  EmptyState,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  useBreadcrumbs,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
-import FilterBar from 'shared/components/FilterBar';
-import PageHeader from 'shared/components/PageHeader';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
 import type { PreventiveSchedule } from '../api/dto';
 import { createSchedule, listSchedules, runGeneration } from '../api/facilitiesApi';
 import { canManageSchedules } from '../api/workflow';
+import StatusBadge from '../components/StatusBadge';
 import CreateScheduleDialog from '../dialogs/CreateScheduleDialog';
-import { formatDate, humaniseCode } from '../components/facilitiesFormat';
+import { formatDate } from '../components/facilitiesFormat';
 
 /**
  * Preventive maintenance schedules.
@@ -38,6 +49,10 @@ import { formatDate, humaniseCode } from '../components/facilitiesFormat';
 const PreventiveSchedulesPage = () => {
   const navigate = useNavigate();
   const notify = useNotifier();
+  useBreadcrumbs([
+    { label: 'Facilities', href: facilitiesPaths.dashboard },
+    { label: 'Preventive schedules' },
+  ]);
   const [siteCode, setSiteCode] = useState<string>(defaultSite);
   const [creating, setCreating] = useState(false);
 
@@ -62,107 +77,108 @@ const PreventiveSchedulesPage = () => {
     }
   };
 
-  const columns: Column<PreventiveSchedule>[] = [
+  const columns: TableColumn<PreventiveSchedule>[] = [
     {
-      key: 'scheduleCode',
+      id: 'scheduleCode',
       header: 'Schedule',
       width: 160,
-      cell: (schedule) => (
-        <span className="font-medium text-gray-900">{schedule.scheduleCode}</span>
-      ),
+      cell: ({ row }) => <span className="font-medium text-foreground">{row.scheduleCode}</span>,
     },
-    { key: 'name', header: 'What it covers', cell: (schedule) => schedule.name },
+    { id: 'name', header: 'What it covers', accessorKey: 'name' },
     {
-      key: 'intervalDays',
+      id: 'intervalDays',
       header: 'Every',
       width: 110,
-      hideBelowLg: true,
-      cell: (schedule) => `${schedule.intervalDays} days`,
+      cell: ({ row }) => `${row.intervalDays} days`,
     },
     {
-      key: 'nextDueOn',
+      id: 'nextDueOn',
       header: 'Next due',
       width: 140,
-      cell: (schedule) => formatDate(schedule.nextDueOn),
+      cell: ({ row }) => formatDate(row.nextDueOn),
     },
     {
-      key: 'generateOn',
+      id: 'generateOn',
       header: 'Raises on',
       width: 140,
-      cell: (schedule) => (
+      cell: ({ row }) => (
         <div className="flex flex-col gap-0.5">
-          <span>{formatDate(schedule.generateOn)}</span>
-          <span className="text-theme-xs text-gray-500">
-            {schedule.leadTimeDays} days ahead
-          </span>
+          <span>{formatDate(row.generateOn)}</span>
+          <span className="text-xs text-muted-foreground">{row.leadTimeDays} days ahead</span>
         </div>
       ),
     },
     {
-      key: 'dueForGeneration',
+      id: 'dueForGeneration',
       header: 'State',
       width: 150,
-      cell: (schedule) =>
+      cell: ({ row: schedule }) =>
         schedule.dueForGeneration ? (
-          <StatusChip value="Due now" tone="caution" />
+          <StatusBadge value="DUE_NOW" label="Due now" tone="caution" />
         ) : schedule.lifecycleStatus === 'ACTIVE' ? (
-          <StatusChip value="Scheduled" tone="neutral" />
+          <StatusBadge value="SCHEDULED" label="Scheduled" tone="neutral" />
         ) : (
-          <StatusChip value={humaniseCode(schedule.lifecycleStatus)} tone="neutral" />
+          <StatusBadge value={schedule.lifecycleStatus} tone="neutral" />
         ),
     },
   ];
 
   return (
     <>
-      <PageHeader
-        title="Preventive schedules"
-        subtitle="Planned servicing, and what it has raised"
-        crumbs={[
-          { label: 'Facilities', to: facilitiesPaths.dashboard },
-          { label: 'Preventive schedules' },
-        ]}
-        actions={
-          canManageSchedules() && (
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={generate}>
-                Generate due work
-              </Button>
-              <Button variant="primary" onClick={() => setCreating(true)}>
-                New schedule
-              </Button>
-            </div>
-          )
-        }
-      />
-
-      <FilterBar>
-        <SiteSelect value={siteCode} onChange={setSiteCode} />
-      </FilterBar>
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Preventive schedules</SectionTitle>
+          <SectionDescription>Planned servicing, and what it has raised</SectionDescription>
+          <SectionActions>
+            <SiteSelect value={siteCode} onChange={setSiteCode} />
+            {canManageSchedules() && (
+              <>
+                <Button variant="outline" onClick={generate}>
+                  Generate due work
+                </Button>
+                <Button variant="primary" onClick={() => setCreating(true)}>
+                  <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+                  New schedule
+                </Button>
+              </>
+            )}
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
       {dueNow > 0 && (
-        <Alert variant="info" title={`${dueNow} schedule(s) are due to raise work`}>
-          The scheduler does this hourly on its own. Generating by hand raises the same work and is
-          safe to repeat - a schedule that has already generated for its current cycle produces
-          nothing.
-        </Alert>
+        <PageSection>
+          <Banner
+            variant="info"
+            heading={`${dueNow} schedule(s) are due to raise work`}
+            subtext="The scheduler does this hourly on its own. Generating by hand raises the same work and is safe to repeat - a schedule that has already generated for its current cycle produces nothing."
+          />
+        </PageSection>
       )}
 
-      <DataState
-        loading={schedules.loading}
-        error={schedules.error}
-        empty={schedules.data?.length === 0}
-        emptyTitle="No preventive schedules"
-        emptyHint="A schedule raises a work order ahead of each service date, and closing that work records the service against the asset."
-        onRetry={schedules.refetch}
-      >
-        <DataTable
-          rows={schedules.data ?? []}
-          columns={columns}
-          getRowId={(schedule) => schedule.id}
-          onRowClick={(schedule) => navigate(facilitiesPaths.scheduleDetail(schedule.id))}
-        />
-      </DataState>
+      <PageSection>
+        <DataState loading={false} error={schedules.error} onRetry={schedules.refetch}>
+          <Table paramPrefix="schedules" variant="soft">
+            <Card bordered>
+              <TableContent
+                variant="soft"
+                columns={columns}
+                data={schedules.data ?? []}
+                rowKey={(schedule) => schedule.id}
+                loading={schedules.loading}
+                onRowClick={(schedule) => navigate(facilitiesPaths.scheduleDetail(schedule.id))}
+                aria-label="Preventive schedules"
+                emptyContent={
+                  <EmptyState
+                    title="No preventive schedules"
+                    description="A schedule raises a work order ahead of each service date, and closing that work records the service against the asset."
+                  />
+                }
+              />
+            </Card>
+          </Table>
+        </DataState>
+      </PageSection>
 
       {creating && (
         <CreateScheduleDialog

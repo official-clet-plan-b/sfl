@@ -1,4 +1,18 @@
 import { useMemo, useState } from 'react';
+import {
+  Banner,
+  Button,
+  PageSection,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@rfdtech/components';
+import FleetTable, { CellStack, FleetColumn } from 'modules/fleet/components/FleetTable';
+import DetailHeader from 'modules/fleet/components/DetailHeader';
+import Panel from 'modules/fleet/components/Panel';
+import StatusBadge, { tabLabel } from 'modules/fleet/components/StatusBadge';
+import Icon from 'shared/components/Icon';
 import { Link, useNavigate, useParams } from 'react-router';
 import { TripResponse } from 'modules/fleet/api/dto';
 import { humanise } from 'modules/fleet/api/enums';
@@ -10,17 +24,10 @@ import {
   RecordServiceDialog,
   RegisterComplianceDocumentDialog,
 } from 'modules/fleet/dialogs/vehicleDialogs';
-import Alert from 'shared/components/Alert';
 import BlockerList from 'shared/components/BlockerList';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatusChip from 'shared/components/StatusChip';
-import Tabs from 'shared/components/Tabs';
 import { EvidenceFileActions } from 'shared/components/EvidenceFileField';
 import { cn } from 'shared/components/cn';
 import {
@@ -34,7 +41,12 @@ import { VehicleLocationResponse } from 'modules/fleet/api/dto';
 import { RecordStandaloneInspectionDialog } from 'modules/fleet/dialogs/inspectionDialogs';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fleetPaths } from 'shared/layout/navigation';
-import { canManageCompliance, canManageServiceRecords, canManageVehicles, canRecordInspections } from 'modules/fleet/api/access';
+import {
+  canManageCompliance,
+  canManageServiceRecords,
+  canManageVehicles,
+  canRecordInspections,
+} from 'modules/fleet/api/access';
 
 type TabKey = 'overview' | 'compliance' | 'service' | 'trips' | 'movement';
 
@@ -64,7 +76,10 @@ const VehicleDetailPage = () => {
 
   const vehicle = useApiQuery((signal) => vehiclesApi.findById(vehicleId, signal), [vehicleId]);
   const readiness = useApiQuery((signal) => vehiclesApi.readiness(vehicleId, signal), [vehicleId]);
-  const movement = useApiQuery((signal) => vehiclesApi.movement(vehicleId, 25, signal), [vehicleId]);
+  const movement = useApiQuery(
+    (signal) => vehiclesApi.movement(vehicleId, 25, signal),
+    [vehicleId],
+  );
   const compliance = useApiQuery(
     (signal) => vehiclesApi.complianceDocuments(vehicleId, signal),
     [vehicleId],
@@ -85,7 +100,7 @@ const VehicleDetailPage = () => {
    * telematics feed is honest to and coarse enough not to imply survey accuracy. `recordedAt` leads
    * the row because it is the only thing that says whether the position still means anything.
    */
-  const movementColumns = useMemo<Column<VehicleLocationResponse>[]>(
+  const movementColumns = useMemo<FleetColumn<VehicleLocationResponse>[]>(
     () => [
       {
         key: 'recordedAt',
@@ -127,7 +142,6 @@ const VehicleDetailPage = () => {
         key: 'correlation',
         header: 'Correlation',
         width: 160,
-        hideBelowLg: true,
         cell: (row) => (
           <span className="font-mono text-theme-xs text-gray-600">
             {row.correlationId ? row.correlationId.slice(0, 8) : '-'}
@@ -146,7 +160,7 @@ const VehicleDetailPage = () => {
     service.refetch();
   };
 
-  const tripColumns = useMemo<Column<TripResponse>[]>(
+  const tripColumns = useMemo<FleetColumn<TripResponse>[]>(
     () => [
       {
         key: 'trip',
@@ -160,21 +174,23 @@ const VehicleDetailPage = () => {
         key: 'plannedStart',
         header: 'Planned start',
         width: 200,
-        cell: (row) => <CellStack primary={formatDateTime(row.plannedStart)} secondary={row.purpose} />,
+        cell: (row) => (
+          <CellStack primary={formatDateTime(row.plannedStart)} secondary={row.purpose} />
+        ),
       },
       {
         key: 'status',
         header: 'Status',
         width: 130,
-        cell: (row) => <StatusChip value={row.status} />,
+        cell: (row) => <StatusBadge value={row.status} />,
       },
     ],
     [],
   );
 
   return (
-    <div>
-      <PageHeader
+    <>
+      <DetailHeader
         title={vehicle.data?.registrationNumber ?? 'Vehicle'}
         subtitle={
           vehicle.data
@@ -188,24 +204,24 @@ const VehicleDetailPage = () => {
         ]}
         actions={
           <>
-            <Button
-              variant="outline"
-              startIcon="arrow-left"
-              onClick={() => navigate(fleetPaths.vehicles)}
-            >
+            <Button variant="outline" onClick={() => navigate(fleetPaths.vehicles)}>
+              <Icon name="arrow-left" size={14} aria-hidden="true" />
               Register
             </Button>
             {/* Odometer, lifecycle and edit all write to the vehicle register - one grant covers
                 the three, and a driver holds none of it. */}
             {canManageVehicles() && (
               <>
-                <Button variant="outline" startIcon="gauge" onClick={() => setDialog('odometer')}>
+                <Button variant="outline" onClick={() => setDialog('odometer')}>
+                  <Icon name="gauge" size={14} aria-hidden="true" />
                   Correct odometer
                 </Button>
-                <Button variant="outline" startIcon="activity" onClick={() => setDialog('lifecycle')}>
+                <Button variant="outline" onClick={() => setDialog('lifecycle')}>
+                  <Icon name="activity" size={14} aria-hidden="true" />
                   Lifecycle
                 </Button>
-                <Button variant="primary" startIcon="edit" onClick={() => setDialog('edit')}>
+                <Button variant="primary" onClick={() => setDialog('edit')}>
+                  <Icon name="edit" size={14} aria-hidden="true" />
                   Edit
                 </Button>
               </>
@@ -215,10 +231,10 @@ const VehicleDetailPage = () => {
         meta={
           vehicle.data && (
             <div className="flex flex-wrap items-center gap-2">
-              <StatusChip value={vehicle.data.lifecycleStatus} />
-              <StatusChip value={vehicle.data.serviceStatus} />
-              <StatusChip value={vehicle.data.availabilityStatus} />
-              {readiness.data && <StatusChip value={readiness.data.status} />}
+              <StatusBadge value={vehicle.data.lifecycleStatus} />
+              <StatusBadge value={vehicle.data.serviceStatus} />
+              <StatusBadge value={vehicle.data.availabilityStatus} />
+              {readiness.data && <StatusBadge value={readiness.data.status} />}
             </div>
           )
         }
@@ -232,22 +248,19 @@ const VehicleDetailPage = () => {
       >
         {vehicle.data && (
           <div className="space-y-5">
-            <SectionCard
+            <Panel
               title="Readiness"
-              subtitle="Assessed with the same policy the assignment will use"
+              description="Assessed with the same policy the assignment will use"
               actions={
                 <>
                   {canRecordInspections() && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      startIcon="shield-check"
-                      onClick={() => setDialog('inspection')}
-                    >
+                    <Button size="sm" variant="outline" onClick={() => setDialog('inspection')}>
+                      <Icon name="shield-check" size={14} aria-hidden="true" />
                       Record inspection
                     </Button>
                   )}
-                  <Button size="sm" variant="ghost" startIcon="refresh" onClick={readiness.refetch}>
+                  <Button size="sm" variant="ghost" onClick={readiness.refetch}>
+                    <Icon name="refresh" size={14} aria-hidden="true" />
                     Re-assess
                   </Button>
                 </>
@@ -262,7 +275,7 @@ const VehicleDetailPage = () => {
                 {readiness.data && (
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <StatusChip value={readiness.data.status} />
+                      <StatusBadge value={readiness.data.status} />
                       <span className="text-theme-xs text-gray-500">
                         Assessed {formatDateTime(readiness.data.assessedAt)}
                       </span>
@@ -274,315 +287,345 @@ const VehicleDetailPage = () => {
                   </div>
                 )}
               </DataState>
-            </SectionCard>
+            </Panel>
 
-            <SectionCard flush>
-              <Tabs
-                items={[
-                  { value: 'overview', label: 'Overview' },
-                  { value: 'compliance', label: 'Compliance', count: compliance.data?.length },
-                  { value: 'service', label: 'Service history', count: service.data?.history.length },
-                  { value: 'trips', label: 'Trips', count: trips.data?.content.length },
-                  { value: 'movement', label: 'Movement', count: movement.data?.length },
-                ]}
-                value={tab}
-                onChange={(value) => setTab(value as TabKey)}
-                variant="pill"
-                className="px-5 pt-5 pb-3"
-              />
+            <PageSection>
+              <Tabs variant="pill" value={tab} onValueChange={(value) => setTab(value as TabKey)}>
+                <TabsList>
+                  <TabsTrigger value="overview">{tabLabel('Overview')}</TabsTrigger>
+                  <TabsTrigger value="compliance">
+                    {tabLabel('Compliance', compliance.data?.length)}
+                  </TabsTrigger>
+                  <TabsTrigger value="service">
+                    {tabLabel('Service history', service.data?.history.length)}
+                  </TabsTrigger>
+                  <TabsTrigger value="trips">
+                    {tabLabel('Trips', trips.data?.content.length)}
+                  </TabsTrigger>
+                  <TabsTrigger value="movement">
+                    {tabLabel('Movement', movement.data?.length)}
+                  </TabsTrigger>
+                </TabsList>
 
-              <div className="p-5">
-                {tab === 'overview' && (
-                  <div className="space-y-5">
-                    <KeyValueGrid
-                      items={[
-                        { label: 'Registration number', value: vehicle.data.registrationNumber },
-                        {
-                          label: 'VIN',
-                          value: vehicle.data.vin ?? '-',
-                          masked: vehicle.data.vinMasked,
-                        },
-                        { label: 'Category', value: humanise(vehicle.data.category) },
-                        { label: 'Capacity', value: `${vehicle.data.capacity} seats` },
-                        { label: 'Site', value: vehicle.data.siteCode },
-                        { label: 'Responsible unit', value: vehicle.data.responsibleUnit },
-                        { label: 'Operational owner', value: vehicle.data.operationalOwner },
-                        {
-                          label: 'Acquisition reference',
-                          value: vehicle.data.acquisitionReference ?? '-',
-                        },
-                        {
-                          label: 'Odometer',
-                          value: formatOdometer(
-                            vehicle.data.odometerValue,
-                            vehicle.data.odometerUnit,
-                          ),
-                        },
-                        {
-                          label: 'Odometer source',
-                          value: humanise(vehicle.data.odometerSource),
-                        },
-                        {
-                          label: 'Odometer recorded',
-                          value: formatDateTime(vehicle.data.odometerRecordedAt),
-                        },
-                        {
-                          label: 'Operating modes',
-                          value: (vehicle.data.allowedOperatingModes ?? [])
-                            .map(humanise)
-                            .join(', '),
-                        },
-                        {
-                          label: 'Emergency only',
-                          value: vehicle.data.emergencyOnly ? 'Yes' : 'No',
-                        },
-                        {
-                          label: 'Current trip',
-                          value: vehicle.data.currentTripId ? (
-                            <Link
-                              to={fleetPaths.tripDetail(vehicle.data.currentTripId)}
-                              className="text-brand-500 transition hover:text-brand-700 hover:underline"
-                            >
-                              Open trip
-                            </Link>
-                          ) : (
-                            '-'
-                          ),
-                        },
-                        { label: 'Record version', value: vehicle.data.version },
-                      ]}
-                    />
-                    <div className="h-px bg-gray-200" />
-                    <KeyValueGrid
-                      columns={4}
-                      items={[
-                        { label: 'Created by', value: vehicle.data.createdBy ?? '-' },
-                        { label: 'Created at', value: formatDateTime(vehicle.data.createdAt) },
-                        { label: 'Last modified by', value: vehicle.data.lastModifiedBy ?? '-' },
-                        {
-                          label: 'Last modified at',
-                          value: formatDateTime(vehicle.data.lastModifiedAt),
-                        },
-                      ]}
-                    />
-                  </div>
-                )}
-
-                {tab === 'compliance' && (
-                  <div className="space-y-4">
-                    <div className="flex justify-end">
-                      {canManageCompliance() && (
-                        <Button
-                          size="sm"
-                          variant="accent"
-                          startIcon="plus"
-                          onClick={() => setDialog('compliance')}
-                        >
-                          Register document
-                        </Button>
-                      )}
-                    </div>
-                    <DataState
-                      loading={compliance.initialising}
-                      error={compliance.error}
-                      empty={(compliance.data?.length ?? 0) === 0}
-                      emptyTitle="No compliance documents"
-                      emptyHint="Mandatory documents are missing - the vehicle carries a blocking readiness blocker until they are registered."
-                      onRetry={compliance.refetch}
-                      minHeight={160}
-                    >
-                      <div className="space-y-2.5">
-                        {compliance.data?.map((document) => (
-                          <div key={document.id} className={recordRow}>
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-theme-sm font-semibold text-gray-800">
-                                  {humanise(document.documentType)}
-                                </p>
-                                {document.mandatory && (
-                                  <StatusChip value="MANDATORY" label="Mandatory" tone="accent" />
-                                )}
-                              </div>
-                              <p className="mt-0.5 text-theme-xs text-gray-500">
-                                {document.documentReference} · {document.issuingAuthority} · issued{' '}
-                                {formatDate(document.issuedOn)}
-                              </p>
-                              {document.evidenceId ? (
-                                <div className="mt-1.5">
-                                  <EvidenceFileActions
-                                    evidenceId={document.evidenceId}
-                                    fileName={document.documentReference}
-                                    onError={notifyError}
-                                  />
-                                </div>
-                              ) : (
-                                <p className="mt-1.5 text-theme-xs text-warning-600">
-                                  No document attached - the record asserts a certificate nobody can
-                                  produce.
-                                </p>
-                              )}
-                            </div>
-                            <div className="flex shrink-0 items-center gap-3">
-                              <div className="sm:text-right">
-                                <p className="text-theme-sm font-medium text-gray-700">
-                                  {formatDate(document.expiresOn)}
-                                </p>
-                                <p
-                                  className={cn(
-                                    'text-theme-xs',
-                                    document.daysUntilExpiry < 0
-                                      ? 'text-error-600'
-                                      : document.daysUntilExpiry < 30
-                                        ? 'text-warning-600'
-                                        : 'text-gray-500',
-                                  )}
+                <TabsContent value={tab}>
+                  <div className="pt-4">
+                    {tab === 'overview' && (
+                      <div className="space-y-5">
+                        <KeyValueGrid
+                          items={[
+                            {
+                              label: 'Registration number',
+                              value: vehicle.data.registrationNumber,
+                            },
+                            {
+                              label: 'VIN',
+                              value: vehicle.data.vin ?? '-',
+                              masked: vehicle.data.vinMasked,
+                            },
+                            { label: 'Category', value: humanise(vehicle.data.category) },
+                            { label: 'Capacity', value: `${vehicle.data.capacity} seats` },
+                            { label: 'Site', value: vehicle.data.siteCode },
+                            { label: 'Responsible unit', value: vehicle.data.responsibleUnit },
+                            { label: 'Operational owner', value: vehicle.data.operationalOwner },
+                            {
+                              label: 'Acquisition reference',
+                              value: vehicle.data.acquisitionReference ?? '-',
+                            },
+                            {
+                              label: 'Odometer',
+                              value: formatOdometer(
+                                vehicle.data.odometerValue,
+                                vehicle.data.odometerUnit,
+                              ),
+                            },
+                            {
+                              label: 'Odometer source',
+                              value: humanise(vehicle.data.odometerSource),
+                            },
+                            {
+                              label: 'Odometer recorded',
+                              value: formatDateTime(vehicle.data.odometerRecordedAt),
+                            },
+                            {
+                              label: 'Operating modes',
+                              value: (vehicle.data.allowedOperatingModes ?? [])
+                                .map(humanise)
+                                .join(', '),
+                            },
+                            {
+                              label: 'Emergency only',
+                              value: vehicle.data.emergencyOnly ? 'Yes' : 'No',
+                            },
+                            {
+                              label: 'Current trip',
+                              value: vehicle.data.currentTripId ? (
+                                <Link
+                                  to={fleetPaths.tripDetail(vehicle.data.currentTripId)}
+                                  className="text-brand-500 transition hover:text-brand-700 hover:underline"
                                 >
-                                  {formatDaysRemaining(document.daysUntilExpiry)}
-                                </p>
-                              </div>
-                              <StatusChip value={document.status} />
-                            </div>
-                          </div>
-                        ))}
+                                  Open trip
+                                </Link>
+                              ) : (
+                                '-'
+                              ),
+                            },
+                            { label: 'Record version', value: vehicle.data.version },
+                          ]}
+                        />
+                        <div className="h-px bg-gray-200" />
+                        <KeyValueGrid
+                          columns={4}
+                          items={[
+                            { label: 'Created by', value: vehicle.data.createdBy ?? '-' },
+                            { label: 'Created at', value: formatDateTime(vehicle.data.createdAt) },
+                            {
+                              label: 'Last modified by',
+                              value: vehicle.data.lastModifiedBy ?? '-',
+                            },
+                            {
+                              label: 'Last modified at',
+                              value: formatDateTime(vehicle.data.lastModifiedAt),
+                            },
+                          ]}
+                        />
                       </div>
-                    </DataState>
-                  </div>
-                )}
+                    )}
 
-                {tab === 'service' && (
-                  <div className="space-y-4">
-                    <div className="flex justify-end">
-                      {canManageServiceRecords() && (
-                        <Button
-                          size="sm"
-                          variant="accent"
-                          startIcon="plus"
-                          onClick={() => setDialog('service')}
-                        >
-                          Record service
-                        </Button>
-                      )}
-                    </div>
-                    <DataState
-                      loading={service.initialising}
-                      error={service.error}
-                      onRetry={service.refetch}
-                      minHeight={160}
-                    >
-                      {service.data && (
-                        <div className="space-y-4">
-                          <KeyValueGrid
-                            columns={4}
-                            items={[
-                              {
-                                label: 'Current service status',
-                                value: <StatusChip value={service.data.currentServiceStatus} />,
-                              },
-                              { label: 'Next due on', value: formatDate(service.data.nextDueOn) },
-                              {
-                                label: 'Next due odometer',
-                                value: formatNumber(service.data.nextDueOdometer),
-                              },
-                              {
-                                label: 'Current odometer',
-                                value: formatNumber(service.data.currentOdometer),
-                              },
-                            ]}
-                          />
-                          <div className="h-px bg-gray-200" />
-                          {service.data.history.length === 0 ? (
-                            <p className="text-theme-sm text-gray-500">
-                              No service events recorded yet.
-                            </p>
-                          ) : (
-                            <div className="space-y-2.5">
-                              {service.data.history.map((record) => (
-                                <div key={record.id} className={recordRow}>
-                                  <div className="min-w-0">
-                                    <p className="text-theme-sm font-semibold text-gray-800">
-                                      {humanise(record.serviceType)} ·{' '}
-                                      {formatDate(record.performedOn)}
-                                    </p>
-                                    <p className="mt-0.5 text-theme-xs text-gray-500">
-                                      {record.workSummary}
-                                    </p>
-                                  </div>
-                                  <div className="flex shrink-0 items-center gap-3">
-                                    <span className="text-theme-xs text-gray-500">
-                                      {formatNumber(record.odometerAtService)} km
-                                    </span>
-                                    <StatusChip value={record.outcome} />
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                    {tab === 'compliance' && (
+                      <div className="space-y-4">
+                        <div className="flex justify-end">
+                          {canManageCompliance() && (
+                            <Button
+                              size="sm"
+                              variant="primary"
+                              onClick={() => setDialog('compliance')}
+                            >
+                              <Icon name="plus" size={14} aria-hidden="true" />
+                              Register document
+                            </Button>
                           )}
                         </div>
-                      )}
-                    </DataState>
-                  </div>
-                )}
+                        <DataState
+                          loading={compliance.initialising}
+                          error={compliance.error}
+                          empty={(compliance.data?.length ?? 0) === 0}
+                          emptyTitle="No compliance documents"
+                          emptyHint="Mandatory documents are missing - the vehicle carries a blocking readiness blocker until they are registered."
+                          onRetry={compliance.refetch}
+                          minHeight={160}
+                        >
+                          <div className="space-y-2.5">
+                            {compliance.data?.map((document) => (
+                              <div key={document.id} className={recordRow}>
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="text-theme-sm font-semibold text-gray-800">
+                                      {humanise(document.documentType)}
+                                    </p>
+                                    {document.mandatory && (
+                                      <StatusBadge
+                                        value="MANDATORY"
+                                        label="Mandatory"
+                                        tone="accent"
+                                      />
+                                    )}
+                                  </div>
+                                  <p className="mt-0.5 text-theme-xs text-gray-500">
+                                    {document.documentReference} · {document.issuingAuthority} ·
+                                    issued {formatDate(document.issuedOn)}
+                                  </p>
+                                  {document.evidenceId ? (
+                                    <div className="mt-1.5">
+                                      <EvidenceFileActions
+                                        evidenceId={document.evidenceId}
+                                        fileName={document.documentReference}
+                                        onError={notifyError}
+                                      />
+                                    </div>
+                                  ) : (
+                                    <p className="mt-1.5 text-theme-xs text-warning-600">
+                                      No document attached - the record asserts a certificate nobody
+                                      can produce.
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="flex shrink-0 items-center gap-3">
+                                  <div className="sm:text-right">
+                                    <p className="text-theme-sm font-medium text-gray-700">
+                                      {formatDate(document.expiresOn)}
+                                    </p>
+                                    <p
+                                      className={cn(
+                                        'text-theme-xs',
+                                        document.daysUntilExpiry < 0
+                                          ? 'text-error-600'
+                                          : document.daysUntilExpiry < 30
+                                            ? 'text-warning-600'
+                                            : 'text-gray-500',
+                                      )}
+                                    >
+                                      {formatDaysRemaining(document.daysUntilExpiry)}
+                                    </p>
+                                  </div>
+                                  <StatusBadge value={document.status} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </DataState>
+                      </div>
+                    )}
 
-                {tab === 'trips' && (
-                  <DataState
-                    loading={trips.initialising}
-                    error={trips.error}
-                    empty={(trips.data?.content.length ?? 0) === 0}
-                    emptyTitle="No trips recorded"
-                    emptyHint="This vehicle has not been assigned to a trip."
-                    onRetry={trips.refetch}
-                    minHeight={160}
-                  >
-                    <div className="-mx-5">
-                      <DataTable
-                        rows={trips.data?.content ?? []}
-                        columns={tripColumns}
-                        getRowId={(row) => row.id}
-                        onRowClick={(row) => navigate(fleetPaths.tripDetail(row.id))}
-                        dense
-                      />
-                      {/* The query asks for ten rows, so the panel is a recent extract, not the whole history. */}
-                      <p className="px-5 pt-3 text-theme-xs text-gray-500">
-                        The ten most recent trips for this vehicle. Use the trip queue for the full
-                        history.
-                      </p>
-                    </div>
-                  </DataState>
-                )}
-                {tab === 'movement' && (
-                  <DataState
-                    loading={movement.initialising}
-                    error={movement.error}
-                    empty={(movement.data?.length ?? 0) === 0}
-                    emptyTitle="No movement recorded"
-                    emptyHint="No telematics provider has reported a position for this vehicle."
-                    onRetry={movement.refetch}
-                    minHeight={160}
-                  >
-                    <div className="-mx-5">
-                      <DataTable
-                        rows={movement.data ?? []}
-                        columns={movementColumns}
-                        getRowId={(row) => row.id}
-                        dense
-                      />
-                      <p className="px-5 pt-3 text-theme-xs text-gray-500">
-                        The twenty-five most recent snapshots. This is a vendor projection - SFL
-                        records what a telematics provider reported and when, and does not correct
-                        it. Judge freshness from the recorded time: a position from last week is not
-                        wrong, it is just old.
-                      </p>
-                    </div>
-                  </DataState>
-                )}
-              </div>
-            </SectionCard>
+                    {tab === 'service' && (
+                      <div className="space-y-4">
+                        <div className="flex justify-end">
+                          {canManageServiceRecords() && (
+                            <Button
+                              size="sm"
+                              variant="primary"
+                              onClick={() => setDialog('service')}
+                            >
+                              <Icon name="plus" size={14} aria-hidden="true" />
+                              Record service
+                            </Button>
+                          )}
+                        </div>
+                        <DataState
+                          loading={service.initialising}
+                          error={service.error}
+                          onRetry={service.refetch}
+                          minHeight={160}
+                        >
+                          {service.data && (
+                            <div className="space-y-4">
+                              <KeyValueGrid
+                                columns={4}
+                                items={[
+                                  {
+                                    label: 'Current service status',
+                                    value: (
+                                      <StatusBadge value={service.data.currentServiceStatus} />
+                                    ),
+                                  },
+                                  {
+                                    label: 'Next due on',
+                                    value: formatDate(service.data.nextDueOn),
+                                  },
+                                  {
+                                    label: 'Next due odometer',
+                                    value: formatNumber(service.data.nextDueOdometer),
+                                  },
+                                  {
+                                    label: 'Current odometer',
+                                    value: formatNumber(service.data.currentOdometer),
+                                  },
+                                ]}
+                              />
+                              <div className="h-px bg-gray-200" />
+                              {service.data.history.length === 0 ? (
+                                <p className="text-theme-sm text-gray-500">
+                                  No service events recorded yet.
+                                </p>
+                              ) : (
+                                <div className="space-y-2.5">
+                                  {service.data.history.map((record) => (
+                                    <div key={record.id} className={recordRow}>
+                                      <div className="min-w-0">
+                                        <p className="text-theme-sm font-semibold text-gray-800">
+                                          {humanise(record.serviceType)} ·{' '}
+                                          {formatDate(record.performedOn)}
+                                        </p>
+                                        <p className="mt-0.5 text-theme-xs text-gray-500">
+                                          {record.workSummary}
+                                        </p>
+                                      </div>
+                                      <div className="flex shrink-0 items-center gap-3">
+                                        <span className="text-theme-xs text-gray-500">
+                                          {formatNumber(record.odometerAtService)} km
+                                        </span>
+                                        <StatusBadge value={record.outcome} />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </DataState>
+                      </div>
+                    )}
+
+                    {tab === 'trips' && (
+                      <DataState
+                        loading={trips.initialising}
+                        error={trips.error}
+                        empty={(trips.data?.content.length ?? 0) === 0}
+                        emptyTitle="No trips recorded"
+                        emptyHint="This vehicle has not been assigned to a trip."
+                        onRetry={trips.refetch}
+                        minHeight={160}
+                      >
+                        <div>
+                          <FleetTable
+                            paramPrefix="vehicle-trips"
+                            rows={trips.data?.content ?? []}
+                            columns={tripColumns}
+                            getRowId={(row) => row.id}
+                            onRowClick={(row) => navigate(fleetPaths.tripDetail(row.id))}
+                            caption="Trips for this vehicle"
+                            emptyTitle="No trips recorded"
+                          />
+                          {/* The query asks for ten rows, so the panel is a recent extract, not the whole history. */}
+                          <p className="pt-3 text-theme-xs text-gray-500">
+                            The ten most recent trips for this vehicle. Use the trip queue for the
+                            full history.
+                          </p>
+                        </div>
+                      </DataState>
+                    )}
+                    {tab === 'movement' && (
+                      <DataState
+                        loading={movement.initialising}
+                        error={movement.error}
+                        empty={(movement.data?.length ?? 0) === 0}
+                        emptyTitle="No movement recorded"
+                        emptyHint="No telematics provider has reported a position for this vehicle."
+                        onRetry={movement.refetch}
+                        minHeight={160}
+                      >
+                        <div>
+                          <FleetTable
+                            paramPrefix="vehicle-movement"
+                            rows={movement.data ?? []}
+                            columns={movementColumns}
+                            getRowId={(row) => row.id}
+                            caption="Recent movement snapshots"
+                            emptyTitle="No movement recorded"
+                          />
+                          <p className="pt-3 text-theme-xs text-gray-500">
+                            The twenty-five most recent snapshots. This is a vendor projection - SFL
+                            records what a telematics provider reported and when, and does not
+                            correct it. Judge freshness from the recorded time: a position from last
+                            week is not wrong, it is just old.
+                          </p>
+                        </div>
+                      </DataState>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </PageSection>
 
             {vehicle.data.lifecycleStatus === 'ARCHIVED' && (
-              <Alert variant="info">
-                Archived records are immutable outside an authorised restoration workflow. Edits
-                will be refused with FLEET_ARCHIVED_RECORD_IMMUTABLE.
-              </Alert>
+              <Banner
+                variant="info"
+                heading={
+                  <>
+                    Archived records are immutable outside an authorised restoration workflow. Edits
+                    will be refused with FLEET_ARCHIVED_RECORD_IMMUTABLE.
+                  </>
+                }
+              />
             )}
 
             {/*
@@ -592,10 +635,10 @@ const VehicleDetailPage = () => {
              * odometer back to the service.
              */}
             {/*
-              * A periodic inspection needs no trip, which is exactly why the action lives here on
-              * the vehicle rather than only on a trip. Recording one can change readiness - a
-              * critical finding takes the vehicle out of service - so the readiness card refetches.
-              */}
+             * A periodic inspection needs no trip, which is exactly why the action lives here on
+             * the vehicle rather than only on a trip. Recording one can change readiness - a
+             * critical finding takes the vehicle out of service - so the readiness card refetches.
+             */}
             {dialog === 'inspection' && (
               <RecordStandaloneInspectionDialog
                 open
@@ -671,7 +714,7 @@ const VehicleDetailPage = () => {
           </div>
         )}
       </DataState>
-    </div>
+    </>
   );
 };
 

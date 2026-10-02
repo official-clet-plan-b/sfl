@@ -20,15 +20,15 @@ import {
 import { formatElapsed, totalsFor } from 'modules/emergency/components/emergencyFormat';
 import type { SiteRecords } from 'modules/emergency/components/useSiteRecords';
 import { humanise } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
 import Icon from 'shared/components/Icon';
 import SiteSelect from 'shared/components/SiteSelect';
-import { EnumSelect, SelectInput, TextAreaInput, TextInput } from 'shared/components/fields';
 import { formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { compose, maxLength, required } from 'shared/validation/validators';
+import { Banner } from '@rfdtech/components';
+import ActionDialog from 'modules/emergency/components/ActionDialog';
+import { TextField, TextAreaField, SelectField, EnumField } from 'modules/emergency/components/FormFields';
 
 const twoColumn = 'grid gap-4 sm:grid-cols-2';
 
@@ -113,7 +113,7 @@ export const ComposeActivationDialog = ({
   };
 
   return (
-    <FormDialog
+    <ActionDialog
       open={open}
       title="Compose an activation"
       description="Creates a draft. Nothing is sent until it has been submitted, approved and activated."
@@ -139,7 +139,7 @@ export const ComposeActivationDialog = ({
           }
           {...form.fieldProps('siteCode')}
         />
-        <TextInput
+        <TextField
           label="Incident reference"
           value={form.values.incidentReference}
           onChange={(value) => form.setValue('incidentReference', value)}
@@ -151,7 +151,7 @@ export const ComposeActivationDialog = ({
       </div>
 
       <div className={twoColumn}>
-        <SelectInput
+        <SelectField
           label="Scenario"
           value={form.values.scenarioId}
           onChange={applyScenario}
@@ -163,7 +163,7 @@ export const ComposeActivationDialog = ({
           }))}
           {...form.fieldProps('scenarioId', 'Fills the template, priority and channels below.')}
         />
-        <SelectInput
+        <SelectField
           label="Template"
           required
           value={form.values.templateId}
@@ -188,7 +188,7 @@ export const ComposeActivationDialog = ({
         </ConsequencePanel>
       )}
 
-      <EnumSelect
+      <EnumField
         label="Priority"
         required
         value={form.values.priority}
@@ -262,7 +262,7 @@ export const ComposeActivationDialog = ({
           <ConsequenceLine label="Scenario" value={chosenScenario.name} />
         )}
       </ConsequencePanel>
-    </FormDialog>
+    </ActionDialog>
   );
 };
 
@@ -299,7 +299,7 @@ export const SendActivationDialog = ({
   });
 
   return (
-    <FormDialog
+    <ActionDialog
       open={open}
       title={`Send ${activation.activationNumber}`}
       description="Approved and cleared to send. This broadcast cannot be recalled."
@@ -318,12 +318,11 @@ export const SendActivationDialog = ({
         <ConsequenceLine label="Priority" value={humanise(activation.priority)} />
       </ConsequencePanel>
 
-      <Alert variant="info" title="What happens next">
-        The service hands each channel to its gateway and records the elapsed time. The activation
+      <Banner variant="info" heading="What happens next"
+  subtext={<>The service hands each channel to its gateway and records the elapsed time. The activation
         stays live until an all-clear is sent, and it cannot be closed without a stated reason and
-        closure evidence.
-      </Alert>
-    </FormDialog>
+        closure evidence.</>} />
+    </ActionDialog>
   );
 };
 
@@ -345,7 +344,7 @@ export const RejectActivationDialog = ({
   });
 
   return (
-    <FormDialog
+    <ActionDialog
       open={open}
       title={`Reject ${activation.activationNumber}`}
       description="The reason is kept on the record and is the only account of why this was not sent."
@@ -356,7 +355,7 @@ export const RejectActivationDialog = ({
       onClose={onClose}
       onSubmit={form.submit}
     >
-      <TextAreaInput
+      <TextAreaField
         label="Reason"
         required
         rows={4}
@@ -365,12 +364,11 @@ export const RejectActivationDialog = ({
         onChange={(value) => form.setValue('reason', value)}
         {...form.fieldProps('reason')}
       />
-      <Alert variant="warning" title="Rejection is final">
-        A rejected activation cannot be re-submitted. If the broadcast is still wanted, it has to be
+      <Banner variant="warning" heading="Rejection is final"
+  subtext={<>A rejected activation cannot be re-submitted. If the broadcast is still wanted, it has to be
         composed again - which is what puts a corrected version in front of an approver rather than
-        an edited one.
-      </Alert>
-    </FormDialog>
+        an edited one.</>} />
+    </ActionDialog>
   );
 };
 
@@ -392,7 +390,7 @@ export const CancelActivationDialog = ({
   });
 
   return (
-    <FormDialog
+    <ActionDialog
       open={open}
       title={`Cancel ${activation.activationNumber}`}
       description="Cancels an activation before any broadcast is sent."
@@ -403,7 +401,7 @@ export const CancelActivationDialog = ({
       onClose={onClose}
       onSubmit={form.submit}
     >
-      <TextAreaInput
+      <TextAreaField
         label="Cancellation reason"
         required
         rows={4}
@@ -412,11 +410,10 @@ export const CancelActivationDialog = ({
         onChange={(value) => form.setValue('reason', value)}
         {...form.fieldProps('reason')}
       />
-      <Alert variant="warning" title="Only pre-send activations can be cancelled">
-        Once a broadcast is active, the operator path is all-clear, closure or degraded fallback -
-        not cancellation. That keeps the record honest about whether a message actually went out.
-      </Alert>
-    </FormDialog>
+      <Banner variant="warning" heading="Only pre-send activations can be cancelled"
+  subtext={<>Once a broadcast is active, the operator path is all-clear, closure or degraded fallback -
+        not cancellation. That keeps the record honest about whether a message actually went out.</>} />
+    </ActionDialog>
   );
 };
 
@@ -441,7 +438,7 @@ export const DegradedFallbackDialog = ({
   });
 
   return (
-    <FormDialog
+    <ActionDialog
       open={open}
       title={`Record degraded fallback for ${activation.activationNumber}`}
       description="Records that the live broadcast fell back to a degraded/direct path using the recorded adapter."
@@ -452,7 +449,7 @@ export const DegradedFallbackDialog = ({
       onClose={onClose}
       onSubmit={form.submit}
     >
-      <TextInput
+      <TextField
         label="Fallback path"
         required
         autoFocus
@@ -463,12 +460,11 @@ export const DegradedFallbackDialog = ({
           'Example: RECORDED_DIRECT_HANDOFF, MANUAL_CALL_TREE, or SECURITY_RADIO_NET.',
         )}
       />
-      <Alert variant="info" title="No real vendor gateway is configured in Release 1">
-        This calls the recorded gateway with degraded mode enabled. Real outbound delivery remains
+      <Banner variant="info" heading="No real vendor gateway is configured in Release 1"
+  subtext={<>This calls the recorded gateway with degraded mode enabled. Real outbound delivery remains
         deferred for the later CLET Comms integration, but the activation, audit trail and channel
-        records still show the fallback decision.
-      </Alert>
-    </FormDialog>
+        records still show the fallback decision.</>} />
+    </ActionDialog>
   );
 };
 
@@ -483,7 +479,7 @@ export const AllClearDialog = ({ open, activation, onClose, onDone }: Activation
   });
 
   return (
-    <FormDialog
+    <ActionDialog
       open={open}
       title={`Send all-clear for ${activation.activationNumber}`}
       description="Stands the emergency down. The activation stays open until it is closed with evidence."
@@ -493,13 +489,12 @@ export const AllClearDialog = ({ open, activation, onClose, onDone }: Activation
       onClose={onClose}
       onSubmit={form.submit}
     >
-      <Alert variant="info" title="An all-clear is not a closure">
-        It records that the emergency is over and moves the activation to all-clear pending. The
+      <Banner variant="info" heading="An all-clear is not a closure"
+  subtext={<>It records that the emergency is over and moves the activation to all-clear pending. The
         record then still needs a closure reason and closure evidence
         {activation.mode === 'BREAK_GLASS' ? ', and after-the-fact approval' : ''} before it can be
-        closed.
-      </Alert>
-    </FormDialog>
+        closed.</>} />
+    </ActionDialog>
   );
 };
 
@@ -532,7 +527,7 @@ export const AfterActionApprovalDialog = ({
   });
 
   return (
-    <FormDialog
+    <ActionDialog
       open={open}
       title={`Record after-the-fact approval for ${activation.activationNumber}`}
       description="Accounts for a broadcast that went out without prior approval."
@@ -550,7 +545,7 @@ export const AfterActionApprovalDialog = ({
         <ConsequenceLine label="Time to send" value={formatElapsed(activation.fastLaneMillis)} />
       </ConsequencePanel>
 
-      <TextAreaInput
+      <TextAreaField
         label="Justification"
         required
         rows={5}
@@ -563,11 +558,10 @@ export const AfterActionApprovalDialog = ({
         )}
       />
 
-      <Alert variant="info" title="Your identity is the approval">
-        The service records the approver from your credentials, not from anything typed here - the
-        justification is the account, and the name on it is yours.
-      </Alert>
-    </FormDialog>
+      <Banner variant="info" heading="Your identity is the approval"
+  subtext={<>The service records the approver from your credentials, not from anything typed here - the
+        justification is the account, and the name on it is yours.</>} />
+    </ActionDialog>
   );
 };
 
@@ -597,7 +591,7 @@ export const ReopenActivationDialog = ({
   });
 
   return (
-    <FormDialog
+    <ActionDialog
       open={open}
       title={`Reopen ${activation.activationNumber}`}
       description="Reopens a closed activation so a follow-up correction or investigation can be recorded."
@@ -607,7 +601,7 @@ export const ReopenActivationDialog = ({
       onClose={onClose}
       onSubmit={form.submit}
     >
-      <TextAreaInput
+      <TextAreaField
         label="Reopen reason"
         required
         rows={4}
@@ -616,11 +610,10 @@ export const ReopenActivationDialog = ({
         onChange={(value) => form.setValue('reason', value)}
         {...form.fieldProps('reason')}
       />
-      <Alert variant="info" title="Reopened records must be closed again">
-        The service puts the activation back into a reopened state. When the follow-up is complete,
-        close it again with a closure reason and evidence.
-      </Alert>
-    </FormDialog>
+      <Banner variant="info" heading="Reopened records must be closed again"
+  subtext={<>The service puts the activation back into a reopened state. When the follow-up is complete,
+        close it again with a closure reason and evidence.</>} />
+    </ActionDialog>
   );
 };
 
@@ -677,7 +670,7 @@ export const CloseActivationDialog = ({
   const totals = totalsFor(status.data?.channels ?? []);
 
   return (
-    <FormDialog
+    <ActionDialog
       open={open}
       title={`Close ${activation.activationNumber}`}
       description="Files the closure record. The delivery and acknowledgement summaries are written by the service."
@@ -711,13 +704,12 @@ export const CloseActivationDialog = ({
       </div>
 
       {activation.mode === 'BREAK_GLASS' && !activation.afterActionApprovedBy && (
-        <Alert variant="error" title="After-the-fact approval has not been recorded">
-          This broadcast went out without prior approval and the service will refuse closure until
-          somebody with the after-action approval permission accounts for it. Record that first.
-        </Alert>
+        <Banner variant="danger" heading="After-the-fact approval has not been recorded"
+  subtext={<>This broadcast went out without prior approval and the service will refuse closure until
+          somebody with the after-action approval permission accounts for it. Record that first.</>} />
       )}
 
-      <TextAreaInput
+      <TextAreaField
         label="Closure reason"
         required
         rows={4}
@@ -727,7 +719,7 @@ export const CloseActivationDialog = ({
       />
 
       <div className={twoColumn}>
-        <TextInput
+        <TextField
           label="Evidence storage reference"
           required
           value={form.values.evidenceStorageReference}
@@ -737,7 +729,7 @@ export const CloseActivationDialog = ({
             'Where the closure summary is filed. The service registers it as evidence.',
           )}
         />
-        <EnumSelect
+        <EnumField
           label="Retention class"
           required
           value={form.values.retentionClass}
@@ -750,13 +742,13 @@ export const CloseActivationDialog = ({
             RETENTION_DESCRIPTIONS[form.values.retentionClass],
           )}
         />
-        <TextInput
+        <TextField
           label="File name"
           value={form.values.evidenceFileName}
           onChange={(value) => form.setValue('evidenceFileName', value)}
           {...form.fieldProps('evidenceFileName')}
         />
-        <TextInput
+        <TextField
           label="Content type"
           value={form.values.evidenceContentType}
           onChange={(value) => form.setValue('evidenceContentType', value)}
@@ -764,7 +756,7 @@ export const CloseActivationDialog = ({
         />
       </div>
 
-      <TextInput
+      <TextField
         label="SHA-256 hash"
         value={form.values.evidenceSha256}
         onChange={(value) => form.setValue('evidenceSha256', value)}
@@ -784,6 +776,6 @@ export const CloseActivationDialog = ({
           value={formatNumber(status.data?.acknowledgements ?? 0)}
         />
       </ConsequencePanel>
-    </FormDialog>
+    </ActionDialog>
   );
 };

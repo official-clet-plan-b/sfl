@@ -9,19 +9,12 @@ import type {
 import { emergencyRecordsApi } from 'modules/emergency/api/emergencyApi';
 import { CheckboxGroup } from 'modules/emergency/components/EmergencyFields';
 import { humanise } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
 import SiteSelect from 'shared/components/SiteSelect';
-import {
-  Checkbox,
-  EnumSelect,
-  NumberInput,
-  SelectInput,
-  TextAreaInput,
-  TextInput,
-} from 'shared/components/fields';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { compose, integerAtLeast, maxLength, required } from 'shared/validation/validators';
+import { Banner } from '@rfdtech/components';
+import ActionDialog from 'modules/emergency/components/ActionDialog';
+import { TextField, TextAreaField, NumberField, SelectField, EnumField, CheckboxField } from 'modules/emergency/components/FormFields';
 
 const twoColumn = 'grid gap-4 sm:grid-cols-2';
 
@@ -80,7 +73,7 @@ export const CreateTemplateDialog = ({
   });
 
   return (
-    <FormDialog
+    <ActionDialog
       open={open}
       title="Create a notification template"
       description="Reusable message text, bound to the channels it may be sent over."
@@ -98,7 +91,7 @@ export const CreateTemplateDialog = ({
           onChange={(value) => form.setValue('siteCode', value)}
           {...form.fieldProps('siteCode')}
         />
-        <TextInput
+        <TextField
           label="Template code"
           value={form.values.templateCode}
           onChange={(value) => form.setValue('templateCode', value)}
@@ -106,7 +99,7 @@ export const CreateTemplateDialog = ({
         />
       </div>
 
-      <TextInput
+      <TextField
         label="Title"
         required
         value={form.values.title}
@@ -114,7 +107,7 @@ export const CreateTemplateDialog = ({
         {...form.fieldProps('title', 'What this template is for - "Building evacuation".')}
       />
 
-      <TextAreaInput
+      <TextAreaField
         label="Message body"
         required
         rows={5}
@@ -140,7 +133,7 @@ export const CreateTemplateDialog = ({
         {...form.fieldProps('channels', 'A template with no channel cannot be saved.')}
       />
 
-      <Checkbox
+      <CheckboxField
         checked={form.values.breakGlassEligible}
         onChange={(checked) => form.setValue('breakGlassEligible', checked)}
         label="Break-glass eligible"
@@ -148,14 +141,13 @@ export const CreateTemplateDialog = ({
       />
 
       {form.values.breakGlassEligible && (
-        <Alert variant="warning" title="This template can bypass approval">
-          Marking it eligible is what lets a break-glass broadcast go out immediately during a
+        <Banner variant="warning" heading="This template can bypass approval"
+  subtext={<>Marking it eligible is what lets a break-glass broadcast go out immediately during a
           declared emergency. Closure of any such activation is then blocked until after-the-fact
           approval is recorded against it. Reserve the flag for templates whose content is correct
-          for a real emergency with no review.
-        </Alert>
+          for a real emergency with no review.</>} />
       )}
-    </FormDialog>
+    </ActionDialog>
   );
 };
 
@@ -216,7 +208,7 @@ export const CreateScenarioDialog = ({
   );
 
   return (
-    <FormDialog
+    <ActionDialog
       open={open}
       title="Create an emergency scenario"
       description="The named situation an activation cites, with its default template and priority."
@@ -234,7 +226,7 @@ export const CreateScenarioDialog = ({
           onChange={(value) => form.setValues({ siteCode: value, defaultTemplateId: '' })}
           {...form.fieldProps('siteCode')}
         />
-        <TextInput
+        <TextField
           label="Scenario code"
           value={form.values.scenarioCode}
           onChange={(value) => form.setValue('scenarioCode', value)}
@@ -242,7 +234,7 @@ export const CreateScenarioDialog = ({
         />
       </div>
 
-      <TextInput
+      <TextField
         label="Name"
         required
         value={form.values.name}
@@ -251,7 +243,7 @@ export const CreateScenarioDialog = ({
       />
 
       <div className={twoColumn}>
-        <EnumSelect
+        <EnumField
           label="Priority"
           required
           value={form.values.priority}
@@ -259,7 +251,7 @@ export const CreateScenarioDialog = ({
           onChange={(value) => form.setValue('priority', (value || 'HIGH') as Priority)}
           {...form.fieldProps('priority', 'Drives the acknowledgement SLA.')}
         />
-        <SelectInput
+        <SelectField
           label="Default template"
           value={form.values.defaultTemplateId}
           onChange={(value) => form.setValue('defaultTemplateId', value)}
@@ -276,7 +268,7 @@ export const CreateScenarioDialog = ({
         />
       </div>
 
-      <Checkbox
+      <CheckboxField
         checked={form.values.breakGlassEligible}
         onChange={(checked) => form.setValue('breakGlassEligible', checked)}
         label="Break-glass eligible"
@@ -284,16 +276,15 @@ export const CreateScenarioDialog = ({
       />
 
       {form.values.breakGlassEligible && (
-        <Alert variant="warning" title="Eligibility is decided by either record">
-          A break-glass send is allowed when the template <strong>or</strong> the scenario is
+        <Banner variant="warning" heading="Eligibility is decided by either record"
+  subtext={<>A break-glass send is allowed when the template <strong>or</strong> the scenario is
           eligible - not only when both are. Marking this scenario eligible therefore makes every
           template usable without approval whenever it is cited, including
           {chosenTemplate && !chosenTemplate.breakGlassEligible
             ? ` "${chosenTemplate.title}", which is not itself eligible.`
-            : ' templates that are not themselves eligible.'}
-        </Alert>
+            : ' templates that are not themselves eligible.'}</>} />
       )}
-    </FormDialog>
+    </ActionDialog>
   );
 };
 
@@ -346,7 +337,7 @@ export const CreateAudienceDialog = ({
   });
 
   return (
-    <FormDialog
+    <ActionDialog
       open={open}
       title="Create an audience group"
       description="A named set of recipients, held by reference into the directory."
@@ -364,7 +355,7 @@ export const CreateAudienceDialog = ({
           onChange={(value) => form.setValue('siteCode', value)}
           {...form.fieldProps('siteCode')}
         />
-        <TextInput
+        <TextField
           label="Group code"
           value={form.values.groupCode}
           onChange={(value) => form.setValue('groupCode', value)}
@@ -372,7 +363,7 @@ export const CreateAudienceDialog = ({
         />
       </div>
 
-      <TextInput
+      <TextField
         label="Name"
         required
         value={form.values.name}
@@ -381,7 +372,7 @@ export const CreateAudienceDialog = ({
       />
 
       <div className={twoColumn}>
-        <TextInput
+        <TextField
           label="Directory reference"
           value={form.values.directoryReference}
           onChange={(value) => form.setValue('directoryReference', value)}
@@ -390,7 +381,7 @@ export const CreateAudienceDialog = ({
             'Where the contact detail lives. It never reaches this dashboard.',
           )}
         />
-        <NumberInput
+        <NumberField
           label="Recipient count"
           value={form.values.recipientCount}
           onChange={(value) => form.setValue('recipientCount', value)}
@@ -401,12 +392,11 @@ export const CreateAudienceDialog = ({
         />
       </div>
 
-      <Alert variant="info" title="Contact detail stays in the directory">
-        This record holds a pointer and a size, never a phone number or an address. Keeping the
+      <Banner variant="info" heading="Contact detail stays in the directory"
+  subtext={<>This record holds a pointer and a size, never a phone number or an address. Keeping the
         count current is what makes a delivery figure mean anything - a group sized at zero sends to
-        nobody and still reports success.
-      </Alert>
-    </FormDialog>
+        nobody and still reports success.</>} />
+    </ActionDialog>
   );
 };
 
@@ -456,7 +446,7 @@ export const CreateZoneDialog = ({
   });
 
   return (
-    <FormDialog
+    <ActionDialog
       open={open}
       title="Create a recipient zone"
       description="A building, floor or room a broadcast can be narrowed to."
@@ -474,7 +464,7 @@ export const CreateZoneDialog = ({
           onChange={(value) => form.setValue('siteCode', value)}
           {...form.fieldProps('siteCode')}
         />
-        <TextInput
+        <TextField
           label="Zone code"
           value={form.values.zoneCode}
           onChange={(value) => form.setValue('zoneCode', value)}
@@ -482,7 +472,7 @@ export const CreateZoneDialog = ({
         />
       </div>
 
-      <TextInput
+      <TextField
         label="Name"
         required
         value={form.values.name}
@@ -490,18 +480,17 @@ export const CreateZoneDialog = ({
         {...form.fieldProps('name', 'As it is signposted on site - "Block B", "Laboratory wing".')}
       />
 
-      <TextInput
+      <TextField
         label="Location reference"
         value={form.values.locationReference}
         onChange={(value) => form.setValue('locationReference', value)}
         {...form.fieldProps('locationReference', 'The facilities location this zone maps to.')}
       />
 
-      <Alert variant="info" title="Naming a zone records context, it does not actuate anything">
-        When an activation names zones, the service records access-control lockdown and CCTV
+      <Banner variant="info" heading="Naming a zone records context, it does not actuate anything"
+  subtext={<>When an activation names zones, the service records access-control lockdown and CCTV
         preservation context against each of them. SFL governs and evidences; certified life-safety
-        hardware is never driven from here.
-      </Alert>
-    </FormDialog>
+        hardware is never driven from here.</>} />
+    </ActionDialog>
   );
 };

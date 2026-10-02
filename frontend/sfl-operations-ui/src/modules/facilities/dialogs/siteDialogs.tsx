@@ -1,9 +1,8 @@
-import FormDialog from 'shared/components/FormDialog';
-import { TextAreaInput, TextInput } from 'shared/components/fields';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { compose, maxLength, required } from 'shared/validation/validators';
 import type { CreateSiteRequest, Site, UpdateSiteRequest } from '../api/dto';
 import { StaleWriteNotice } from './common';
+import { FormDialog, TextAreaInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
 
 /**
  * Creating and editing a site.

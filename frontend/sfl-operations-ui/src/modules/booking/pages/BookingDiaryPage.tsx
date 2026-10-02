@@ -1,22 +1,37 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import Button from 'shared/components/Button';
+import { CalendarSearch } from 'lucide-react';
+import {
+  Button,
+  Card,
+  Combobox,
+  Dropdown,
+  EmptyState,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  TableFilter,
+  TableHeader,
+  useBreadcrumbs,
+  useTableState,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import FilterBar, { ActiveFilter } from 'shared/components/FilterBar';
-import PageHeader from 'shared/components/PageHeader';
-import FacetFilter from 'shared/components/FacetFilter';
-import QuickFilters from 'shared/components/QuickFilters';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
-import { bookingPaths } from 'shared/layout/navigation';
+import { facilitiesPaths, bookingPaths } from 'shared/layout/navigation';
 import { humaniseCode, orDash } from 'modules/facilities/components/facilitiesFormat';
+import StatusBadge from 'modules/facilities/components/StatusBadge';
 import { bookingsApi } from '../api/bookingApi';
 import type { Booking } from '../api/dto';
 import { BOOKING_PURPOSES, BOOKING_STATUSES, HOLD_REASON_DESCRIPTIONS } from '../api/enums';
 import type { BookingPurpose, BookingStatus } from '../api/enums';
 import { canRequest } from '../api/workflow';
+import CellStack from '../components/CellStack';
 import { bookingStatusTone, formatWindow } from '../components/bookingFormat';
 
 /**
@@ -35,12 +50,29 @@ import { bookingStatusTone, formatWindow } from '../components/bookingFormat';
  * be there on Friday. So the status says what the booking is and the hold says what the estate
  * currently thinks of it, side by side.
  */
+/**
+ * Status, purpose and view live in the URL, as the table keeps every filter. An absent `show` means
+ * "All bookings", so a link to the diary opens on everything the requester can see.
+ */
+const listOf = (value: string | null | undefined): string[] => (value ? value.split(',') : []);
+
 const BookingDiaryPage = () => {
   const navigate = useNavigate();
-  const [siteCode, setSiteCode] = useState(defaultSite);
-  const [status, setStatus] = useState<string[]>([]);
-  const [purpose, setPurpose] = useState<string[]>([]);
-  const [scope, setScope] = useState('');
+  useBreadcrumbs([{ label: 'Facilities', href: facilitiesPaths.dashboard }, { label: 'Booking diary' }]);
+
+  const { filters } = useTableState({ paramPrefix: 'bookings' });
+  const status = listOf(filters.status);
+  const purpose = listOf(filters.purpose);
+  const scope = filters.show ?? '';
+  // Primitive keys for the query, because `status` is a new array on every render.
+  const statusKey = status.join(',');
+  const purposeKey = purpose.join(',');
+
+  // The fields hold the operator's choice until the filter is applied; the URL holds what applied.
+  const [statusValue, setStatusValue] = useState<string[]>(status);
+  const [purposeValue, setPurposeValue] = useState<string[]>(purpose);
+  const [scopeValue, setScopeValue] = useState(scope);
+  const [siteCode, setSiteCode] = useState<string>(defaultSite);
 
   const bookings = useApiQuery(
     (signal) =>
@@ -65,7 +97,7 @@ const BookingDiaryPage = () => {
         },
         signal,
       ),
-    [siteCode, status, purpose, scope],
+    [siteCode, statusKey, purposeKey, scope],
   );
 
   const fetched = bookings.data?.items ?? [];
@@ -74,41 +106,6 @@ const BookingDiaryPage = () => {
       (status.length === 0 || status.includes(booking.status)) &&
       (purpose.length === 0 || purpose.includes(booking.purpose)),
   );
-  const clearAll = () => {
-    setStatus([]);
-    setPurpose([]);
-    setScope('');
-  };
-
-  /*
-    One chip per selected value rather than one per facet. "Status: 2 selected" is the summary the
-    closed button already gives; what the chip row is for is dropping one of the two without
-    reopening anything, and that needs them named separately.
-  */
-  const activeFilters: ActiveFilter[] = [
-    ...status.map((value) => ({
-      key: `status:${value}`,
-      label: 'Status',
-      value: humaniseCode(value),
-      onClear: () => setStatus(status.filter((entry) => entry !== value)),
-    })),
-    ...purpose.map((value) => ({
-      key: `purpose:${value}`,
-      label: 'Purpose',
-      value: humaniseCode(value),
-      onClear: () => setPurpose(purpose.filter((entry) => entry !== value)),
-    })),
-    ...(scope
-      ? [
-          {
-            key: 'scope',
-            label: 'View',
-            value: scope === 'live' ? 'Holding a space' : 'On readiness hold',
-            onClear: () => setScope(''),
-          },
-        ]
-      : []),
-  ];
 
   /*
     Counts come from what the service returned, so they describe the data in hand rather than the
@@ -124,26 +121,26 @@ const BookingDiaryPage = () => {
   const statusCounts = countBy((booking) => booking.status);
   const purposeCounts = countBy((booking) => booking.purpose);
 
-  const columns: Column<Booking>[] = [
+  const columns: TableColumn<Booking>[] = [
     {
-      key: 'title',
+      id: 'title',
       header: 'Booking',
       width: 260,
-      cell: (booking) => (
+      cell: ({ row: booking }) => (
         <CellStack primary={booking.title} secondary={booking.bookingReference} />
       ),
     },
     {
-      key: 'room',
+      id: 'room',
       header: 'Space',
       width: 130,
-      cell: (booking) => orDash(booking.roomCode),
+      cell: ({ row: booking }) => orDash(booking.roomCode),
     },
     {
-      key: 'window',
+      id: 'window',
       header: 'When',
       width: 200,
-      cell: (booking) => (
+      cell: ({ row: booking }) => (
         <CellStack
           primary={formatWindow(booking.startsAt, booking.endsAt)}
           // The occupied window, not the booked one - it is what the next requester is refused on.
@@ -156,114 +153,123 @@ const BookingDiaryPage = () => {
       ),
     },
     {
-      key: 'purpose',
+      id: 'purpose',
       header: 'Purpose',
-      hideBelowLg: true,
-      cell: (booking) => humaniseCode(booking.purpose),
+      cell: ({ row: booking }) => humaniseCode(booking.purpose),
     },
+    { id: 'requestedBy', header: 'Requested by', accessorKey: 'requestedBy' },
     {
-      key: 'requestedBy',
-      header: 'Requested by',
-      hideBelowLg: true,
-      cell: (booking) => booking.requestedBy,
-    },
-    {
-      key: 'status',
+      id: 'status',
       header: 'Status',
       width: 130,
-      cell: (booking) => (
-        <StatusChip value={booking.status} tone={bookingStatusTone(booking.status)} />
+      cell: ({ row: booking }) => (
+        <StatusBadge value={booking.status} tone={bookingStatusTone(booking.status)} />
       ),
     },
     {
-      key: 'hold',
+      id: 'hold',
       header: 'Readiness',
       width: 130,
       align: 'right',
-      cell: (booking) =>
+      cell: ({ row: booking }) =>
         booking.readinessHoldReason ? (
           <span title={HOLD_REASON_DESCRIPTIONS[booking.readinessHoldReason]}>
-            <StatusChip value="ON_HOLD" label="On hold" tone="blocked" />
+            <StatusBadge value="ON_HOLD" label="On hold" tone="blocked" />
           </span>
         ) : (
-          <span className="text-gray-400">-</span>
+          <span className="text-muted-foreground">-</span>
         ),
     },
   ];
 
   return (
     <>
-      <PageHeader
-        title="Booking diary"
-        subtitle="Rooms and resources booked at this site, and what the estate currently thinks of each"
-        actions={
-          canRequest().kind === 'allowed' ? (
-            <Button startIcon="calendar" onClick={() => navigate(bookingPaths.availability)}>
-              Find a space
-            </Button>
-          ) : undefined
-        }
-      />
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Booking diary</SectionTitle>
+          <SectionDescription>
+            Rooms and resources booked at this site, and what the estate currently thinks of each
+          </SectionDescription>
+          <SectionActions>
+            <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
+            {canRequest().kind === 'allowed' && (
+              <Button variant="primary" onClick={() => navigate(bookingPaths.availability)}>
+                <CalendarSearch size={14} strokeWidth={1.5} aria-hidden="true" />
+                Find a space
+              </Button>
+            )}
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      <FilterBar
-        onReset={clearAll}
-        active={activeFilters}
-        quickFilters={
-          <QuickFilters
-            label="Which bookings"
-            value={scope}
-            onChange={setScope}
-            options={[
-              { value: '', label: 'All bookings', count: fetched.length },
-              { value: 'live', label: 'Holding a space' },
-              { value: 'held', label: 'On readiness hold' },
-            ]}
-          />
-        }
-      >
-        <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
-        <FacetFilter
-          label="Status"
-          selected={status}
-          onChange={setStatus}
-          options={BOOKING_STATUSES.map((value) => ({
-            value,
-            label: humaniseCode(value),
-            count: statusCounts[value] ?? 0,
-          }))}
-        />
-        <FacetFilter
-          label="Purpose"
-          selected={purpose}
-          onChange={setPurpose}
-          options={BOOKING_PURPOSES.map((value) => ({
-            value,
-            label: humaniseCode(value),
-            count: purposeCounts[value] ?? 0,
-          }))}
-        />
-      </FilterBar>
-
-      <DataState
-        loading={bookings.loading}
-        error={bookings.error}
-        empty={rows.length === 0}
-        emptyTitle="No bookings match"
-        /*
-          Describes what is visible to *you*. A requester sees only the bookings they raised, so
-          "this site has no bookings" is a claim this screen is not in a position to make.
-        */
-        emptyHint="Nothing visible to you matches these filters."
-        onRetry={bookings.refetch}
-      >
-        <DataTable
-          rows={rows}
-          columns={columns}
-          getRowId={(booking) => booking.id}
-          onRowClick={(booking) => navigate(bookingPaths.bookingDetail(booking.id))}
-          caption="Bookings"
-        />
-      </DataState>
+      <PageSection>
+        <DataState loading={false} error={bookings.error} onRetry={bookings.refetch}>
+          <Table paramPrefix="bookings" variant="soft">
+            <Card bordered>
+              <TableHeader>
+                <TableFilter>
+                  <Dropdown
+                    name="show"
+                    aria-label="Which bookings"
+                    placeholder="All bookings"
+                    value={scopeValue || null}
+                    onValueChange={(next) => setScopeValue(next ?? '')}
+                    clearable
+                    options={[
+                      { value: 'live', label: 'Holding a space' },
+                      { value: 'held', label: 'On readiness hold' },
+                    ]}
+                  />
+                  <Combobox
+                    multiple
+                    name="status"
+                    aria-label="Status"
+                    placeholder="Status"
+                    value={statusValue}
+                    onValueChange={setStatusValue}
+                    options={BOOKING_STATUSES.map((value) => ({
+                      value,
+                      label: `${humaniseCode(value)} (${statusCounts[value] ?? 0})`,
+                    }))}
+                  />
+                  <Combobox
+                    multiple
+                    name="purpose"
+                    aria-label="Purpose"
+                    placeholder="Purpose"
+                    value={purposeValue}
+                    onValueChange={setPurposeValue}
+                    options={BOOKING_PURPOSES.map((value) => ({
+                      value,
+                      label: `${humaniseCode(value)} (${purposeCounts[value] ?? 0})`,
+                    }))}
+                  />
+                </TableFilter>
+              </TableHeader>
+              <TableContent
+                variant="soft"
+                columns={columns}
+                data={rows}
+                rowKey={(booking) => booking.id}
+                loading={bookings.loading}
+                onRowClick={(booking) => navigate(bookingPaths.bookingDetail(booking.id))}
+                aria-label="Bookings"
+                emptyContent={
+                  <EmptyState
+                    title="No bookings match"
+                    /*
+                      Describes what is visible to *you*. A requester sees only the bookings they
+                      raised, so "this site has no bookings" is a claim this screen is not in a
+                      position to make.
+                    */
+                    description="Nothing visible to you matches these filters."
+                  />
+                }
+              />
+            </Card>
+          </Table>
+        </DataState>
+      </PageSection>
     </>
   );
 };

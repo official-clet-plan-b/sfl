@@ -1,21 +1,34 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
+import {
+  Banner,
+  Button,
+  Card,
+  Dropdown,
+  EmptyState,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  TableFilter,
+  TableHeader,
+  useBreadcrumbs,
+  useTableState,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar from 'shared/components/FilterBar';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
+import { facilitiesPaths } from 'shared/layout/navigation';
 import type { AuditChainVerification, AuditEvent } from '../api/dto';
 import { auditActions } from '../api/enums';
 import type { AuditAction } from '../api/enums';
 import { searchAudit, verifyAuditChain } from '../api/facilitiesApi';
 import { canVerifyAuditChain } from '../api/workflow';
+import StatusBadge from '../components/StatusBadge';
 import { formatDateTime, humaniseCode, orDash } from '../components/facilitiesFormat';
 
 /**
@@ -33,23 +46,14 @@ import { formatDateTime, humaniseCode, orDash } from '../components/facilitiesFo
  */
 const FacilitiesAuditPage = () => {
   const notify = useNotifier();
+  useBreadcrumbs([{ label: 'Facilities', href: facilitiesPaths.dashboard }, { label: 'Audit' }]);
+  // The search endpoint takes one action, so the filter is a single choice that lives in the URL.
+  const { filters } = useTableState({ paramPrefix: 'audit' });
+  const action = filters.action ?? '';
+  const [actionValue, setActionValue] = useState(action);
   const [siteCode, setSiteCode] = useState<string>(defaultSite);
-  const [action, setAction] = useState<string>('');
   const [verification, setVerification] = useState<AuditChainVerification | null>(null);
   const [verifying, setVerifying] = useState(false);
-
-  /**
-   * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
-   * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
-   * option already active clears it, same as the dropdown it replaces; toggling a different one while
-   * one is active swaps to the new choice instead of appearing to hold both.
-   */
-  const pickSingle = (current: string, next: string[]): string => {
-    if (next.length === 0) {
-      return '';
-    }
-    return next.find((value) => value !== current) ?? next[0];
-  };
 
   const { data, loading, error, refetch } = useApiQuery(
     (signal) =>
@@ -85,141 +89,149 @@ const FacilitiesAuditPage = () => {
     }
   };
 
-  const columns: Column<AuditEvent>[] = [
+  const columns: TableColumn<AuditEvent>[] = [
     {
-      key: 'sequenceNo',
+      id: 'sequenceNo',
       header: '#',
       width: 70,
       align: 'right',
-      cell: (event) => <span className="font-mono text-theme-xs text-gray-500">{event.sequenceNo}</span>,
+      cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground">{row.sequenceNo}</span>,
     },
     {
-      key: 'occurredAt',
+      id: 'occurredAt',
       header: 'When',
       width: 190,
-      cell: (event) => formatDateTime(event.occurredAt),
+      cell: ({ row }) => formatDateTime(row.occurredAt),
     },
     {
-      key: 'action',
+      id: 'action',
       header: 'Action',
       width: 230,
-      cell: (event) => (
-        <StatusChip
-          value={event.action}
-          tone={event.action === 'AUTHORIZATION_DENIED' ? 'blocked' : 'neutral'}
-          label={humaniseCode(event.action)}
+      cell: ({ row }) => (
+        <StatusBadge
+          value={row.action}
+          tone={row.action === 'AUTHORIZATION_DENIED' ? 'blocked' : 'neutral'}
         />
       ),
     },
     {
-      key: 'actor',
+      id: 'actor',
       header: 'Actor',
       width: 160,
-      cell: (event) => event.actorDisplayName || event.actorId,
+      cell: ({ row }) => row.actorDisplayName || row.actorId,
     },
     {
-      key: 'resource',
+      id: 'resource',
       header: 'Resource',
-      hideBelowLg: true,
-      cell: (event) => (
-        <span className="text-gray-600">
-          {event.resourceType} · <span className="font-mono text-theme-xs">{event.resourceId}</span>
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          {row.resourceType} · <span className="font-mono text-xs">{row.resourceId}</span>
         </span>
       ),
     },
     {
-      key: 'site',
+      id: 'site',
       header: 'Site',
       width: 100,
       align: 'right',
-      cell: (event) => (
-        <span className="text-gray-600">{event.siteScope === '*' ? 'Platform' : event.siteScope}</span>
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">{row.siteScope === '*' ? 'Platform' : row.siteScope}</span>
       ),
     },
   ];
 
   return (
     <>
-      <PageHeader
-        title="Audit & integrity"
-        subtitle="Every state change, and the hash-chain replay that proves none was altered"
-        actions={
-          canVerifyAuditChain() ? (
-            <Button variant="outline" onClick={runVerification} disabled={verifying}>
-              {verifying ? 'Verifying…' : 'Verify chain'}
-            </Button>
-          ) : undefined
-        }
-      />
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Audit &amp; integrity</SectionTitle>
+          <SectionDescription>
+            Every state change, and the hash-chain replay that proves none was altered
+          </SectionDescription>
+          <SectionActions>
+            <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
+            {canVerifyAuditChain() && (
+              <Button variant="outline" onClick={runVerification} disabled={verifying}>
+                {verifying ? 'Verifying…' : 'Verify chain'}
+              </Button>
+            )}
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      <div className="space-y-5">
-        {verification && (
-          <Alert
-            variant={verification.intact ? 'success' : 'error'}
-            title={
+      {verification && (
+        <PageSection>
+          <Banner
+            variant={verification.intact ? 'success' : 'danger'}
+            heading={
               verification.intact
                 ? `Chain intact - ${verification.recordsVerified} records verified`
                 : 'Audit integrity check failed. Escalate to compliance and security.'
             }
-          >
-            {verification.intact ? (
-              <p className="text-theme-sm">
-                Every record replays against its predecessor. Head hash{' '}
-                <span className="font-mono text-theme-xs">
-                  {verification.headHash?.slice(0, 16)}…
-                </span>
-              </p>
-            ) : (
-              <div className="space-y-1 text-theme-sm">
-                <p>{orDash(verification.reason)}</p>
+            subtext={
+              verification.intact ? (
                 <p>
-                  Broke at sequence <strong>{orDash(verification.brokenAtSequence)}</strong> after{' '}
-                  {verification.recordsVerified} good records.
+                  Every record replays against its predecessor. Head hash{' '}
+                  <span className="font-mono text-xs">{verification.headHash?.slice(0, 16)}…</span>
                 </p>
-                <p className="font-mono text-theme-xs break-all">
-                  expected {orDash(verification.expected)}
-                  <br />
-                  found {orDash(verification.found)}
-                </p>
-              </div>
-            )}
-          </Alert>
-        )}
-
-        <FilterBar>
-          <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
-          <FacetFilter
-            label="Action"
-            selected={action ? [action] : []}
-            onChange={(next) => setAction(pickSingle(action, next))}
-            options={auditActions.map((value) => ({ value, label: humaniseCode(value) }))}
+              ) : (
+                <div className="space-y-1">
+                  <p>{orDash(verification.reason)}</p>
+                  <p>
+                    Broke at sequence <strong>{orDash(verification.brokenAtSequence)}</strong> after{' '}
+                    {verification.recordsVerified} good records.
+                  </p>
+                  <p className="font-mono text-xs break-all">
+                    expected {orDash(verification.expected)}
+                    <br />
+                    found {orDash(verification.found)}
+                  </p>
+                </div>
+              )
+            }
           />
-        </FilterBar>
+        </PageSection>
+      )}
 
-        <SectionCard
-          title="Audit trail"
-          subtitle="Append-only and hash-chained. Most recent first."
-        >
-          <DataState
-            loading={loading}
-            error={error}
-            empty={!data || data.items.length === 0}
-            emptyTitle="No audit records match"
-            emptyHint="Widen the site or clear the action filter."
-            onRetry={refetch}
-          >
-            {data && (
-              <DataTable
-                rows={data.items}
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Audit trail</SectionTitle>
+          <SectionDescription>Append-only and hash-chained. Most recent first.</SectionDescription>
+        </SectionHeader>
+        <DataState loading={false} error={error} onRetry={refetch}>
+          <Table paramPrefix="audit" variant="soft">
+            <Card bordered>
+              <TableHeader>
+                <TableFilter variant="spread">
+                  <Dropdown
+                    name="action"
+                    aria-label="Action"
+                    placeholder="All actions"
+                    clearable
+                    value={actionValue || null}
+                    onValueChange={(next) => setActionValue(next ?? '')}
+                    options={auditActions.map((value) => ({ value, label: humaniseCode(value) }))}
+                  />
+                </TableFilter>
+              </TableHeader>
+              <TableContent
+                variant="soft"
                 columns={columns}
-                getRowId={(event) => event.id}
-                caption="Audit trail"
-                dense
+                data={data?.items ?? []}
+                rowKey={(event) => event.id}
+                loading={loading}
+                aria-label="Audit trail"
+                emptyContent={
+                  <EmptyState
+                    title="No audit records match"
+                    description="Widen the site or clear the action filter."
+                  />
+                }
               />
-            )}
-          </DataState>
-        </SectionCard>
-      </div>
+            </Card>
+          </Table>
+        </DataState>
+      </PageSection>
     </>
   );
 };

@@ -1,6 +1,4 @@
-import FormDialog from 'shared/components/FormDialog';
 import SiteSelect from 'shared/components/SiteSelect';
-import { SelectInput, TextInput } from 'shared/components/fields';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { compose, maxLength, required } from 'shared/validation/validators';
 import type {
@@ -13,6 +11,7 @@ import type { DeviceReferenceType } from '../api/enums';
 import { SpacePicker } from '../components/estatePickers';
 import { humaniseCode } from '../components/facilitiesFormat';
 import { StaleWriteNotice } from './common';
+import { FormDialog, SelectInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
 
 /**
  * Registering a device reference.

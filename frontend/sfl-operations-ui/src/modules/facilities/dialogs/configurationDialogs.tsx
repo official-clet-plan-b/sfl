@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
+import { Notice } from '@rfdtech/components';
 import SiteSelect from 'shared/components/SiteSelect';
-import { Checkbox, SelectInput, TextInput } from 'shared/components/fields';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import type { ConfigurationValue, PutConfigurationRequest } from '../api/dto';
 import { describeKey, valueTypeHint } from '../api/configurationCatalogue';
+import { Checkbox, FormDialog, SelectInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface EditConfigurationDialogProps {
   value: ConfigurationValue;
@@ -113,7 +112,7 @@ export const EditConfigurationDialog = ({
           />
         )}
 
-        <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+        <div className="rounded-lg border border-border bg-surface-muted/20 px-4 py-3">
           <Checkbox
             checked={asOverride}
             onChange={setAsOverride}
@@ -134,28 +133,28 @@ export const EditConfigurationDialog = ({
           )}
         </div>
 
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg border border-gray-200 px-4 py-3 text-theme-sm">
-          <dt className="text-gray-600">In force now</dt>
-          <dd className="font-medium text-gray-900">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg border border-border px-4 py-3 text-sm">
+          <dt className="text-muted-foreground">In force now</dt>
+          <dd className="font-medium text-foreground">
             {value.value}
-            <span className="ml-2 font-normal text-gray-500">v{value.version}</span>
+            <span className="ml-2 font-normal text-muted-foreground">v{value.version}</span>
           </dd>
-          <dt className="text-gray-600">Will be written as</dt>
-          <dd className="font-medium text-gray-900">
+          <dt className="text-muted-foreground">Will be written as</dt>
+          <dd className="font-medium text-foreground">
             {next.trim() || '—'}
-            <span className="ml-2 font-normal text-gray-500">v{value.version + 1}</span>
+            <span className="ml-2 font-normal text-muted-foreground">v{value.version + 1}</span>
           </dd>
-          <dt className="text-gray-600">Key</dt>
-          <dd className="font-mono text-theme-xs text-gray-700">{value.key}</dd>
+          <dt className="text-muted-foreground">Key</dt>
+          <dd className="font-mono text-xs text-foreground">{value.key}</dd>
         </dl>
 
-        <Alert variant="info" title="The previous value is kept">
-          <p className="text-theme-sm">
+        <Notice variant="info" title="The previous value is kept">
+          <p className="text-sm">
             Saving writes a new version rather than replacing the old one, and the service reads the
             newest at evaluation time - so this applies to the next evaluation without a redeploy, and
             what was in force before this change stays on the record.
           </p>
-        </Alert>
+        </Notice>
       </div>
     </FormDialog>
   );

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Banner, Button } from '@rfdtech/components';
+import Icon from 'shared/components/Icon';
 import { TripResponse } from 'modules/fleet/api/dto';
 import {
   DEFECT_SEVERITIES,
@@ -10,22 +12,20 @@ import {
   humanise,
 } from 'modules/fleet/api/enums';
 import { driversApi, tripsApi, vehiclesApi } from 'modules/fleet/api/fleetApi';
-import Alert from 'shared/components/Alert';
 import BlockerList from 'shared/components/BlockerList';
-import Button, { IconButton } from 'shared/components/Button';
-import { DateTimeField } from 'shared/components/DateField';
 import EvidenceFileField from 'shared/components/EvidenceFileField';
 import { FleetApiError } from 'shared/errors/FleetApiError';
-import FormDialog from 'shared/components/FormDialog';
+import FleetFormDialog from 'modules/fleet/components/FleetFormDialog';
 import { evidenceFilesApi } from 'shared/evidence/evidenceFilesApi';
 import SiteSelect from 'shared/components/SiteSelect';
 import {
+  DateTimeField,
   EnumSelect,
   NumberInput,
   SelectInput,
   TextAreaInput,
   TextInput,
-} from 'shared/components/fields';
+} from 'modules/fleet/components/formFields';
 import {
   formatDateTime,
   formatNumber,
@@ -70,7 +70,12 @@ const useAssignableOptions = (siteCode: string | undefined, enabled: boolean) =>
     (signal) =>
       enabled
         ? vehiclesApi.search(
-            { siteCode, status: 'ACTIVE', size: 200, sort: 'registrationNumber' },
+            {
+              siteCode,
+              status: 'ACTIVE',
+              size: 200,
+              sort: 'registrationNumber',
+            },
             signal,
           )
         : Promise.resolve(undefined),
@@ -112,7 +117,13 @@ const AssignmentPreview = ({
     (signal) =>
       vehicleId
         ? tripsApi.assignmentPreview(
-            { vehicleId, driverId: driverId || undefined, from, to, operatingMode },
+            {
+              vehicleId,
+              driverId: driverId || undefined,
+              from,
+              to,
+              operatingMode,
+            },
             signal,
           )
         : Promise.resolve(undefined),
@@ -128,7 +139,10 @@ const AssignmentPreview = ({
 
   if (!vehicleId) {
     return (
-      <Alert variant="info">Choose a vehicle to see readiness blockers before submitting.</Alert>
+      <Banner
+        variant="info"
+        heading={<>Choose a vehicle to see readiness blockers before submitting.</>}
+      />
     );
   }
 
@@ -137,7 +151,7 @@ const AssignmentPreview = ({
   }
 
   if (preview.error) {
-    return <Alert variant="warning">{preview.error.message}</Alert>;
+    return <Banner variant="warning" heading={<>{preview.error.message}</>} />;
   }
 
   if (!preview.data) {
@@ -159,7 +173,10 @@ export const CreateTripDialog = ({
 }: BaseProps & { defaultSiteCode: string }) => {
   // Scoped to the site: a manager holding four centres should not be offered one centre's
   // routes while filing against another.
-  const { values: recentOrigins, remember: rememberOrigin } = useRecentValues('origin', defaultSiteCode);
+  const { values: recentOrigins, remember: rememberOrigin } = useRecentValues(
+    'origin',
+    defaultSiteCode,
+  );
   const { values: recentDestinations, remember: rememberDestination } = useRecentValues(
     'destination',
     defaultSiteCode,
@@ -229,7 +246,7 @@ export const CreateTripDialog = ({
       : null;
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title="Plan a trip"
       description="Planned first, crewed later - or assign a vehicle and driver now and it is assigned immediately."
@@ -255,7 +272,8 @@ export const CreateTripDialog = ({
               label: 'Crew',
               // "Assign later" is a real answer, not a blank - the disclosure is collapsed by
               // default and a dash here would read as something left undone.
-              value: form.values.vehicleId || form.values.driverId ? 'Assigned now' : 'Assign later',
+              value:
+                form.values.vehicleId || form.values.driverId ? 'Assigned now' : 'Assign later',
             },
           ]}
         />
@@ -339,54 +357,54 @@ export const CreateTripDialog = ({
           <span className="ml-1 font-normal text-gray-500">- optional, can be done later</span>
         </summary>
 
-      <div className={`mt-4 ${twoColumn}`}>
-        <SelectInput
-          label="Vehicle"
-          value={form.values.vehicleId}
-          onChange={(value) => form.setValue('vehicleId', value)}
-          options={(vehicles.data?.content ?? []).map((vehicle) => ({
-            value: vehicle.id,
-            label: `${vehicle.registrationNumber} - ${vehicle.make} ${vehicle.model} (${humanise(
-              vehicle.availabilityStatus,
-            )})`,
-          }))}
-          allowEmpty
-          emptyLabel="Assign later"
-          error={Boolean(vehicles.error)}
-          helperText={vehicles.error ? vehicles.error.message : 'Active vehicles for this site'}
-        />
+        <div className={`mt-4 ${twoColumn}`}>
+          <SelectInput
+            label="Vehicle"
+            value={form.values.vehicleId}
+            onChange={(value) => form.setValue('vehicleId', value)}
+            options={(vehicles.data?.content ?? []).map((vehicle) => ({
+              value: vehicle.id,
+              label: `${vehicle.registrationNumber} - ${vehicle.make} ${vehicle.model} (${humanise(
+                vehicle.availabilityStatus,
+              )})`,
+            }))}
+            allowEmpty
+            emptyLabel="Assign later"
+            error={Boolean(vehicles.error)}
+            helperText={vehicles.error ? vehicles.error.message : 'Active vehicles for this site'}
+          />
 
-        <SelectInput
-          label="Driver"
-          value={form.values.driverId}
-          onChange={(value) => form.setValue('driverId', value)}
-          options={(drivers.data?.content ?? []).map((driver) => ({
-            value: driver.id,
-            label: `${driver.displayName} - class ${driver.licenceClass} (${humanise(
-              driver.eligibilityStatus,
-            )})`,
-          }))}
-          allowEmpty
-          emptyLabel="Assign later"
-          error={Boolean(drivers.error)}
-          helperText={drivers.error ? drivers.error.message : 'Active drivers for this site'}
-        />
-      </div>
+          <SelectInput
+            label="Driver"
+            value={form.values.driverId}
+            onChange={(value) => form.setValue('driverId', value)}
+            options={(drivers.data?.content ?? []).map((driver) => ({
+              value: driver.id,
+              label: `${driver.displayName} - class ${driver.licenceClass} (${humanise(
+                driver.eligibilityStatus,
+              )})`,
+            }))}
+            allowEmpty
+            emptyLabel="Assign later"
+            error={Boolean(drivers.error)}
+            helperText={drivers.error ? drivers.error.message : 'Active drivers for this site'}
+          />
+        </div>
 
-      {form.values.vehicleId && (
-        <AssignmentPreview
-          vehicleId={form.values.vehicleId}
-          driverId={form.values.driverId}
-          from={
-            form.values.plannedStart ? fromLocalInputValue(form.values.plannedStart) : undefined
-          }
-          to={form.values.plannedEnd ? fromLocalInputValue(form.values.plannedEnd) : undefined}
-          operatingMode={form.values.operatingMode}
-          onPermitsAssignmentChange={setAssignmentPermitted}
-        />
-      )}
+        {form.values.vehicleId && (
+          <AssignmentPreview
+            vehicleId={form.values.vehicleId}
+            driverId={form.values.driverId}
+            from={
+              form.values.plannedStart ? fromLocalInputValue(form.values.plannedStart) : undefined
+            }
+            to={form.values.plannedEnd ? fromLocalInputValue(form.values.plannedEnd) : undefined}
+            operatingMode={form.values.operatingMode}
+            onPermitsAssignmentChange={setAssignmentPermitted}
+          />
+        )}
       </details>
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 
@@ -427,7 +445,7 @@ export const AssignTripDialog = ({
   const [assignmentPermitted, setAssignmentPermitted] = useState(true);
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title={trip.vehicleId ? 'Reassign trip' : 'Assign trip'}
       description={`${trip.tripNumber} · ${trip.origin} → ${trip.destination}. Blockers below are what the service will apply.`}
@@ -483,7 +501,7 @@ export const AssignTripDialog = ({
           onPermitsAssignmentChange={setAssignmentPermitted}
         />
       )}
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 
@@ -500,7 +518,9 @@ export const StartTripDialog = ({
 }: BaseProps & { trip: TripResponse; vehicleOdometer?: number }) => {
   const form = useFleetForm({
     // A newly registered vehicle legitimately reads 0, which is not the same as "no reading".
-    initialValues: { startOdometer: vehicleOdometer === undefined ? '' : String(vehicleOdometer) },
+    initialValues: {
+      startOdometer: vehicleOdometer === undefined ? '' : String(vehicleOdometer),
+    },
     schema: {
       startOdometer: compose(required('Start odometer'), nonNegativeInteger('Start odometer')),
     },
@@ -523,7 +543,7 @@ export const StartTripDialog = ({
   const regression = odometerNotBelow(form.values.startOdometer, vehicleOdometer);
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title="Start trip"
       description={`${trip.tripNumber}. The service gates this on a valid pre-trip inspection.`}
@@ -545,8 +565,8 @@ export const StartTripDialog = ({
         onChange={(value) => form.setValue('startOdometer', value)}
         {...form.fieldProps('startOdometer')}
       />
-      {regression && <Alert variant="warning">{regression}</Alert>}
-    </FormDialog>
+      {regression && <Banner variant="warning" heading={<>{regression}</>} />}
+    </FleetFormDialog>
   );
 };
 
@@ -637,7 +657,7 @@ export const CloseTripDialog = ({
       : null;
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title="Close trip"
       description="Closure reason and closure evidence are both mandatory - the service refuses closure without them."
@@ -652,35 +672,40 @@ export const CloseTripDialog = ({
         uploading ? (
           'Uploading the evidence…'
         ) : (
-        <FormSummary
-          items={[
-            {
-              label: 'Odometer',
-              value:
-                trip.startOdometer !== null && form.values.endOdometer !== ''
-                  ? `${formatNumber(trip.startOdometer)} → ${formatNumber(
-                      Number(form.values.endOdometer),
-                    )} km`
-                  : null,
-            },
-            // The whole point of the line. An odometer reading is unremarkable in isolation; a trip
-            // that covered 38,000 km is not, and this is the last place to notice before closure.
-            { label: 'Covered', value: distanceCovered, emphasis: true },
-            {
-              label: 'Evidence',
-              value: file ? file.name : form.values.closureEvidenceId ? 'Selected' : null,
-            },
-          ]}
-        />
+          <FormSummary
+            items={[
+              {
+                label: 'Odometer',
+                value:
+                  trip.startOdometer !== null && form.values.endOdometer !== ''
+                    ? `${formatNumber(trip.startOdometer)} → ${formatNumber(
+                        Number(form.values.endOdometer),
+                      )} km`
+                    : null,
+              },
+              // The whole point of the line. An odometer reading is unremarkable in isolation; a trip
+              // that covered 38,000 km is not, and this is the last place to notice before closure.
+              { label: 'Covered', value: distanceCovered, emphasis: true },
+              {
+                label: 'Evidence',
+                value: file ? file.name : form.values.closureEvidenceId ? 'Selected' : null,
+              },
+            ]}
+          />
         )
       }
       onClose={onClose}
       onSubmit={form.submit}
     >
-      <Alert variant="info">
-        Evidence is required to close a trip. Pick one below, or register it under Evidence &amp;
-        audit first if none is listed.
-      </Alert>
+      <Banner
+        variant="info"
+        heading={
+          <>
+            Evidence is required to close a trip. Pick one below, or register it under Evidence
+            &amp; audit first if none is listed.
+          </>
+        }
+      />
       <NumberInput
         label="End odometer (km)"
         required
@@ -739,7 +764,7 @@ export const CloseTripDialog = ({
         onChange={(value) => form.setValue('closureReason', value)}
         {...form.fieldProps('closureReason')}
       />
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 
@@ -770,7 +795,7 @@ export const HoldTripDialog = ({
   });
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title={action === 'HOLD' ? 'Place trip on hold' : 'Resume trip'}
       description={trip.tripNumber}
@@ -787,7 +812,7 @@ export const HoldTripDialog = ({
         onChange={(value) => form.setValue('reason', value)}
         {...form.fieldProps('reason')}
       />
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 
@@ -832,7 +857,7 @@ export const AcknowledgeTripDialog = ({
   });
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title={deferring ? 'Defer this trip' : 'Confirm this trip'}
       description={trip.tripNumber}
@@ -844,10 +869,15 @@ export const AcknowledgeTripDialog = ({
     >
       {deferring ? (
         <>
-          <Alert variant="info">
-            The trip stays assigned to you and keeps its vehicle. Deferring tells the dispatcher you
-            cannot take it as scheduled - it does not release the trip.
-          </Alert>
+          <Banner
+            variant="info"
+            heading={
+              <>
+                The trip stays assigned to you and keeps its vehicle. Deferring tells the dispatcher
+                you cannot take it as scheduled - it does not release the trip.
+              </>
+            }
+          />
           <TextAreaInput
             label="Why you cannot take this trip"
             rows={3}
@@ -858,11 +888,11 @@ export const AcknowledgeTripDialog = ({
         </>
       ) : (
         <p className="text-theme-sm text-gray-700">
-          Confirming tells the dispatcher you will take {trip.tripNumber} as scheduled. The trip stays
-          assigned; starting it is a separate step.
+          Confirming tells the dispatcher you will take {trip.tripNumber} as scheduled. The trip
+          stays assigned; starting it is a separate step.
         </p>
       )}
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 
@@ -887,7 +917,7 @@ export const CancelTripDialog = ({
   });
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title="Cancel trip"
       description={`${trip.tripNumber} will be cancelled. This cannot be undone - the record stays in history.`}
@@ -906,7 +936,7 @@ export const CancelTripDialog = ({
         onChange={(value) => form.setValue('reason', value)}
         {...form.fieldProps('reason')}
       />
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 
@@ -994,7 +1024,7 @@ export const RecordInspectionDialog = ({
     findings.length === 0 ? 'PASSED' : hasCritical ? 'FAILED' : 'PASSED_WITH_DEFECTS';
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title="Record an inspection"
       description={`${trip.tripNumber}. Findings decide the result - and a critical defect blocks the vehicle from use.`}
@@ -1036,7 +1066,8 @@ export const RecordInspectionDialog = ({
 
       <div className={`flex items-center justify-between gap-3 ${sectionHeading}`}>
         <h3>Findings ({findings.length})</h3>
-        <Button size="sm" variant="outline" startIcon="plus" onClick={addFinding}>
+        <Button size="sm" variant="outline" onClick={addFinding}>
+          <Icon name="plus" size={14} aria-hidden="true" />
           Add finding
         </Button>
       </div>
@@ -1071,23 +1102,28 @@ export const RecordInspectionDialog = ({
                 value={finding.severity}
                 options={DEFECT_SEVERITIES}
                 onChange={(value) =>
-                  updateFinding(index, { severity: (value || 'MINOR') as DefectSeverity })
+                  updateFinding(index, {
+                    severity: (value || 'MINOR') as DefectSeverity,
+                  })
                 }
                 className="sm:w-40"
               />
               {/* Aligned to the controls rather than the labels, which sit above them. */}
-              <IconButton
-                name="close"
-                label="Remove finding"
+              <Button
+                variant="outline"
+                aria-label="Remove finding"
+                title="Remove finding"
                 onClick={() => removeFinding(index)}
                 className="shrink-0 self-end sm:mt-6 sm:self-auto"
-              />
+              >
+                <Icon name="close" size={16} aria-hidden="true" />
+              </Button>
             </div>
           ))}
         </div>
       )}
 
-      {findingErrors && <Alert variant="error">{findingErrors}</Alert>}
+      {findingErrors && <Banner variant="danger" heading={<>{findingErrors}</>} />}
 
       <TextAreaInput
         label="Notes"
@@ -1097,10 +1133,16 @@ export const RecordInspectionDialog = ({
         {...form.fieldProps('notes')}
       />
 
-      <Alert variant={hasCritical ? 'error' : findings.length > 0 ? 'warning' : 'success'}>
-        Expected result: <strong>{humanise(predictedResult)}</strong>
-        {hasCritical && ' - a critical defect blocks the vehicle from use until it is resolved.'}
-      </Alert>
-    </FormDialog>
+      <Banner
+        variant={hasCritical ? 'danger' : findings.length > 0 ? 'warning' : 'success'}
+        heading={
+          <>
+            Expected result: <strong>{humanise(predictedResult)}</strong>
+            {hasCritical &&
+              ' - a critical defect blocks the vehicle from use until it is resolved.'}
+          </>
+        }
+      />
+    </FleetFormDialog>
   );
 };

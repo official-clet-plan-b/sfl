@@ -1,3 +1,4 @@
+import { Banner } from '@rfdtech/components';
 import { DriverResponse } from 'modules/fleet/api/dto';
 import {
   DRIVER_LIFECYCLE_STATUSES,
@@ -6,11 +7,9 @@ import {
   LicenceClass,
 } from 'modules/fleet/api/enums';
 import { driversApi } from 'modules/fleet/api/fleetApi';
-import Alert from 'shared/components/Alert';
-import { DateField } from 'shared/components/DateField';
-import FormDialog from 'shared/components/FormDialog';
+import FleetFormDialog from 'modules/fleet/components/FleetFormDialog';
 import SiteSelect from 'shared/components/SiteSelect';
-import { EnumSelect, TextInput } from 'shared/components/fields';
+import { DateField, EnumSelect, TextInput } from 'modules/fleet/components/formFields';
 import { todayIsoDate } from 'shared/components/format';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { compose, maxLength, required } from 'shared/validation/validators';
@@ -87,7 +86,7 @@ export const RegisterDriverDialog = ({
   });
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title="Register a driver"
       description="Creates the HRMS-backed driver profile reference this service assigns trips against."
@@ -162,7 +161,7 @@ export const RegisterDriverDialog = ({
           {...form.fieldProps('responsibleUnit')}
         />
       </div>
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 
@@ -195,7 +194,7 @@ export const BindDriverPrincipalDialog = ({
   });
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title={`Link sign-in for ${driver.displayName}`}
       description="Links this driver profile to the account that should see its assigned trips in My driving day."
@@ -216,7 +215,7 @@ export const BindDriverPrincipalDialog = ({
           'For the seeded Driver portal, enter kwame.driver. Leave blank only to unlink this profile.',
         )}
       />
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 
@@ -271,7 +270,7 @@ export const UpdateDriverDialog = ({
   });
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title={`Update ${driver.displayName}`}
       description="Licence details and lifecycle status both feed the eligibility assessment."
@@ -283,10 +282,15 @@ export const UpdateDriverDialog = ({
       onSubmit={form.submit}
     >
       {driver.licenceNumberMasked && (
-        <Alert variant="warning">
-          The licence number is masked for your role. Submitting will overwrite the stored value -
-          only fill this in if you hold the real number.
-        </Alert>
+        <Banner
+          variant="warning"
+          heading={
+            <>
+              The licence number is masked for your role. Submitting will overwrite the stored value
+              - only fill this in if you hold the real number.
+            </>
+          }
+        />
       )}
       <div className={twoColumn}>
         <TextInput
@@ -351,6 +355,6 @@ export const UpdateDriverDialog = ({
           )}
         />
       </div>
-    </FormDialog>
+    </FleetFormDialog>
   );
 };

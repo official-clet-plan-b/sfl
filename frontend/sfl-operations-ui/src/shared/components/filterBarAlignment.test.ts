@@ -134,9 +134,9 @@ describe('every FilterBar control carries a label or reserves the height of one'
   });
 
   it('is actually reading filter bars, so an empty result means clean rather than nothing scanned', () => {
-    // Thirty-odd register screens use one. If this ever drops to zero the scan has broken, and a
-    // broken scan reports the same green as a clean application.
-    expect(bars.length).toBeGreaterThan(20);
+    // The library migration moved most registers to TableFilter. If this ever drops to zero the
+    // scan has broken, and a broken scan reports the same green as a clean application.
+    expect(bars.length).toBeGreaterThan(0);
   });
 
   it('would catch a bare Select, which is the shape the four ragged bars had', () => {

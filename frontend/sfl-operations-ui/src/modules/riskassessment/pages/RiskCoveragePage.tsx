@@ -1,9 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
 import { formatDateTime } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
@@ -14,6 +11,10 @@ import { riskAssessmentApi } from '../api/riskAssessmentApi';
 import HazardFrequencyChart from '../charts/HazardFrequencyChart';
 import { StandingChip } from '../components/riskChips';
 import { CreateAssessmentDialog } from '../dialogs/assessmentDialogs';
+import { Button } from '@rfdtech/components';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import Panel from 'modules/emergency/components/Panel';
+import Icon from 'shared/components/Icon';
 
 /** Where each observed activity came from, in the source system's own terms. */
 const sourceName: Record<string, string> = { S176: 'Construction projects (S176)', S163: 'Incidents (S163)' };
@@ -46,7 +47,7 @@ const Line = ({ line, onAssess }: { line: CoverageLine; onAssess?: () => void })
       )}
       {onAssess && (
         <div className="mt-3">
-          <Button size="sm" variant="outline" startIcon="plus" onClick={onAssess}>
+          <Button size="sm" variant="outline" onClick={onAssess}><Icon name="plus" size={14} aria-hidden="true" />
             {line.assessments.length ? 'Write another assessment' : 'Assess this activity'}
           </Button>
         </div>
@@ -77,18 +78,18 @@ const RiskCoveragePage = () => {
 
   return (
     <div>
-      <PageHeader title="Coverage and hazards" subtitle="Activities in use at the site with no current assessment, and the hazards the library already covers." crumbs={[{ label: 'Risk assessments', to: riskAssessmentPaths.dashboard }, { label: 'Coverage' }]} actions={<Button variant="outline" startIcon="refresh" onClick={() => { coverage.refetch(); hazards.refetch(); }}>Refresh</Button>} />
+      <PageHeading title="Coverage and hazards" subtitle="Activities in use at the site with no current assessment, and the hazards the library already covers." crumbs={[{ label: 'Risk assessments', to: riskAssessmentPaths.dashboard }, { label: 'Coverage' }]} actions={<Button variant="outline" onClick={() => { coverage.refetch(); hazards.refetch(); }}><Icon name="refresh" size={14} aria-hidden="true" />Refresh</Button>} />
       <div className="mb-5">
-        <SectionCard>
+        <Panel>
           <div className="max-w-sm">
             <SiteSelect value={siteCode} onChange={setSiteCode} required />
           </div>
-        </SectionCard>
+        </Panel>
       </div>
       <DataState loading={coverage.initialising} error={coverage.error} onRetry={coverage.refetch}>
         {report && (
           <div className="space-y-5">
-            <SectionCard title={`Coverage gaps (${report.gaps.length})`} subtitle={`${report.covered} of ${report.observedActivityTypes} activity types in use have a current assessment.`}>
+            <Panel title={`Coverage gaps (${report.gaps.length})`} subtitle={`${report.covered} of ${report.observedActivityTypes} activity types in use have a current assessment.`}>
               {report.observedActivityTypes === 0 ? (
                 <p className="text-theme-sm text-gray-600">
                   No activity has been observed at this site yet. Activity types arrive from S176 construction projects and from incidents that record what work was under way.
@@ -100,23 +101,23 @@ const RiskCoveragePage = () => {
               ) : (
                 <p className="text-theme-sm text-gray-600">Every activity in use at this site has a current assessment.</p>
               )}
-            </SectionCard>
+            </Panel>
             {report.coveredLines.length > 0 && (
-              <SectionCard title={`Covered (${report.coveredLines.length})`}>
+              <Panel title={`Covered (${report.coveredLines.length})`}>
                 <div className="grid gap-3 lg:grid-cols-2">
                   {report.coveredLines.map((line) => <Line key={line.activityType} line={line} />)}
                 </div>
-              </SectionCard>
+              </Panel>
             )}
           </div>
         )}
       </DataState>
       <div className="mt-5">
-        <SectionCard title="Hazard frequency" subtitle="Hazard types across current assessments, most frequent first.">
+        <Panel title="Hazard frequency" subtitle="Hazard types across current assessments, most frequent first.">
           <DataState loading={hazards.initialising} error={hazards.error} onRetry={hazards.refetch} empty={!hazards.data?.length} emptyTitle="No current assessments" emptyHint="Hazard frequency counts current assessments only.">
             <HazardFrequencyChart hazards={hazards.data ?? []} height={Math.max(220, (hazards.data?.length ?? 0) * 34)} />
           </DataState>
-        </SectionCard>
+        </Panel>
       </div>
       {assessing && (
         <CreateAssessmentDialog siteCode={siteCode} activityType={assessing} onClose={() => setAssessing(null)} onCreated={(detail) => { setAssessing(null); navigate(riskAssessmentPaths.detail(detail.assessment.id)); }} />

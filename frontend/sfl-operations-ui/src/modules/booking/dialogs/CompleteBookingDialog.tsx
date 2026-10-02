@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import FormDialog from 'shared/components/FormDialog';
-import { TextAreaInput } from 'shared/components/fields';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import type { Booking, TransitionBookingBody } from '../api/dto';
+import { FormDialog, TextAreaInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface CompleteBookingDialogProps {
   booking: Booking;

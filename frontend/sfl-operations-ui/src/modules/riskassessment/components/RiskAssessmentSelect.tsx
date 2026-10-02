@@ -1,9 +1,9 @@
-import { SelectInput, TextInput } from 'shared/components/fields';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { permits } from 'shared/layout/actorPermissions';
 import type { AssessmentPage } from '../api/dto';
 import { standingLabel } from '../api/enums';
 import { riskAssessmentApi } from '../api/riskAssessmentApi';
+import { TextField, SelectField } from 'modules/emergency/components/FormFields';
 
 interface RiskContextFieldsProps {
   siteCode: string;
@@ -30,22 +30,17 @@ const RiskContextFields = ({ siteCode, riskAssessmentId, activityType, onRiskAss
         : Promise.resolve<AssessmentPage | undefined>(undefined),
     [canRead, siteCode],
   );
-  const activityTypes = useApiQuery(
-    (signal) => (canRead && siteCode ? riskAssessmentApi.activityTypes(siteCode, signal) : Promise.resolve<string[]>([])),
-    [canRead, siteCode],
-  );
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <TextInput
+      <TextField
         label="Activity under way"
         value={activityType}
         maxLength={80}
-        suggestions={activityTypes.data ?? []}
         onChange={onActivityTypeChange}
         helperText="e.g. Hot work. Flags every published assessment for that activity here."
       />
       {canRead ? (
-        <SelectInput
+        <SelectField
           label="Risk assessment the work was under"
           value={riskAssessmentId}
           allowEmpty

@@ -7,14 +7,20 @@ import {
   SealState,
 } from 'modules/dispatch/api/enums';
 import { custodyApi, receiptsApi, returnsApi } from 'modules/dispatch/api/dispatchApi';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
-import { DateTimeField } from 'shared/components/DateField';
-import { Checkbox, EnumSelect, NumberInput, TextAreaInput, TextInput } from 'shared/components/fields';
 import { EVIDENCE_RETENTION_CLASSES, EvidenceRetentionClass, humanise } from 'modules/fleet/api/enums';
+import { AcceptingFileField } from 'modules/dispatch/components/dialogParts';
+import {
+  Callout,
+  CheckboxField,
+  DateTimeField,
+  EnumSelectField,
+  FormModal,
+  NumberField,
+  TextAreaField,
+  TextField,
+} from 'modules/dispatch/components/formKit';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { compose, integerAtLeast, maxLength, required } from 'shared/validation/validators';
-import FileField from 'shared/components/FileField';
 import { describeEvidenceFile } from 'shared/evidence/fileEvidence';
 
 const twoColumn = 'grid gap-4 sm:grid-cols-2';
@@ -114,7 +120,7 @@ export const RecordHandoverDialog = ({
   const alreadyRecorded = recorded.some((handover) => handover.hop === form.values.hop);
 
   return (
-    <FormDialog
+    <FormModal
       open={open}
       title="Record a custody handover"
       description={`${manifest.manifestNumber} · ${manifest.route}`}
@@ -125,13 +131,13 @@ export const RecordHandoverDialog = ({
       onClose={onClose}
       onSubmit={form.submit}
     >
-      <Alert variant="info" title="This cannot be edited afterwards">
+      <Callout tone="info" title="This cannot be edited afterwards">
         The chain of custody is append-only - it is the evidence. If something is recorded wrongly,
         the correction is another handover, not a change to this one.
-      </Alert>
+      </Callout>
 
       <div className={twoColumn}>
-        <EnumSelect
+        <EnumSelectField
           label="Hop"
           required
           value={form.values.hop}
@@ -145,21 +151,21 @@ export const RecordHandoverDialog = ({
           onChange={(value) => form.setValue('occurredAt', value)}
           {...form.fieldProps('occurredAt', 'Leave blank to record it as now.')}
         />
-        <TextInput
+        <TextField
           label="Transferring custodian"
           required
           value={form.values.transferringCustodian}
           onChange={(value) => form.setValue('transferringCustodian', value)}
           {...form.fieldProps('transferringCustodian', 'Who is handing the consignment over.')}
         />
-        <TextInput
+        <TextField
           label="Receiving custodian"
           required
           value={form.values.receivingCustodian}
           onChange={(value) => form.setValue('receivingCustodian', value)}
           {...form.fieldProps('receivingCustodian', 'Who becomes accountable for it.')}
         />
-        <EnumSelect
+        <EnumSelectField
           label="Seal state"
           required
           value={form.values.sealState}
@@ -167,7 +173,7 @@ export const RecordHandoverDialog = ({
           onChange={(value) => form.setValue('sealState', (value || 'INTACT') as SealState)}
           {...form.fieldProps('sealState')}
         />
-        <NumberInput
+        <NumberField
           label="Verified count"
           value={form.values.verifiedCount}
           onChange={(value) => form.setValue('verifiedCount', value)}
@@ -181,14 +187,14 @@ export const RecordHandoverDialog = ({
       </div>
 
       {alreadyRecorded && (
-        <Alert variant="warning" title="This hop already has a handover">
+        <Callout tone="warning" title="This hop already has a handover">
           Recording a second one is allowed and is sometimes right - a consignment can change hands
           twice in transit. It will appear alongside the first, not replace it.
-        </Alert>
+        </Callout>
       )}
 
       {(sealCompromised || countMismatch) && (
-        <Alert variant="error" title="This will be recorded as a custody gap">
+        <Callout tone="danger" title="This will be recorded as a custody gap">
           <ul className="mt-1 list-disc space-y-1 pl-4">
             {sealCompromised && (
               <li>
@@ -207,10 +213,10 @@ export const RecordHandoverDialog = ({
             Record it anyway if it is what happened - that is what the chain is for. The manifest
             will not close until the gap is resolved through an exception case.
           </p>
-        </Alert>
+        </Callout>
       )}
 
-      <TextAreaInput
+      <TextAreaField
         label="Notes"
         rows={2}
         value={form.values.notes}
@@ -219,7 +225,7 @@ export const RecordHandoverDialog = ({
       />
 
       <div className={twoColumn}>
-        <FileField
+        <AcceptingFileField
           label="Evidence"
           accept="image/*,.pdf,.png,.jpg,.jpeg"
           value={form.values.evidenceFile}
@@ -229,7 +235,7 @@ export const RecordHandoverDialog = ({
             'Optional. A photograph or signature - the file name, type, storage reference and SHA-256 are derived from it.',
           )}
         />
-        <EnumSelect
+        <EnumSelectField
           label="Retention class"
           value={form.values.retentionClass}
           options={EVIDENCE_RETENTION_CLASSES}
@@ -239,7 +245,7 @@ export const RecordHandoverDialog = ({
           {...form.fieldProps('retentionClass', 'How long the evidence must be kept.')}
         />
       </div>
-    </FormDialog>
+    </FormModal>
   );
 };
 
@@ -344,10 +350,10 @@ export const ConfirmReceiptDialog = ({
   }
 
   return (
-    <FormDialog
+    <FormModal
       open={open}
-      title="Confirm receipt"
-      description={`${manifest.manifestNumber} · ${manifest.destinationCentre ?? manifest.route}`}
+      title={`Confirm receipt of ${manifest.manifestNumber}`}
+      description={manifest.destinationCentre ?? manifest.route}
       submitLabel="Confirm receipt"
       submitting={form.submitting}
       formError={form.formError}
@@ -356,7 +362,7 @@ export const ConfirmReceiptDialog = ({
       onSubmit={form.submit}
     >
       <div className={twoColumn}>
-        <EnumSelect
+        <EnumSelectField
           label="Seal state"
           required
           value={form.values.sealState}
@@ -364,27 +370,27 @@ export const ConfirmReceiptDialog = ({
           onChange={(value) => form.setValue('sealState', (value || 'INTACT') as SealState)}
           {...form.fieldProps('sealState')}
         />
-        <TextInput
+        <TextField
           label="Received by"
           required
           value={form.values.recipientName}
           onChange={(value) => form.setValue('recipientName', value)}
           {...form.fieldProps('recipientName', 'Who signed for the consignment.')}
         />
-        <NumberInput
+        <NumberField
           label="Expected count"
           value={form.values.expectedCount}
           onChange={(value) => form.setValue('expectedCount', value)}
           {...form.fieldProps('expectedCount', `The manifest carries ${manifest.itemCount}.`)}
         />
-        <NumberInput
+        <NumberField
           label="Verified count"
           required
           value={form.values.verifiedCount}
           onChange={(value) => form.setValue('verifiedCount', value)}
           {...form.fieldProps('verifiedCount', 'What was actually counted on arrival.')}
         />
-        <TextInput
+        <TextField
           label="Expected recipient"
           value={form.values.expectedRecipient}
           onChange={(value) => form.setValue('expectedRecipient', value)}
@@ -398,14 +404,14 @@ export const ConfirmReceiptDialog = ({
         />
       </div>
 
-      <Checkbox
+      <CheckboxField
         checked={form.values.sealVerified}
         onChange={(checked) => form.setValue('sealVerified', checked)}
         label="The seal was checked against the manifest"
         hint="Leaving this unchecked is itself a variance - an unverified seal is not an intact one."
       />
 
-      <Alert variant={predicted.length === 0 ? 'success' : 'warning'} title="Outcome">
+      <Callout tone={predicted.length === 0 ? 'success' : 'warning'} title="Outcome">
         {predicted.length === 0 ? (
           'These entries will record a clean receipt.'
         ) : (
@@ -415,9 +421,9 @@ export const ConfirmReceiptDialog = ({
             chosen here. A variance raises an exception case and blocks the manifest from closing.
           </>
         )}
-      </Alert>
+      </Callout>
 
-      <Checkbox
+      <CheckboxField
         checked={form.values.edgeCaptured}
         onChange={(checked) => form.setValue('edgeCaptured', checked)}
         label="Captured offline at the destination"
@@ -425,7 +431,7 @@ export const ConfirmReceiptDialog = ({
       />
 
       <div className={twoColumn}>
-        <TextInput
+        <TextField
           label="Capture correlation ID"
           value={form.values.captureCorrelationId}
           onChange={(value) => form.setValue('captureCorrelationId', value)}
@@ -434,19 +440,19 @@ export const ConfirmReceiptDialog = ({
             'Makes the confirmation idempotent, so a replay cannot double-record it.',
           )}
         />
-        <TextInput
+        <TextField
           label="Signature storage reference"
           value={form.values.signatureStorageReference}
           onChange={(value) => form.setValue('signatureStorageReference', value)}
           {...form.fieldProps('signatureStorageReference', 'Absent, this counts as a variance.')}
         />
-        <TextInput
+        <TextField
           label="Signature file name"
           value={form.values.signatureFileName}
           onChange={(value) => form.setValue('signatureFileName', value)}
           {...form.fieldProps('signatureFileName')}
         />
-        <EnumSelect
+        <EnumSelectField
           label="Retention class"
           value={form.values.retentionClass}
           options={EVIDENCE_RETENTION_CLASSES}
@@ -456,7 +462,7 @@ export const ConfirmReceiptDialog = ({
           {...form.fieldProps('retentionClass', 'How long the evidence must be kept.')}
         />
       </div>
-    </FormDialog>
+    </FormModal>
   );
 };
 
@@ -530,7 +536,7 @@ export const ReconcileReturnDialog = ({
   const discrepancy = returned !== null && (shortfall! > 0 || extras! > 0 || broken > 0);
 
   return (
-    <FormDialog
+    <FormModal
       open={open}
       title="Reconcile the return leg"
       description={`${manifest.manifestNumber} · ${manifest.itemCount} item${manifest.itemCount === 1 ? '' : 's'} went out`}
@@ -542,20 +548,20 @@ export const ReconcileReturnDialog = ({
       onSubmit={form.submit}
     >
       <div className={twoColumn}>
-        <NumberInput
+        <NumberField
           label="Expected back"
           value={form.values.expectedCount}
           onChange={(value) => form.setValue('expectedCount', value)}
           {...form.fieldProps('expectedCount', 'Defaults to what the manifest carried out.')}
         />
-        <NumberInput
+        <NumberField
           label="Returned"
           required
           value={form.values.returnedCount}
           onChange={(value) => form.setValue('returnedCount', value)}
           {...form.fieldProps('returnedCount', 'What actually came back.')}
         />
-        <NumberInput
+        <NumberField
           label="Broken seals"
           required
           value={form.values.brokenSeals}
@@ -565,7 +571,7 @@ export const ReconcileReturnDialog = ({
       </div>
 
       {returned !== null && (
-        <Alert variant={discrepancy ? 'warning' : 'success'} title="Outcome">
+        <Callout tone={discrepancy ? 'warning' : 'success'} title="Outcome">
           {discrepancy ? (
             <>
               This will record a <strong>discrepancy</strong>
@@ -577,10 +583,10 @@ export const ReconcileReturnDialog = ({
           ) : (
             'The return matches the manifest. This will record a clean reconciliation.'
           )}
-        </Alert>
+        </Callout>
       )}
 
-      <TextAreaInput
+      <TextAreaField
         label="Notes"
         rows={2}
         value={form.values.notes}
@@ -589,7 +595,7 @@ export const ReconcileReturnDialog = ({
       />
 
       <div className={twoColumn}>
-        <FileField
+        <AcceptingFileField
           label="Evidence"
           accept="image/*,.pdf,.png,.jpg,.jpeg"
           value={form.values.evidenceFile}
@@ -599,7 +605,7 @@ export const ReconcileReturnDialog = ({
             'Optional. A photograph or signature - the file name, type, storage reference and SHA-256 are derived from it.',
           )}
         />
-        <EnumSelect
+        <EnumSelectField
           label="Retention class"
           value={form.values.retentionClass}
           options={EVIDENCE_RETENTION_CLASSES}
@@ -609,6 +615,6 @@ export const ReconcileReturnDialog = ({
           {...form.fieldProps('retentionClass', 'How long the evidence must be kept.')}
         />
       </div>
-    </FormDialog>
+    </FormModal>
   );
 };

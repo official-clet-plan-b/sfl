@@ -3,6 +3,7 @@ import Button from './Button';
 import Icon from './Icon';
 import { Spinner } from './DataState';
 import { cn } from './cn';
+import type { TableColumn as LibraryTableColumn } from '@rfdtech/components';
 
 export interface Column<T> {
   key: string;
@@ -15,9 +16,19 @@ export interface Column<T> {
   hideBelowLg?: boolean;
 }
 
+type CompatibleColumn<T> = Column<T> | LibraryTableColumn<T>;
+
+const renderColumnCell = <T,>(column: CompatibleColumn<T>, row: T) =>
+  'key' in column
+    ? column.cell(row)
+    : column.cell?.({
+        row,
+        value: (column.accessorFn?.(row) ?? (column.accessorKey ? row[column.accessorKey] : undefined)) as ReactNode,
+      });
+
 interface DataTableProps<T> {
   rows: T[];
-  columns: Column<T>[];
+  columns: CompatibleColumn<T>[];
   getRowId: (row: T) => string;
   loading?: boolean;
   onRowClick?: (row: T) => void;
@@ -96,13 +107,13 @@ function DataTable<T>({
             <tr className="border-y border-gray-200 bg-gray-50">
               {columns.map((column) => (
                 <th
-                  key={column.key}
+                  key={'key' in column ? column.key : column.id}
                   scope="col"
                   style={column.width ? { minWidth: column.width } : undefined}
                   className={cn(
                     'px-5 py-3 text-[11px] font-semibold tracking-wider whitespace-nowrap text-gray-500 uppercase',
                     alignment[column.align ?? 'left'],
-                    column.hideBelowLg && 'hidden lg:table-cell',
+                    'hideBelowLg' in column && column.hideBelowLg && 'hidden lg:table-cell',
                   )}
                 >
                   {column.header}
@@ -131,12 +142,12 @@ function DataTable<T>({
               >
                 {columns.map((column, columnIndex) => (
                   <td
-                    key={column.key}
+                    key={'key' in column ? column.key : column.id}
                     className={cn(
                       'px-5 align-middle text-theme-sm text-gray-700',
                       dense ? 'py-3' : 'py-4',
                       alignment[column.align ?? 'left'],
-                      column.hideBelowLg && 'hidden lg:table-cell',
+                      'hideBelowLg' in column && column.hideBelowLg && 'hidden lg:table-cell',
                     )}
                   >
                     {onRowClick && columnIndex === 0 ? (
@@ -145,10 +156,10 @@ function DataTable<T>({
                         onClick={() => onRowClick(row)}
                         className="block w-full rounded-sm text-left"
                       >
-                        {column.cell(row)}
+                        {renderColumnCell(column, row)}
                       </button>
                     ) : (
-                      column.cell(row)
+                      renderColumnCell(column, row)
                     )}
                   </td>
                 ))}

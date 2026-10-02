@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
-import { TextAreaInput } from 'shared/components/fields';
+import { Notice } from '@rfdtech/components';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import type { Site } from '../api/dto';
 import type { OperatingMode } from '../api/enums';
+import { FormDialog, TextAreaInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface OperatingModeDialogProps {
   site: Site;
@@ -53,22 +52,22 @@ const OperatingModeDialog = ({ site, onClose, onChanged }: OperatingModeDialogPr
       onSubmit={submit}
     >
       <div className="space-y-4">
-        <Alert variant={declaring ? 'warning' : 'info'} title="What this changes">
+        <Notice variant={declaring ? 'warning' : 'info'} title="What this changes">
           {declaring ? (
-            <ul className="mt-1 list-disc space-y-1 pl-4 text-theme-sm">
+            <ul className="mt-1 list-disc space-y-1 pl-4 text-sm">
               <li>Readiness is assessed against the examination checklist for this centre.</li>
               <li>The staleness threshold tightens, so more spaces will report as needing reassessment.</li>
               <li>Examination-readiness risk is reported separately on the dashboard.</li>
               <li>The change is recorded in the audit trail against your name.</li>
             </ul>
           ) : (
-            <ul className="mt-1 list-disc space-y-1 pl-4 text-theme-sm">
+            <ul className="mt-1 list-disc space-y-1 pl-4 text-sm">
               <li>Readiness returns to the routine checklist and the routine staleness window.</li>
               <li>Spaces locked for examination stay locked until released individually.</li>
               <li>The change is recorded in the audit trail against your name.</li>
             </ul>
           )}
-        </Alert>
+        </Notice>
 
         <TextAreaInput
           label="Reason"

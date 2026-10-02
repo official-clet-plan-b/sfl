@@ -1,20 +1,35 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
+import {
+  Card,
+  Dropdown,
+  EmptyState,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  TableFilter,
+  TableHeader,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  useBreadcrumbs,
+  useTableState,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar, { ActiveFilter } from 'shared/components/FilterBar';
-import PageHeader from 'shared/components/PageHeader';
-import QuickFilters from 'shared/components/QuickFilters';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
-import { SelectInput } from 'shared/components/fields';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
 import type { WorkOrder } from '../api/dto';
 import type { WorkOrderStatus } from '../api/enums';
 import { workOrderStatuses } from '../api/enums';
 import { listVendors, searchWorkOrders } from '../api/facilitiesApi';
+import StatusBadge from '../components/StatusBadge';
 import {
   formatDateTime,
   heldFor,
@@ -48,24 +63,22 @@ import {
  */
 const WorkOrderQueuePage = () => {
   const navigate = useNavigate();
+  useBreadcrumbs([{ label: 'Facilities', href: facilitiesPaths.dashboard }, { label: 'Work orders' }]);
+
+  /*
+    The search endpoint takes one value per axis, so status and vendor are single choices that live
+    in the URL, as the table keeps its filters. "Outstanding only" is not a third filter: it is the
+    question this screen exists to answer, asked on every visit, so it is the tab row rather than a
+    field behind a popover.
+  */
+  const { filters } = useTableState({ paramPrefix: 'work-orders' });
+  const status = filters.status ?? '';
+  const vendorId = filters.vendor ?? '';
+  const [statusValue, setStatusValue] = useState(status);
+  const [vendorValue, setVendorValue] = useState(vendorId);
 
   const [siteCode, setSiteCode] = useState<string>(defaultSite);
-  const [status, setStatus] = useState<string>('');
-  const [vendorId, setVendorId] = useState<string>('');
   const [openOnly, setOpenOnly] = useState(true);
-
-  /**
-   * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
-   * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
-   * option already active clears it, same as the dropdown it replaces; toggling a different one while
-   * one is active swaps to the new choice instead of appearing to hold both.
-   */
-  const pickSingle = (current: string, next: string[]): string => {
-    if (next.length === 0) {
-      return '';
-    }
-    return next.find((value) => value !== current) ?? next[0];
-  };
 
   const orders = useApiQuery(
     (signal) =>
@@ -97,183 +110,148 @@ const WorkOrderQueuePage = () => {
 
   const overdueCount = rows.filter((order) => order.overdue).length;
 
-  const resetFilters = () => {
-    setSiteCode(defaultSite);
-    setStatus('');
-    setVendorId('');
-  };
-
-  /*
-    "Outstanding only" is not one of four equal filters - it is the question this screen exists to
-    answer, asked on every visit, and it was costing the same open-read-choose as the vendor list.
-    No counts on the options: `openOnly` goes to the server, so the screen cannot know how many
-    "Everything" holds without asking for it, and a number it had to guess at would be worse than
-    none.
-  */
-  const activeFilters: ActiveFilter[] = [
-    ...(siteCode !== defaultSite
-      ? [
-          {
-            key: 'siteCode',
-            label: 'Site',
-            value: siteCode || 'All sites',
-            onClear: () => setSiteCode(defaultSite),
-          },
-        ]
-      : []),
-    ...(status
-      ? [
-          {
-            key: 'status',
-            label: 'Status',
-            value: humaniseCode(status),
-            onClear: () => setStatus(''),
-          },
-        ]
-      : []),
-    ...(vendorId
-      ? [
-          {
-            key: 'vendorId',
-            label: 'Vendor',
-            value:
-              (vendors.data ?? []).find((vendor) => vendor.id === vendorId)?.name ?? 'Selected',
-            onClear: () => setVendorId(''),
-          },
-        ]
-      : []),
-  ];
-
-  const columns: Column<WorkOrder>[] = [
+  const columns: TableColumn<WorkOrder>[] = [
     {
-      key: 'workOrderNumber',
+      id: 'workOrderNumber',
       header: 'Work order',
       width: 170,
-      cell: (order) => <span className="font-medium text-gray-900">{order.workOrderNumber}</span>,
+      cell: ({ row }) => <span className="font-medium text-foreground">{row.workOrderNumber}</span>,
     },
-    { key: 'title', header: 'Work', cell: (order) => order.title },
+    { id: 'title', header: 'Work', accessorKey: 'title' },
     {
-      key: 'workOrderType',
+      id: 'workOrderType',
       header: 'Type',
       width: 120,
-      hideBelowLg: true,
-      cell: (order) => humaniseCode(order.workOrderType),
+      cell: ({ row }) => humaniseCode(row.workOrderType),
     },
     {
-      key: 'assignedTo',
+      id: 'assignedTo',
       header: 'Assigned to',
       width: 150,
-      cell: (order) => orDash(order.assignedTo),
+      cell: ({ row }) => orDash(row.assignedTo),
     },
     {
-      key: 'priority',
+      id: 'priority',
       header: 'Priority',
       width: 110,
-      cell: (order) => (
-        <StatusChip value={humaniseCode(order.priority)} tone={priorityTone(order.priority)} />
-      ),
+      cell: ({ row }) => <StatusBadge value={row.priority} tone={priorityTone(row.priority)} />,
     },
     {
-      key: 'status',
+      id: 'status',
       header: 'Status',
       width: 150,
-      cell: (order) => (
-        <div className="flex flex-col gap-0.5">
-          <StatusChip
-            value={humaniseCode(order.status)}
-            tone={workOrderStatusTone(order.status)}
-          />
+      cell: ({ row: order }) => (
+        <div className="flex flex-col items-start gap-0.5">
+          <StatusBadge value={order.status} tone={workOrderStatusTone(order.status)} />
           {order.status === 'ON_HOLD' && order.totalHeldSeconds > 0 && (
-            <span className="text-theme-xs text-gray-500">{heldFor(order.totalHeldSeconds)}</span>
+            <span className="text-xs text-muted-foreground">{heldFor(order.totalHeldSeconds)}</span>
           )}
         </div>
       ),
     },
     {
-      key: 'slaDueAt',
+      id: 'slaDueAt',
       header: 'SLA',
       width: 190,
-      cell: (order) =>
+      cell: ({ row: order }) =>
         order.overdue ? (
-          <span className="text-theme-xs font-medium text-error-600">
+          <span className="text-xs font-medium text-error-text">
             {overdueBy(order.minutesOverdue)}
             {order.escalationLevel > 0 ? ` · level ${order.escalationLevel}` : ''}
           </span>
         ) : (
-          <span className="text-theme-xs text-gray-600">{formatDateTime(order.slaDueAt)}</span>
+          <span className="text-xs text-muted-foreground">{formatDateTime(order.slaDueAt)}</span>
         ),
     },
   ];
 
   return (
     <>
-      <PageHeader
-        title="Work orders"
-        subtitle={
-          overdueCount > 0
-            ? `${overdueCount} of ${rows.length} past their SLA`
-            : 'What is booked, who has it, and what is late'
-        }
-        crumbs={[{ label: 'Facilities', to: facilitiesPaths.dashboard }, { label: 'Work orders' }]}
-      />
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Work orders</SectionTitle>
+          <SectionDescription>
+            {overdueCount > 0
+              ? `${overdueCount} of ${rows.length} past their SLA`
+              : 'What is booked, who has it, and what is late'}
+          </SectionDescription>
+          <SectionActions>
+            <SiteSelect value={siteCode} onChange={setSiteCode} />
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      <FilterBar
-        active={activeFilters}
-        onReset={resetFilters}
-        quickFilters={
-          <QuickFilters
-            label="Which work orders"
-            value={openOnly ? 'open' : 'all'}
-            onChange={(value) => setOpenOnly(value === 'open')}
-            options={[
-              { value: 'open', label: 'Outstanding' },
-              { value: 'all', label: 'Everything' },
-            ]}
-          />
-        }
-      >
-        <SiteSelect value={siteCode} onChange={setSiteCode} />
-        <FacetFilter
-          label="Status"
-          selected={status ? [status] : []}
-          onChange={(next) => setStatus(pickSingle(status, next))}
-          options={workOrderStatuses.map((value) => ({ value, label: humaniseCode(value) }))}
-        />
-        <SelectInput
-          label="Vendor"
-          value={vendorId}
-          onChange={setVendorId}
-          allowEmpty
-          emptyLabel="Any vendor"
-          options={(vendors.data ?? []).map((vendor) => ({
-            value: vendor.id,
-            label: vendor.name,
-          }))}
-        />
-      </FilterBar>
+      <PageSection>
+        <Tabs
+          variant="pill"
+          value={openOnly ? 'open' : 'all'}
+          onValueChange={(value) => setOpenOnly(value === 'open')}
+        >
+          <TabsList aria-label="Which work orders">
+            <TabsTrigger value="open">Outstanding</TabsTrigger>
+            <TabsTrigger value="all">Everything</TabsTrigger>
+          </TabsList>
 
-      <DataState
-        loading={orders.loading}
-        error={orders.error}
-        empty={rows.length === 0}
-        emptyTitle={openOnly ? 'Nothing outstanding' : 'No work orders'}
-        emptyHint={
-          // Deliberately does not claim to know *why* the list is empty. A contractor sees only the
-          // work assigned to them, so "everything here is closed" would be a confident falsehood on
-          // a site with a full queue they simply cannot see.
-          openOnly
-            ? 'Nothing outstanding is visible to you. Switch to Everything to include closed and cancelled work.'
-            : 'Nothing here is visible to you. Work orders are raised against a reported fault, or generated by a preventive schedule - and a contractor sees only the ones assigned to them.'
-        }
-        onRetry={orders.refetch}
-      >
-        <DataTable
-          rows={rows}
-          columns={columns}
-          getRowId={(order) => order.id}
-          onRowClick={(order) => navigate(facilitiesPaths.workOrderDetail(order.id))}
-        />
-      </DataState>
+          <TabsContent value={openOnly ? 'open' : 'all'}>
+            <DataState loading={false} error={orders.error} onRetry={orders.refetch}>
+              <Table paramPrefix="work-orders" variant="soft">
+                <Card bordered>
+                  <TableHeader>
+                    <TableFilter variant="spread">
+                      <Dropdown
+                        name="status"
+                        aria-label="Status"
+                        placeholder="All statuses"
+                        clearable
+                        value={statusValue || null}
+                        onValueChange={(next) => setStatusValue(next ?? '')}
+                        options={workOrderStatuses.map((value) => ({
+                          value,
+                          label: humaniseCode(value),
+                        }))}
+                      />
+                      <Dropdown
+                        name="vendor"
+                        aria-label="Vendor"
+                        placeholder="Any vendor"
+                        clearable
+                        value={vendorValue || null}
+                        onValueChange={(next) => setVendorValue(next ?? '')}
+                        options={(vendors.data ?? []).map((vendor) => ({
+                          value: vendor.id,
+                          label: vendor.name,
+                        }))}
+                      />
+                    </TableFilter>
+                  </TableHeader>
+                  <TableContent
+                    variant="soft"
+                    columns={columns}
+                    data={rows}
+                    rowKey={(order) => order.id}
+                    loading={orders.loading}
+                    onRowClick={(order) => navigate(facilitiesPaths.workOrderDetail(order.id))}
+                    aria-label="Work orders"
+                    emptyContent={
+                      <EmptyState
+                        title={openOnly ? 'Nothing outstanding' : 'No work orders'}
+                        description={
+                          // Deliberately does not claim to know *why* the list is empty. A contractor
+                          // sees only the work assigned to them, so "everything here is closed" would
+                          // be a confident falsehood on a site with a full queue they cannot see.
+                          openOnly
+                            ? 'Nothing outstanding is visible to you. Switch to Everything to include closed and cancelled work.'
+                            : 'Nothing here is visible to you. Work orders are raised against a reported fault, or generated by a preventive schedule - and a contractor sees only the ones assigned to them.'
+                        }
+                      />
+                    }
+                  />
+                </Card>
+              </Table>
+            </DataState>
+          </TabsContent>
+        </Tabs>
+      </PageSection>
     </>
   );
 };
