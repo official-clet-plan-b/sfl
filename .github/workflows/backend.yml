@@ -69,6 +69,12 @@ jobs:
       SFL_SAFETY_SECURITY_TEST_DB_URL: jdbc:postgresql://localhost:55442/sfl_safety_security_service_e2e
       SFL_TEST_DB_USERNAME: sfl
       SFL_TEST_DB_PASSWORD: sfl
+      # Spring caches one application context per distinct test configuration, and every cached
+      # context keeps its own Hikari pool open for the rest of the JVM. At the production default of
+      # 10 the facilities suite (Phase 2 added several RLS and migration contexts) exhausted the
+      # service container's 100 connections and later contexts died with "too many clients already".
+      # 6 still covers the widest concurrency test (a lock holder plus three contenders).
+      SFL_DB_POOL_MAX_SIZE: '6'
 
     steps:
       - uses: actions/checkout@v4
