@@ -310,6 +310,18 @@ export const riskAssessmentPaths = {
 };
 
 /**
+ * S175 Crisis & Evacuation Drill Management. The register is also the calendar; a drill's own screen carries
+ * it from plan to roll-call to after-action review, because one drill is one piece of work. Compliance is its
+ * own screen: a director's question across sites, not an operator's.
+ */
+export const drillPaths = {
+  dashboard: '/safetysecurity/drills',
+  register: '/safetysecurity/drills/register',
+  detail: (drillId: string) => `/safetysecurity/drills/register/${drillId}`,
+  compliance: '/safetysecurity/drills/compliance',
+};
+
+/**
  * Personal landings - the "what do I have to do today" views.
  *
  * Under `/me/` rather than inside a system's routes because they cross systems: a driver's day is
@@ -1179,6 +1191,36 @@ export const navSections: NavSection[] = [
         description: 'Hazard templates and review intervals',
         permission: 'RISK_ASSESSMENT_READ',
         capability: ['RISK_ASSESSMENT_CONFIGURE'],
+      },
+    ],
+  },
+  {
+    // Phase 2 S175. Every gate is read off DrillPermissionMatrix and the services that enforce it.
+    heading: 'Crisis & evacuation drills',
+    programme: 'SSEMP',
+    system: 'S175',
+    items: [
+      {
+        label: 'Drill dashboard',
+        to: drillPaths.dashboard,
+        icon: 'activity',
+        description: 'Completion, participation and open actions',
+        permission: 'DRILL_READ',
+      },
+      {
+        label: 'Drill register',
+        to: drillPaths.register,
+        icon: 'calendar',
+        matchPrefix: drillPaths.register,
+        description: 'Plan, schedule, run and review drills',
+        permission: 'DRILL_READ',
+      },
+      {
+        label: 'Frequency compliance',
+        to: drillPaths.compliance,
+        icon: 'shield-check',
+        description: 'Statutory drill intervals per site',
+        permission: 'DRILL_COMPLIANCE_READ',
       },
     ],
   },
