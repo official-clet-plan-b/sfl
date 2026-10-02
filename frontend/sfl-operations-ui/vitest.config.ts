@@ -23,6 +23,14 @@ export default defineConfig({
     restoreMocks: true,
 
     /*
+     * `@rfdtech/components` imports its own stylesheet from JavaScript. Node cannot load a `.css`
+     * file, so left external the package fails at import time ("Unknown file extension .css") in
+     * every test that touches a screen. Inlining sends it through Vite, which stubs the CSS the
+     * same way it does for the application's own.
+     */
+    server: { deps: { inline: ['@rfdtech/components'] } },
+
+    /*
      * The actor a test runs as, stated here rather than inherited from a file that is not in git.
      *
      * With no session, `sflActor` falls back to `VITE_SFL_*`, and `.env` - which supplies them on a

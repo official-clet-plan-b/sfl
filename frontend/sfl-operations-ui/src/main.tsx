@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { ThemeProvider } from '@rfdtech/components';
 import App from './App';
 import { loadActorPermissions } from 'shared/layout/actorPermissions';
 import { loadActorSites } from 'shared/layout/actorSites';
@@ -15,7 +16,9 @@ if (!container) {
 const render = () =>
   createRoot(container).render(
     <StrictMode>
-      <App />
+      <ThemeProvider defaultTheme="light">
+        <App />
+      </ThemeProvider>
     </StrictMode>,
   );
 
