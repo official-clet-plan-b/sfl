@@ -34,6 +34,11 @@ public enum EmergencyErrorCode {
     EMERGENCY_NO_SCOPE(403, "No site scope is assigned to your user profile."),
     EMERGENCY_RESTRICTED_DRILLDOWN(403, "You do not have permission to view the underlying record."),
 
+    // Phase 2 SRS-SFL-S175-01: drills reach recipients through S174 in test mode
+    EMERGENCY_TEST_REAL_AMBIGUITY(409,
+            "Test/Real Ambiguity - a drill notification must never be indistinguishable from a real alert. A drill"
+                    + " template must open with the drill marker, and a real template or activation may not carry it."),
+
     // Generic operational codes
     EMERGENCY_VALIDATION_FAILED(400, "The request failed validation."),
     EMERGENCY_RECORD_NOT_FOUND(404, "The requested emergency notification record was not found."),

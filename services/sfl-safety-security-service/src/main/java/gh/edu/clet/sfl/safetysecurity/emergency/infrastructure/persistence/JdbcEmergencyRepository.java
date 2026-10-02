@@ -163,12 +163,12 @@ public class JdbcEmergencyRepository implements EmergencyRepository {
             jdbc.update("""
                     INSERT INTO emergency_notification.notification_templates (id,site_code,template_code,title,body,
                         channels,break_glass_eligible,lifecycle,created_by,created_at,last_modified_by,last_modified_at,
-                        source_channel,correlation_id,version)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                        source_channel,correlation_id,version,drill)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                     """, t.id(), t.siteCode().value(), t.templateCode(), t.title(), t.body(), csv(t.channels()),
                     t.breakGlassEligible(), t.lifecycle().name(), t.metadata().createdBy(), ts(t.metadata().createdAt()),
                     t.metadata().lastModifiedBy(), ts(t.metadata().lastModifiedAt()), t.metadata().sourceChannel().name(),
-                    t.metadata().correlationId(), t.metadata().version());
+                    t.metadata().correlationId(), t.metadata().version(), t.drill());
         } else if (updated == 0) {
             throw new OptimisticLockingFailureException("NotificationTemplate version conflict");
         }
@@ -680,7 +680,9 @@ public class JdbcEmergencyRepository implements EmergencyRepository {
         Map<String, Object> counts = new LinkedHashMap<>();
         counts.put("activeActivationCount", count(sites, scope,
                 "SELECT COUNT(*) FROM emergency_notification.notification_activations WHERE %s AND status IN "
-                        + "('ACTIVE','BREAK_GLASS_ACTIVE','PARTIALLY_DELIVERED','ESCALATED','ALL_CLEAR_PENDING')"));
+                        + "('ACTIVE','BREAK_GLASS_ACTIVE','PARTIALLY_DELIVERED','ESCALATED','ALL_CLEAR_PENDING')"
+                        // A drill in progress is not a live emergency (S175-01); byMode still shows it.
+                        + " AND mode <> 'DRILL'"));
         counts.put("breakGlassCount", count(sites, scope,
                 "SELECT COUNT(*) FROM emergency_notification.notification_activations WHERE %s AND mode='BREAK_GLASS'"));
         counts.put("failedRecipientCount", count(sites, scope,
@@ -720,6 +722,7 @@ public class JdbcEmergencyRepository implements EmergencyRepository {
         return jdbc.query("""
                 SELECT id FROM emergency_notification.notification_activations
                 WHERE site_code=? AND status IN ('ACTIVE','BREAK_GLASS_ACTIVE','PARTIALLY_DELIVERED')
+                  AND mode <> 'DRILL'
                   AND last_modified_at < ?
                 ORDER BY last_modified_at LIMIT ?
                 """, (rs, n) -> (UUID) rs.getObject("id"), siteCode, ts(activatedBefore), bound(limit));
@@ -739,7 +742,7 @@ public class JdbcEmergencyRepository implements EmergencyRepository {
         return new NotificationTemplate(uuid(r, "id"), r.getString("template_code"),
                 SiteCode.of(r.getString("site_code")), r.getString("title"), r.getString("body"),
                 channels(r.getString("channels")), r.getBoolean("break_glass_eligible"),
-                RecordLifecycle.valueOf(r.getString("lifecycle")), metadata(r));
+                RecordLifecycle.valueOf(r.getString("lifecycle")), metadata(r), r.getBoolean("drill"));
     }
 
     private EmergencyScenario scenario(ResultSet r, int n) throws SQLException {

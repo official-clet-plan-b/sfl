@@ -20,7 +20,11 @@ public record NotificationActivation(UUID id, String activationNumber, SiteCode 
         String acknowledgementSummary, UUID closureEvidenceId, int escalationLevel, boolean degradedMode,
         String fallbackPath, Long fastLaneMillis, RecordMetadata metadata) {
 
-    public enum Mode { ROUTINE, BREAK_GLASS, DEGRADED }
+    /**
+     * {@code DRILL} (Phase 2 S175-01): an exercise sent through the real path with a drill template. No approval,
+     * never break-glass, never counted as a live emergency, never escalated for missing acknowledgements.
+     */
+    public enum Mode { ROUTINE, BREAK_GLASS, DEGRADED, DRILL }
 
     public enum Status {
         DRAFT, PENDING_APPROVAL, APPROVED, REJECTED, ACTIVATING, ACTIVE, BREAK_GLASS_ACTIVE, PARTIALLY_DELIVERED,
@@ -85,6 +89,34 @@ public record NotificationActivation(UUID id, String activationNumber, SiteCode 
             throw new IllegalStateException("An activation must select at least one channel before send");
         }
         return copy(b -> b.status = Status.ACTIVE, changed);
+    }
+
+    /**
+     * Drill send (S175-01): straight from draft to active, because an exercise needs no approval to rehearse -
+     * the drill template's marker, checked by the caller, is what makes it safe to send.
+     */
+    public NotificationActivation drillActivate(RecordMetadata changed) {
+        requireState(Status.DRAFT);
+        if (mode != Mode.DRILL) {
+            throw new IllegalStateException("Only a drill activation can be sent without approval as a drill");
+        }
+        if (channels.isEmpty()) {
+            throw new IllegalStateException("A drill activation must select at least one channel");
+        }
+        return copy(b -> b.status = Status.ACTIVE, changed);
+    }
+
+    /**
+     * Closes a drill when the drill that sent it is over. Unlike a real closure it needs no evidence file or
+     * after-action approval: the drill's own after-action review (S175-03) is where the record lives.
+     */
+    public NotificationActivation closeDrill(String deliverySummary, String ackSummary, RecordMetadata changed) {
+        if (mode != Mode.DRILL) {
+            throw new IllegalStateException("Only a drill activation closes as a drill");
+        }
+        requireState(Status.ACTIVE, Status.PARTIALLY_DELIVERED, Status.ESCALATED, Status.ALL_CLEAR_PENDING);
+        return copy(b -> { b.status = Status.CLOSED; b.closureReason = "Drill completed";
+            b.deliverySummary = deliverySummary; b.acknowledgementSummary = ackSummary; }, changed);
     }
 
     /** Break-glass send: no pre-approval. The caller has already checked break-glass eligibility + role. */

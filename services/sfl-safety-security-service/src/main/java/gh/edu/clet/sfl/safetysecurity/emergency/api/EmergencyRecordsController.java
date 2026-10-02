@@ -39,7 +39,7 @@ public class EmergencyRecordsController {
             HttpServletRequest h) {
         var t = service.createTemplate(new EmergencyRecordsService.CreateTemplate(r.siteCode(), r.templateCode(),
                 r.title(), r.body(), r.channels(), r.breakGlassEligible(), actors.resolve(h),
-                actors.resolveSourceChannel(h)));
+                actors.resolveSourceChannel(h), Boolean.TRUE.equals(r.drill())));
         return ResponseEntity.created(URI.create("/api/v1/emergency/templates/" + t.id())).body(ApiResponse.ok(t));
     }
 
@@ -190,8 +190,12 @@ public class EmergencyRecordsController {
 
     public record LifecycleRequest(@NotNull RecordLifecycle lifecycle) {}
 
+    /**
+     * @param drill a drill-only template for S175 exercises; its title and body must both open with
+     *        "DRILL - THIS IS AN EXERCISE", and a real template may not contain that phrase at all
+     */
     public record TemplateRequest(@NotBlank String siteCode, String templateCode, @NotBlank String title,
-            @NotBlank String body, @NotNull List<ChannelType> channels, boolean breakGlassEligible) {}
+            @NotBlank String body, @NotNull List<ChannelType> channels, boolean breakGlassEligible, Boolean drill) {}
 
     public record ScenarioRequest(@NotBlank String siteCode, String scenarioCode, @NotBlank String name,
             @NotNull Priority priority, UUID defaultTemplateId, boolean breakGlassEligible) {}

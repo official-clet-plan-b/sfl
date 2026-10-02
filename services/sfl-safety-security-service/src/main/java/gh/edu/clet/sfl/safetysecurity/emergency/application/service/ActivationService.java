@@ -2,6 +2,7 @@ package gh.edu.clet.sfl.safetysecurity.emergency.application.service;
 
 import gh.edu.clet.sfl.common.security.ActorContext;
 import gh.edu.clet.sfl.common.security.SflPermission;
+import gh.edu.clet.sfl.safetysecurity.emergency.application.contract.EmergencyDrillTrigger;
 import gh.edu.clet.sfl.safetysecurity.emergency.application.port.CommandIdempotencyPort;
 import gh.edu.clet.sfl.safetysecurity.emergency.application.port.AuditPort;
 import gh.edu.clet.sfl.safetysecurity.emergency.application.port.EmergencyRepository;
@@ -24,6 +25,8 @@ import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.RetentionClass;
 import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.SiteCode;
 import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.SourceChannel;
 import gh.edu.clet.sfl.safetysecurity.emergency.domain.policy.BreakGlassPolicy;
+import gh.edu.clet.sfl.safetysecurity.emergency.domain.policy.DrillSeparationPolicy;
+import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.NotificationTemplate;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -38,7 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /** SRS-SFL-S174-02: the emergency notification activation workflow, including break-glass and all-clear. */
 @Service
-public class ActivationService {
+public class ActivationService implements EmergencyDrillTrigger {
 
     private static final Logger log = LoggerFactory.getLogger(ActivationService.class);
 
@@ -91,6 +94,7 @@ public class ActivationService {
         if (replay.isPresent()) {
             return activation(replay.get(), c.actor(), SflPermission.EMERGENCY_ACTIVATION_READ);
         }
+        requireRealTemplate(c.templateId());
         var activation = new NotificationActivation(UUID.randomUUID(), EmergencyNumbers.next("ACT"), site,
                 c.scenarioId(), c.templateId(), c.audienceGroupIds(), c.recipientZoneIds(), c.channels(),
                 NotificationActivation.Mode.ROUTINE, NotificationActivation.Status.DRAFT,
@@ -191,6 +195,7 @@ public class ActivationService {
                 .map(gh.edu.clet.sfl.safetysecurity.emergency.domain.model.EmergencyScenario::breakGlassEligible)
                 .orElse(false);
         BreakGlassPolicy.requireEligible(templateEligible, scenarioEligible);
+        requireRealTemplate(c.templateId());
         long start = clock.millis();
         var activation = new NotificationActivation(UUID.randomUUID(), EmergencyNumbers.next("BG"), site,
                 c.scenarioId(), c.templateId(), c.audienceGroupIds(), c.recipientZoneIds(), c.channels(),
@@ -357,7 +362,8 @@ public class ActivationService {
             SourceChannel channel) {
         int target = targetCount(activation);
         for (ChannelType type : activation.channels()) {
-            var result = gateway.send(activation.id(), type, activation.siteCode().value(), target, degraded, actor);
+            var result = gateway.send(activation.id(), type, activation.siteCode().value(), target, degraded,
+                    activation.mode() == NotificationActivation.Mode.DRILL, actor);
             var existing = repository.findChannel(activation.id(), type);
             var record = existing.orElseGet(() -> new NotificationChannel(UUID.randomUUID(), activation.id(),
                     activation.siteCode(), type, ChannelStatus.PENDING, target, 0, 0, 0, 0,
@@ -437,6 +443,100 @@ public class ActivationService {
         var a = requireActivation(id);
         access.require(actor, permission, a.siteCode().value(), "NotificationActivation", id.toString());
         return a;
+    }
+
+    /** S175-01: a real alert never goes out on a drill template. */
+    private void requireRealTemplate(UUID templateId) {
+        if (templateId != null) {
+            repository.findTemplate(templateId).ifPresent(DrillSeparationPolicy::requireRealTemplate);
+        }
+    }
+
+    // ---- drill mode (Phase 2 S175-01) ------------------------------------------------------------
+
+    @Override
+    @Transactional
+    public DrillNotification trigger(DrillNotificationRequest request, ActorContext actor) {
+        SiteCode site = requireSite(request.siteCode());
+        NotificationTemplate template = request.templateId() == null ? null
+                : repository.findTemplate(request.templateId()).orElseThrow(
+                        () -> EmergencyException.notFound("NotificationTemplate", request.templateId()));
+        if (template == null) {
+            throw new EmergencyException(EmergencyErrorCode.EMERGENCY_TEST_REAL_AMBIGUITY,
+                    Map.of("reason", "A drill is only sent with a drill template."));
+        }
+        DrillSeparationPolicy.requireDrillTemplate(template);
+        if (!template.siteCode().equals(site) || !template.active()) {
+            throw new EmergencyException(EmergencyErrorCode.EMERGENCY_VALIDATION_FAILED,
+                    Map.of("reason", "The drill template must be active and belong to " + site.value() + "."));
+        }
+        List<ChannelType> channels = request.channels() == null || request.channels().isEmpty() ? template.channels()
+                : request.channels().stream().map(ChannelType::valueOf).toList();
+        SourceChannel channel = SourceChannel.API;
+        var draft = new NotificationActivation(UUID.randomUUID(), EmergencyNumbers.next("DRL"), site, null,
+                template.id(), request.audienceGroupIds(), request.recipientZoneIds(), channels,
+                NotificationActivation.Mode.DRILL, NotificationActivation.Status.DRAFT, Priority.LOW,
+                request.drillReference(), null, null, null, null, null, null, null, null, null, null, null, 0, false,
+                null, null, meta(actor, channel));
+        var saved = repository.saveActivation(draft);
+        long start = clock.millis();
+        var live = fanOut(saved.drillActivate(meta(saved, actor, channel)), false, actor, channel);
+        live = live.withFastLaneMillis(clock.millis() - start,
+                live.metadata().modifiedBy(actor.actorId(), clock.instant(), channel, actor.correlationId()));
+        var after = transition(saved, live, "drill-send", actor, channel, request.drillReference());
+        events.publish(EmergencyEventType.EMERGENCY_DRILL_NOTIFICATION_SENT, "NotificationActivation",
+                after.id().toString(), site.value(), actor, Map.of("activationId", after.id(), "drillReference",
+                        String.valueOf(request.drillReference()), "channels", channelNames(after)));
+        return drillNotification(after);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DrillNotification status(UUID activationId) {
+        return drillNotification(requireDrillActivation(activationId));
+    }
+
+    @Override
+    @Transactional
+    public DrillNotification close(UUID activationId, ActorContext actor) {
+        var before = requireDrillActivation(activationId);
+        if (before.status() == NotificationActivation.Status.CLOSED) {
+            return drillNotification(before);
+        }
+        var channels = repository.findChannels(activationId);
+        var closed = before.closeDrill(deliverySummary(channels),
+                "acknowledged=" + repository.countAcknowledgements(activationId), meta(before, actor, SourceChannel.API));
+        var after = transition(before, closed, "drill-close", actor, SourceChannel.API);
+        events.publish(EmergencyEventType.EMERGENCY_DRILL_NOTIFICATION_CLOSED, "NotificationActivation",
+                activationId.toString(), after.siteCode().value(), actor, Map.of("activationId", activationId,
+                        "drillReference", String.valueOf(after.incidentReference())));
+        return drillNotification(after);
+    }
+
+    private NotificationActivation requireDrillActivation(UUID id) {
+        var activation = requireActivation(id);
+        if (activation.mode() != NotificationActivation.Mode.DRILL) {
+            throw new EmergencyException(EmergencyErrorCode.EMERGENCY_TEST_REAL_AMBIGUITY,
+                    Map.of("reason", "Activation " + activation.activationNumber() + " is not a drill."));
+        }
+        return activation;
+    }
+
+    private DrillNotification drillNotification(NotificationActivation activation) {
+        int target = 0;
+        int sent = 0;
+        int delivered = 0;
+        int failed = 0;
+        for (NotificationChannel c : repository.findChannels(activation.id())) {
+            target += c.targetCount();
+            sent += c.sentCount();
+            delivered += c.deliveredCount();
+            failed += c.failedCount();
+        }
+        // The activation's creation is the send: trigger creates and fans out in one transaction.
+        return new DrillNotification(activation.id(), activation.activationNumber(), activation.status().name(),
+                activation.metadata().createdAt(), target, sent, delivered, failed,
+                repository.countAcknowledgements(activation.id()));
     }
 
     private NotificationActivation requireActivation(UUID id) {

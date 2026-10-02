@@ -7,9 +7,20 @@ import java.util.UUID;
 /**
  * A reusable emergency notification template. {@code breakGlassEligible} marks templates that a
  * pre-authorised role may fire during a declared emergency without per-message approval (Arch §0E).
+ *
+ * <p>{@code drill} marks a template that may only be sent as a drill (Phase 2 SRS-SFL-S175-01). The rule that
+ * keeps drill and real templates apart - the marker - is {@code DrillSeparationPolicy}'s, applied when a
+ * template is created and whenever one is sent, rather than here: a stored template must always load.
  */
 public record NotificationTemplate(UUID id, String templateCode, SiteCode siteCode, String title, String body,
-        List<ChannelType> channels, boolean breakGlassEligible, RecordLifecycle lifecycle, RecordMetadata metadata) {
+        List<ChannelType> channels, boolean breakGlassEligible, RecordLifecycle lifecycle, RecordMetadata metadata,
+        boolean drill) {
+
+    /** A real (non-drill) template - every template that existed before S175. */
+    public NotificationTemplate(UUID id, String templateCode, SiteCode siteCode, String title, String body,
+            List<ChannelType> channels, boolean breakGlassEligible, RecordLifecycle lifecycle, RecordMetadata metadata) {
+        this(id, templateCode, siteCode, title, body, channels, breakGlassEligible, lifecycle, metadata, false);
+    }
 
     public NotificationTemplate {
         Objects.requireNonNull(id);
@@ -31,7 +42,7 @@ public record NotificationTemplate(UUID id, String templateCode, SiteCode siteCo
 
     public NotificationTemplate withLifecycle(RecordLifecycle next, RecordMetadata changed) {
         return new NotificationTemplate(id, templateCode, siteCode, title, body, channels, breakGlassEligible, next,
-                changed);
+                changed, drill);
     }
 
     private static String require(String value, String field) {

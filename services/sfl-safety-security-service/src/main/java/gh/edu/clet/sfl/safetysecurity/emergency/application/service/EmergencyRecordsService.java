@@ -12,6 +12,7 @@ import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.AudienceGroup;
 import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.ChannelType;
 import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.EmergencyScenario;
 import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.NotificationTemplate;
+import gh.edu.clet.sfl.safetysecurity.emergency.domain.policy.DrillSeparationPolicy;
 import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.Priority;
 import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.RecipientZone;
 import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.RecordLifecycle;
@@ -45,8 +46,16 @@ public class EmergencyRecordsService {
         this.clock = clock;
     }
 
+    /** @param drill a drill-only template (Phase 2 S175-01) - see {@link DrillSeparationPolicy} */
     public record CreateTemplate(String siteCode, String templateCode, String title, String body,
-            List<ChannelType> channels, boolean breakGlassEligible, ActorContext actor, SourceChannel channel) {}
+            List<ChannelType> channels, boolean breakGlassEligible, ActorContext actor, SourceChannel channel,
+            boolean drill) {
+
+        public CreateTemplate(String siteCode, String templateCode, String title, String body,
+                List<ChannelType> channels, boolean breakGlassEligible, ActorContext actor, SourceChannel channel) {
+            this(siteCode, templateCode, title, body, channels, breakGlassEligible, actor, channel, false);
+        }
+    }
 
     public record CreateScenario(String siteCode, String scenarioCode, String name, Priority priority,
             UUID defaultTemplateId, boolean breakGlassEligible, ActorContext actor, SourceChannel channel) {}
@@ -64,14 +73,16 @@ public class EmergencyRecordsService {
         String code = number(c.templateCode(), "TPL");
         repository.findTemplateByCode(site.value(), code).filter(NotificationTemplate::active)
                 .ifPresent(existing -> { throw duplicate(code); });
+        // S175-01 "Test/Real Ambiguity": refused here, at setup, never discovered at send.
+        DrillSeparationPolicy.requireConsistentTemplate(c.drill(), c.breakGlassEligible(), c.title(), c.body());
         var template = new NotificationTemplate(UUID.randomUUID(), code, site, c.title(), c.body(), c.channels(),
-                c.breakGlassEligible(), RecordLifecycle.ACTIVE, meta(c.actor(), c.channel()));
+                c.breakGlassEligible(), RecordLifecycle.ACTIVE, meta(c.actor(), c.channel()), c.drill());
         var saved = repository.saveTemplate(template);
         audit.record(c.actor(), c.channel(), site.value(), "CREATE", "NotificationTemplate", saved.id().toString(),
                 null, saved, null);
         events.publish(EmergencyEventType.EMERGENCY_TEMPLATE_CREATED, "NotificationTemplate", saved.id().toString(),
                 site.value(), c.actor(), Map.of("templateId", saved.id(), "templateCode", saved.templateCode(),
-                        "breakGlassEligible", saved.breakGlassEligible()));
+                        "breakGlassEligible", saved.breakGlassEligible(), "drill", saved.drill()));
         return saved;
     }
 

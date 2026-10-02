@@ -11,8 +11,12 @@ import java.util.UUID;
  */
 public interface NotificationGatewayPort {
 
+    /**
+     * @param drill a drill send (Phase 2 S175-01): a real provider adapter must deliver it so recipients can tell
+     *        - the template already opens with the drill marker; this is the structural half of the same rule
+     */
     GatewaySendResult send(UUID activationId, ChannelType channel, String siteCode, int targetCount,
-            boolean degradedMode, ActorContext actor);
+            boolean degradedMode, boolean drill, ActorContext actor);
 
     record GatewaySendResult(String provider, int accepted, boolean degraded) {
     }

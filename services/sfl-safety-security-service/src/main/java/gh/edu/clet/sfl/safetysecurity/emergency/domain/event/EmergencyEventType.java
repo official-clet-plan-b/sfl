@@ -20,7 +20,11 @@ public enum EmergencyEventType {
     EMERGENCY_ACKNOWLEDGEMENT_RECEIVED("sfl.ssemp.emergency-acknowledgement-received.v1", "Acknowledgement"),
     EMERGENCY_ACTIVATION_CLOSED("sfl.ssemp.emergency-activation-closed.v1", "NotificationActivation"),
     EMERGENCY_ACTIVATION_REOPENED("sfl.ssemp.emergency-activation-reopened.v1", "NotificationActivation"),
-    EMERGENCY_DRILL_COMPLETED("sfl.ssemp.emergency-drill-completed.v1", "DrillRun");
+    EMERGENCY_DRILL_COMPLETED("sfl.ssemp.emergency-drill-completed.v1", "DrillRun"),
+    // Phase 2 S175: a drill sent through S174's drill mode. Its own event, never
+    // emergency-notification-activated, so no consumer can take an exercise for an emergency.
+    EMERGENCY_DRILL_NOTIFICATION_SENT("sfl.ssemp.emergency-drill-notification-sent.v1", "NotificationActivation"),
+    EMERGENCY_DRILL_NOTIFICATION_CLOSED("sfl.ssemp.emergency-drill-notification-closed.v1", "NotificationActivation");
 
     private final String eventType;
     private final String defaultAggregateType;
