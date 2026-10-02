@@ -78,6 +78,8 @@ export interface IncidentEvidence {
   uploadedAt: string;
 }
 
+/** Corrective-action counts; `ageing` is open actions by days since raised: 0-30, 31-60, 61-90, over 90. */
+export interface CapaCounts { open: number; overdue: number; verified: number; cancelled: number; ageing: number[] }
 export interface IncidentDashboard { byStatus: Partial<Record<IncidentStatus, number>>; bySeverity: Partial<Record<Severity, number>> }
 export interface IncidentSearchParams extends QueryParams { siteCode?: string; status?: IncidentStatus; severity?: Severity; page?: number; size?: number; sort?: string }
 export type IncidentPage = PageResponse<SecurityIncident>;

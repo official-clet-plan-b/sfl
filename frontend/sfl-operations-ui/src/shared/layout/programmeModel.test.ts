@@ -97,8 +97,8 @@ describe('programme entitlement', () => {
       expect(systemsFor(['VISITOR_HOST'])).toEqual(['S160']);
       // RiskAssessmentPermissionMatrix: an investigator reads the assessment an incident happened under.
       expect(systemsFor(['INCIDENT_INVESTIGATOR'])).toEqual(['S163', 'S165']);
-      expect(systemsFor(['SOC_OPERATOR'])).toEqual(['S160', 'S163', 'S174']);
-      expect(systemsFor(['SECURITY_DIRECTOR'])).toEqual(['S160', 'S163', 'S165', 'S174']);
+      expect(systemsFor(['SOC_OPERATOR'])).toEqual(['S160', 'S163', 'S174', 'S175']);
+      expect(systemsFor(['SECURITY_DIRECTOR'])).toEqual(['S160', 'S163', 'S165', 'S174', 'S175']);
       expect(programmesFor(['INCIDENT_INVESTIGATOR'])).toEqual(['SSEMP']);
     });
 
@@ -111,6 +111,17 @@ describe('programme entitlement', () => {
       expect(programmesFor(['CONSTRUCTION_PROJECT_MANAGER'])).toEqual(['IFIMP', 'SSEMP']);
       // A role with no S165 grant does not see it.
       expect(systemsFor(['SOC_OPERATOR'])).not.toContain('S165');
+    });
+
+    it('places S175 in SSEMP for the roles DrillPermissionMatrix grants', () => {
+      expect(systems.S175.programme).toBe('SSEMP');
+      // HSE manager and security director plan and review; the SOC operator and emergency coordinator run
+      // roll-call. A role the matrix does not name does not see drills.
+      for (const role of ['HSE_MANAGER', 'SECURITY_DIRECTOR', 'SOC_OPERATOR', 'EMERGENCY_COORDINATOR']) {
+        expect(systemsFor([role])).toContain('S175');
+      }
+      expect(systemsFor(['INCIDENT_INVESTIGATOR'])).not.toContain('S175');
+      expect(systemsFor(['RECEPTION_OFFICER'])).not.toContain('S175');
     });
 
     it('places S152 in IFIMP', () => {
