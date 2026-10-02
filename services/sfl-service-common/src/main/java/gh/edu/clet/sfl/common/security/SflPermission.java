@@ -397,5 +397,16 @@ public enum SflPermission {
     RISK_ASSESSMENT_SIGN_OFF,
     RISK_ASSESSMENT_REVIEW_FLAG_MANAGE,
     RISK_ASSESSMENT_ANALYTICS_READ,
-    RISK_ASSESSMENT_CONFIGURE
+    RISK_ASSESSMENT_CONFIGURE,
+
+    // S175 Crisis & Evacuation Drill Management (Phase 2 SRS §3.2, SSEMP). Additive only. Split the way the
+    // SRS splits the work: planning, running the drill on the day, reviewing it afterwards, tracking its
+    // corrective actions, and the statutory-frequency view and its configuration.
+    DRILL_READ,
+    DRILL_PLAN,
+    DRILL_EXECUTE,
+    DRILL_REVIEW,
+    DRILL_CAPA_MANAGE,
+    DRILL_COMPLIANCE_READ,
+    DRILL_CONFIGURE
 }
