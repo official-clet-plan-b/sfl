@@ -35,8 +35,23 @@ interface Props {
   record?: IfimpRecord;
 }
 
+const recordValue = (record: IfimpRecord | undefined, key: string): unknown => {
+  if (!record) return undefined;
+  if (record[key] !== null && record[key] !== undefined) return record[key];
+  for (const candidate of Object.values(record)) {
+    if (candidate !== null && typeof candidate === 'object' && !Array.isArray(candidate)) {
+      const nested = (candidate as IfimpRecord)[key];
+      if (nested !== null && nested !== undefined) return nested;
+    }
+  }
+  return undefined;
+};
+
 const initialValues = (action: CreateAction, siteCode: string, record?: IfimpRecord) =>
-  Object.fromEntries(action.fields.map((field) => [field.key, field.key === 'siteCode' ? siteCode : (field.initial ?? (record?.[field.key] == null ? '' : String(record[field.key])))]));
+  Object.fromEntries(action.fields.map((field) => {
+    const current = recordValue(record, field.key);
+    return [field.key, field.key === 'siteCode' ? siteCode : (field.initial ?? (current == null ? '' : String(current)))];
+  }));
 
 const defaultBody = (values: Record<string, string>) =>
   Object.fromEntries(Object.entries(values).map(([key, value]) => [key, value === '' ? null : value]));
@@ -52,10 +67,11 @@ const IfimpCreateDialog = ({ action, siteCode, open, onClose, onCreated, record 
     setSubmitting(true);
     setError(undefined);
     try {
-      const path = action.path.replace(/\{(\w+)\}/g, (_, key: string) => encodeURIComponent(String(record?.[key] ?? values[key] ?? '')));
+      const path = action.path.replace(/\{(\w+)\}/g, (_, key: string) => encodeURIComponent(String(recordValue(record, key) ?? values[key] ?? '')));
       const body = action.toBody ? action.toBody(values, siteCode) : defaultBody(values);
-      if (record?.version !== undefined && body.expectedVersion === undefined) {
-        body.expectedVersion = record.version;
+      const version = recordValue(record, 'version') ?? recordValue(record, 'recordVersion');
+      if (version !== undefined && body.expectedVersion === undefined) {
+        body.expectedVersion = version;
       }
       await writeIfimpRecord(path, body, action.method);
       onCreated();

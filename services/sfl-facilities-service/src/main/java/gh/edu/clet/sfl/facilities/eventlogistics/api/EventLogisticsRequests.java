@@ -24,7 +24,7 @@ public final class EventLogisticsRequests {
     private EventLogisticsRequests() {
     }
 
-    public record Decompose(@NotEmpty List<@Valid NewRequest> requests, boolean applyTemplate) {
+    public record Decompose(@NotNull List<@Valid NewRequest> requests, boolean applyTemplate) {
     }
 
     public record NewRequest(

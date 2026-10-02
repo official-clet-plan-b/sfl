@@ -7,12 +7,12 @@ import DataTable, { Column } from 'shared/components/DataTable';
 import FilterBar from 'shared/components/FilterBar';
 import PageHeader from 'shared/components/PageHeader';
 import SiteSelect, { defaultSite, sflSites } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
 import { IfimpRecord, readIfimpDataset } from '../api/ifimpPhase2Api';
 import IfimpCreateDialog, { CreateAction } from '../components/IfimpCreateDialog';
 import IfimpRecordDialog, { visibleRecordActions } from '../components/IfimpRecordDialog';
+import IfimpValue, { humaniseIfimpField } from '../components/IfimpValue';
 
 export interface IfimpView {
   label: string;
@@ -42,14 +42,17 @@ export interface IfimpOperationsPageProps {
 // first real site instead of sending an empty siteCode and meeting a validation error on arrival.
 const phase2DefaultSite = defaultSite || sflSites()[0] || '';
 
-const identifier = (row: IfimpRecord): string =>
-  String(row.id ?? row.code ?? row.deviceCode ?? row.projectNumber ?? JSON.stringify(row));
+const valueAtPath = (row: IfimpRecord, path: string): unknown =>
+  path.split('.').reduce<unknown>((current, segment) => (
+    current !== null && typeof current === 'object'
+      ? (current as Record<string, unknown>)[segment]
+      : undefined
+  ), row);
 
-const humanise = (value: string): string =>
-  value
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/_/g, ' ')
-    .replace(/^./, (letter: string) => letter.toUpperCase());
+const identifier = (row: IfimpRecord): string => {
+  const nestedTask = valueAtPath(row, 'task.id');
+  return String(row.id ?? nestedTask ?? row.code ?? row.deviceCode ?? row.projectNumber ?? JSON.stringify(row));
+};
 
 const namedColumns: Record<string, string[]> = {
   '/api/v1/facilities/building-systems/health': ['siteCode', 'state', 'activeAlerts', 'linkedWorkOrders', 'procurementGate'],
@@ -77,26 +80,14 @@ const namedColumns: Record<string, string[]> = {
   '/api/v1/facilities/cleaning/checklist-templates': ['name', 'spaceType', 'version', 'active', 'itemCount', 'updatedAt'],
   '/api/v1/facilities/cleaning/vendors': ['vendorCode', 'name', 'status', 'slaCompliance', 'averageRating'],
   '/api/v1/facilities/cleaning/capacity': ['vendorName', 'crewCount', 'peakCommitments', 'availableCrews', 'from', 'to'],
-  '/api/v1/facilities/event-logistics/setup-tasks': ['s078EventReference', 'title', 'startsAt', 'roomCode', 'readiness', 'status'],
+  '/api/v1/facilities/event-logistics/setup-tasks': ['task.taskReference', 'task.title', 'task.startsAt', 'task.roomCode', 'readiness', 'task.status'],
   '/api/v1/facilities/event-logistics/templates': ['eventCategory', 'resourceType', 'quantity', 'gapCount', 'updatedAt'],
-  '/api/v1/facilities/event-logistics/risk-criteria': ['siteCode', 'attendanceThreshold', 'externalContractorsAreHigherRisk', 'temporaryStructuresAreHigherRisk'],
-  '/api/v1/facilities/event-logistics/integration': ['system', 'status', 'detail', 'checkedAt'],
+  '/api/v1/facilities/event-logistics/risk-criteria': ['attendanceThreshold', 'externalContractorsAreHigherRisk', 'temporaryStructuresAreHigherRisk', 'higherRiskCategories'],
+  '/api/v1/facilities/event-logistics/integration': ['ccpEvents', 'owningSystems', 'riskAssessments'],
   '/api/v1/facilities/construction/dashboard': ['siteCode', 'proposed', 'registered', 'inProgress', 'overdueMilestones', 'openDefects'],
   '/api/v1/facilities/construction/projects': ['projectNumber', 'title', 'status', 'projectManagerName', 'budgetBaseline', 'currency'],
   '/api/v1/facilities/construction/contractors': ['contractorCode', 'name', 'complianceStatus', 'insuranceExpiresOn', 'siteAccessStatus'],
   '/api/v1/facilities/construction/dashboard/integrations': ['system', 'status', 'detail', 'checkedAt'],
-};
-
-const renderValue = (value: unknown) => {
-  if (value === null || value === undefined || value === '') {
-    return <span className="text-gray-400">—</span>;
-  }
-  if (typeof value === 'boolean') {
-    return <StatusChip value={value ? 'Yes' : 'No'} tone={value ? 'ready' : 'neutral'} />;
-  }
-  const text = ['string', 'number'].includes(typeof value) ? String(value) : JSON.stringify(value);
-  const statusLike = typeof value === 'string' && /^[A-Z][A-Z0-9_ -]+$/.test(value);
-  return statusLike ? <StatusChip value={humanise(value)} /> : <span>{text}</span>;
 };
 
 /**
@@ -126,11 +117,15 @@ const IfimpOperationsPage = ({
     [active.path, siteCode],
   );
 
-  const declaredColumns = active.columns ?? (namedColumns[active.path] ?? []).map((key) => ({ key, label: humanise(key) }));
+  const inferredKeys = Object.keys(query.data?.rows[0] ?? {}).slice(0, 6);
+  const declaredColumns = active.columns ?? (namedColumns[active.path] ?? inferredKeys).map((key) => ({
+    key,
+    label: humaniseIfimpField(key.split('.').slice(-1)[0] ?? key),
+  }));
   const columns: Column<IfimpRecord>[] = declaredColumns.map((column) => ({
     key: column.key,
     header: column.label,
-    cell: (row) => renderValue(row[column.key]),
+    cell: (row) => <IfimpValue value={valueAtPath(row, column.key)} compact />,
   }));
   columns.push({
     key: 'recordActions',

@@ -23,6 +23,7 @@ import gh.edu.clet.sfl.facilities.shared.domain.audit.SourceChannel;
 import gh.edu.clet.sfl.facilities.shared.domain.error.FacilitiesException;
 import gh.edu.clet.sfl.facilities.shared.domain.model.RecordMetadata;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -63,6 +64,23 @@ class EventLogisticsControllerTest {
     private EventReadinessService readiness;
     @MockitoBean
     private EventRiskCriteriaService riskCriteria;
+
+    @Test
+    @DisplayName("a learned template can be applied without adding a manual request")
+    void apply_template_with_empty_manual_request_list_is_created() throws Exception {
+        given(requests.decompose(any())).willReturn(List.of());
+
+        mockMvc.perform(post("/api/v1/facilities/event-logistics/setup-tasks/" + UUID.randomUUID()
+                        + "/resource-requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-SFL-User", "coordinator")
+                        .header("X-SFL-Roles", "EVENT_LOGISTICS_COORDINATOR")
+                        .header("X-SFL-Sites", "MAIN")
+                        .content("""
+                                {"requests":[],"applyTemplate":true}
+                                """))
+                .andExpect(status().isCreated());
+    }
 
     @Test
     @DisplayName("confirming a set-up task without FACILITIES_EVENT_COORDINATE is refused with 403")

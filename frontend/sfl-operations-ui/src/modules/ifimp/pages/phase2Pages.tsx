@@ -1,6 +1,7 @@
 import IfimpOperationsPage, { IfimpOperationsPageProps } from './IfimpOperationsPage';
 import { CreateAction } from '../components/IfimpCreateDialog';
 import { cleaningTaskActionAvailability, CleaningTaskAction } from '../api/cleaningWorkflow';
+import { eventSetupActionAvailability, EventSetupAction } from '../api/eventWorkflow';
 
 const reason = [{ key: 'reason', label: 'Reason', type: 'textarea' as const, required: true }];
 const note = [{ key: 'note', label: 'Note', type: 'textarea' as const }];
@@ -89,15 +90,81 @@ const vendorActions: CreateAction[] = [
   { label: 'Change status', method: 'PATCH', path: '/api/v1/facilities/cleaning/vendors/{id}/status', fields: [{ key: 'status', label: 'Status', type: 'select', required: true, options: ['ACTIVE', 'SUSPENDED', 'INACTIVE'] }] },
   { label: 'Set SLA terms', path: '/api/v1/facilities/cleaning/vendors/{id}/sla-terms', fields: [{ key: 'responseMinutes', label: 'Response minutes', type: 'number', required: true }, { key: 'completionMinutes', label: 'Completion minutes', type: 'number', required: true }, { key: 'qualityFloor', label: 'Quality floor', type: 'number', required: true }], toBody: (v) => ({ responseMinutes: Number(v.responseMinutes), completionMinutes: Number(v.completionMinutes), qualityFloor: Number(v.qualityFloor) }) },
 ];
+const eventSetupAction = (
+  kind: EventSetupAction,
+  action: Omit<CreateAction, 'visible' | 'disabledReason'>,
+): CreateAction => ({
+  ...action,
+  visible: (record) => eventSetupActionAvailability(kind, record).visible,
+  disabledReason: (record) => eventSetupActionAvailability(kind, record).disabledReason,
+});
 const setupActions: CreateAction[] = [
-  { label: 'Add resource requests', path: '/api/v1/facilities/event-logistics/setup-tasks/{id}/resource-requests', fields: [{ key: 'resourceType', label: 'Resource type', type: 'select', required: true, options: ['ROOM', 'CATERING', 'SECURITY', 'CLEANING', 'EQUIPMENT', 'TRANSPORT', 'OTHER'] }, { key: 'description', label: 'Description', type: 'textarea', required: true }, { key: 'quantity', label: 'Quantity', type: 'number', required: true }], toBody: (v) => ({ applyTemplate: false, requests: [{ resourceType: v.resourceType, description: v.description, quantity: Number(v.quantity) }] }) },
-  { label: 'Link risk assessment', method: 'PUT', path: '/api/v1/facilities/event-logistics/setup-tasks/{id}/risk-assessment', fields: [{ key: 'assessmentId', label: 'Assessment ID', required: true }, { key: 'version', label: 'Assessment version', type: 'number' }], toBody: (v) => ({ assessmentId: v.assessmentId, version: v.version ? Number(v.version) : null }) },
-  { label: 'Confirm readiness', method: 'PATCH', path: '/api/v1/facilities/event-logistics/setup-tasks/{id}/confirm', fields: [] },
-  { label: 'Complete setup', method: 'PATCH', path: '/api/v1/facilities/event-logistics/setup-tasks/{id}/complete', fields: note },
-  { label: 'Route resource request', method: 'PATCH', path: '/api/v1/facilities/event-logistics/resource-requests/{requestId}/route', fields: [{ key: 'requestId', label: 'Resource request ID', required: true }, { key: 'routeTo', label: 'Owning system', required: true }, ...note] },
-  { label: 'Accept manual coordination', method: 'PATCH', path: '/api/v1/facilities/event-logistics/resource-requests/{requestId}/manual-coordination/accept', fields: [{ key: 'requestId', label: 'Resource request ID', required: true }, ...note] },
-  { label: 'Cancel resource request', method: 'PATCH', destructive: true, path: '/api/v1/facilities/event-logistics/resource-requests/{requestId}/cancel', fields: [{ key: 'requestId', label: 'Resource request ID', required: true }, ...reason] },
-  { label: 'Reconcile event', path: '/api/v1/facilities/event-logistics/setup-tasks/{id}/reconciliation', fields: [{ key: 'actualAttendance', label: 'Actual attendance', type: 'number', required: true }, { key: 'resourceGaps', label: 'Resource gaps / lessons', type: 'textarea' }], toBody: (v) => ({ actualAttendance: Number(v.actualAttendance), resourceGaps: v.resourceGaps ? [v.resourceGaps] : [] }) },
+  eventSetupAction('resources', {
+    label: 'Add resource request',
+    path: '/api/v1/facilities/event-logistics/setup-tasks/{id}/resource-requests',
+    fields: [
+      { key: 'resourceType', label: 'Resource type', type: 'select', required: true, options: ['VENUE', 'AV', 'STAGING', 'SECURITY', 'SIGNAGE', 'PRE_EVENT_MAINTENANCE', 'CLEANING', 'CATERING'] },
+      { key: 'description', label: 'Description', type: 'textarea', required: true },
+      { key: 'quantity', label: 'Quantity', type: 'number', required: true },
+      { key: 'bookableResourceId', label: 'Bookable resource ID' },
+      { key: 'neededFrom', label: 'Needed from', type: 'datetime' },
+      { key: 'neededTo', label: 'Needed to', type: 'datetime' },
+    ],
+    toBody: (v) => ({
+      applyTemplate: false,
+      requests: [{
+        resourceType: v.resourceType,
+        description: v.description,
+        quantity: Number(v.quantity),
+        bookableResourceId: v.bookableResourceId || null,
+        neededFrom: v.neededFrom || null,
+        neededTo: v.neededTo || null,
+      }],
+    }),
+  }),
+  eventSetupAction('template', {
+    label: 'Apply learned template',
+    path: '/api/v1/facilities/event-logistics/setup-tasks/{id}/resource-requests',
+    fields: [],
+    toBody: () => ({ requests: [], applyTemplate: true }),
+  }),
+  eventSetupAction('risk', {
+    label: 'Link risk assessment',
+    method: 'PUT',
+    path: '/api/v1/facilities/event-logistics/setup-tasks/{id}/risk-assessment',
+    fields: [{ key: 'assessmentId', label: 'Assessment ID', required: true }, { key: 'version', label: 'Assessment version', type: 'number' }],
+    toBody: (v) => ({ assessmentId: v.assessmentId, version: v.version ? Number(v.version) : null }),
+  }),
+  eventSetupAction('confirm', {
+    label: 'Confirm readiness',
+    method: 'PATCH',
+    path: '/api/v1/facilities/event-logistics/setup-tasks/{id}/confirm',
+    fields: [],
+  }),
+  eventSetupAction('complete', {
+    label: 'Complete setup',
+    method: 'PATCH',
+    path: '/api/v1/facilities/event-logistics/setup-tasks/{id}/complete',
+    fields: [{ key: 'notes', label: 'Completion notes', type: 'textarea' }],
+  }),
+  eventSetupAction('reconcile', {
+    label: 'Reconcile event',
+    path: '/api/v1/facilities/event-logistics/setup-tasks/{id}/reconciliation',
+    fields: [
+      { key: 'requestId', label: 'Resource request ID', required: true },
+      { key: 'outcome', label: 'Delivery outcome', type: 'select', required: true, options: ['DELIVERED', 'PARTIAL', 'NOT_DELIVERED'] },
+      { key: 'deliveredQuantity', label: 'Delivered quantity', type: 'number' },
+      { key: 'notes', label: 'Lessons / notes', type: 'textarea' },
+    ],
+    toBody: (v) => ({
+      lines: [{
+        resourceRequestId: v.requestId,
+        outcome: v.outcome,
+        deliveredQuantity: v.deliveredQuantity ? Number(v.deliveredQuantity) : null,
+        notes: v.notes || null,
+      }],
+    }),
+  }),
 ];
 const projectActions: CreateAction[] = [
   { label: 'Approve project', method: 'PATCH', path: '/api/v1/facilities/construction/projects/{id}/approval', fields: note },
@@ -205,7 +272,7 @@ export const EventLogisticsPage = page({
   dependencyNote: 'Catering is represented as manual coordination until S172 exists. Higher-risk confirmation remains fail-closed until S165 publishes a current assessment.',
   views: [
     { label: 'Set-up tasks', path: '/api/v1/facilities/event-logistics/setup-tasks', description: 'Upcoming events ordered by readiness risk.', actions: setupActions },
-    { label: 'Templates', path: '/api/v1/facilities/event-logistics/templates', description: 'Resource lessons learned from reconciliation gaps.' },
+    { label: 'Templates', path: '/api/v1/facilities/event-logistics/templates', description: 'Learned automatically from post-event reconciliation gaps. Reconcile a completed event; persistent lessons can then be applied to a live event.' },
     { label: 'Risk criteria', path: '/api/v1/facilities/event-logistics/risk-criteria', description: 'Criteria that make an event higher risk.', create: { label: 'Configure criteria', path: '/api/v1/facilities/event-logistics/risk-criteria', method: 'PUT', fields: [{ key: 'attendanceThreshold', label: 'Attendance threshold', type: 'number', required: true }, { key: 'higherRiskCategories', label: 'Higher-risk category' }], toBody: (v) => ({ attendanceThreshold: Number(v.attendanceThreshold), higherRiskCategories: v.higherRiskCategories ? [v.higherRiskCategories] : [], externalContractorsAreHigherRisk: true, temporaryStructuresAreHigherRisk: true }) } },
     { label: 'Integration status', path: '/api/v1/facilities/event-logistics/integration', description: 'Availability of each owning system used by event logistics.' },
   ],
