@@ -105,9 +105,9 @@ describe('programme entitlement', () => {
     it('places S165 in SSEMP and gives its two IFIMP consumer roles the library without losing their IFIMP systems', () => {
       expect(systems.S165.programme).toBe('SSEMP');
       expect(systemsFor(['HSE_MANAGER'])).toContain('S165');
-      // Declaring S165 ended systemsFor's fallback for these roles, so their IFIMP systems are listed too.
-      expect(systemsFor(['CONSTRUCTION_PROJECT_MANAGER'])).toEqual(['S152', 'S153', 'S159', 'S165']);
-      expect(systemsFor(['EVENT_LOGISTICS_COORDINATOR'])).toEqual(['S152', 'S153', 'S159', 'S165']);
+      // Both keep their IFIMP systems and gain the library, read only.
+      expect(systemsFor(['CONSTRUCTION_PROJECT_MANAGER'])).toEqual(['S152', 'S153', 'S158', 'S159', 'S165', 'S176']);
+      expect(systemsFor(['EVENT_LOGISTICS_COORDINATOR'])).toEqual(['S152', 'S153', 'S159', 'S165', 'S169', 'S173']);
       expect(programmesFor(['CONSTRUCTION_PROJECT_MANAGER'])).toEqual(['IFIMP', 'SSEMP']);
       // A role with no S165 grant does not see it.
       expect(systemsFor(['SOC_OPERATOR'])).not.toContain('S165');
