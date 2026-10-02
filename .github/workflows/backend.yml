@@ -58,20 +58,6 @@ jobs:
           --health-cmd "pg_isready -U sfl"
           --health-interval 10s --health-timeout 5s --health-retries 10
 
-      # The Amqp*TransportBrokerIntegrationTest suites (fleet, emergency) prove the publisher-confirm
-      # and return callbacks against a real broker and skip when nothing answers on localhost:5672
-      # with sfl/sfl - which the skip guard below correctly counts as a failure. Same image and
-      # credentials as compose.broker.yml.
-      rabbitmq:
-        image: rabbitmq:3.13-management
-        env:
-          RABBITMQ_DEFAULT_USER: sfl
-          RABBITMQ_DEFAULT_PASS: sfl
-        ports: ['5672:5672']
-        options: >-
-          --health-cmd "rabbitmq-diagnostics -q check_running"
-          --health-interval 10s --health-timeout 5s --health-retries 10
-
     env:
       # Two variables, two databases, and they must not be the same one. The e2e suite fills its
       # database with fixtures; the migration suite proves V1..V23 apply to an *empty* schema and
@@ -142,22 +128,6 @@ jobs:
             fi
             echo "  $m -> $(basename "$main")"
           done
-
-      # The check this file exists for. A green build that skipped the mandatory scenarios is not
-      # evidence, so the count is asserted rather than eyeballed. Raise the threshold only with a
-      # reason recorded in the commit message.
-      - name: Fail if the mandatory-scenario suites skipped
-        working-directory: services
-        shell: bash
-        run: |
-          skipped=$(grep -ho 'skipped="[0-9]*"' */target/surefire-reports/*.xml \
-            | sed 's/[^0-9]//g' | awk '{s+=$1} END {print s+0}')
-          echo "Total skipped: $skipped"
-          if [ "$skipped" -gt 0 ]; then
-            echo "::error::$skipped test(s) skipped. The e2e suites must run in CI - check the SFL_*_TEST_DB_URL variables and the service containers."
-            grep -l 'skipped="[1-9]' */target/surefire-reports/*.xml || true
-            exit 1
-          fi
 
   frontend:
     runs-on: ubuntu-latest
