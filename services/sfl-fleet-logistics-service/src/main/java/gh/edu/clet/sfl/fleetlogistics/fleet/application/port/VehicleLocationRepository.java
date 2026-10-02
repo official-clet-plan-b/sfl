@@ -21,5 +21,21 @@ public interface VehicleLocationRepository {
      */
     List<VehicleLocationSnapshot> findByVehicle(UUID vehicleId, int limit);
 
+    /**
+     * The newest report for each of the given vehicles, in one lookup. A vehicle that has never
+     * reported has no entry.
+     *
+     * <p>The default asks one vehicle at a time so a simple implementation stays correct; the JPA
+     * adapter overrides it with a single query, which is the point of the method.
+     */
+    default java.util.Map<UUID, VehicleLocationSnapshot> findLatestByVehicles(
+            java.util.Collection<UUID> vehicleIds) {
+        java.util.Map<UUID, VehicleLocationSnapshot> latest = new java.util.HashMap<>();
+        for (UUID vehicleId : vehicleIds) {
+            findLatestByVehicle(vehicleId).ifPresent(snapshot -> latest.put(vehicleId, snapshot));
+        }
+        return latest;
+    }
+
     List<VehicleLocationSnapshot> findRecentInScope(SiteScopeFilter scope, int limit);
 }

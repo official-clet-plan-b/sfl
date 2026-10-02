@@ -63,13 +63,24 @@ class JpaTripRepositoryAdapter implements TripRepository {
                 .toList();
     }
 
+    /**
+     * A prefix as a LIKE pattern, or null for "no filter". The caller's text is data, not a pattern: a
+     * percent or underscore in it is escaped so it matches itself rather than everything.
+     */
+    private static String likePrefix(String prefix) {
+        if (prefix == null || prefix.isBlank()) {
+            return null;
+        }
+        return prefix.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+    }
+
     @Override
     @Transactional(readOnly = true)
     public TripPage search(TripSearchCriteria criteria, SiteScopeFilter scope) {
         Page<TripEntity> page = trips.search(
                 scope.allSites(), scopeList(scope), normalise(criteria.siteCode()), criteria.status(),
                 criteria.vehicleId(), criteria.driverId(), criteria.operatingMode(), criteria.from(),
-                criteria.to(),
+                criteria.to(), likePrefix(criteria.purposePrefix()),
                 JpaVehicleRepositoryAdapter.pageRequest(criteria.page(), criteria.size(),
                         criteria.sort() == null ? "plannedStart,desc" : criteria.sort()));
 

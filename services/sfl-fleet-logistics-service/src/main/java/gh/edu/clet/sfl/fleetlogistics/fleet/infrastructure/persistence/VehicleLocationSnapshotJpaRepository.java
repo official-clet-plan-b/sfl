@@ -19,6 +19,15 @@ interface VehicleLocationSnapshotJpaRepository extends JpaRepository<VehicleLoca
 
     @Query("""
             select location from VehicleLocationSnapshotEntity location
+             where location.vehicleId in :vehicleIds
+               and location.recordedAt = (select max(later.recordedAt) from VehicleLocationSnapshotEntity later
+                                           where later.vehicleId = location.vehicleId)
+            """)
+    List<VehicleLocationSnapshotEntity> findLatestForVehicles(
+            @Param("vehicleIds") java.util.Collection<UUID> vehicleIds);
+
+    @Query("""
+            select location from VehicleLocationSnapshotEntity location
              where (:allSites = true or location.siteCode in :siteScopes)
              order by location.recordedAt desc, location.id desc
             """)

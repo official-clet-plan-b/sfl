@@ -44,7 +44,11 @@ import java.util.Set;
  *       location and a custodian reference.</li>
  *   <li><strong>Manage</strong> is narrow. Moving an asset or reassigning custody rewrites the chain
  *       of responsibility for a physical object, which is an administrative and integration act
- *       rather than an operational convenience.</li>
+ *       rather than an operational convenience. The one operational exception is the fleet office
+ *       ({@link SflRole#FLEET_MANAGER}, {@link SflRole#FLEET_LOGISTICS_OFFICER}): the asset tagging
+ *       screen is part of their programme and they are the people who tag, move and hand over the
+ *       vehicles and equipment in it, so withholding the grant left them a register of buttons that
+ *       all answered 403. {@link SflRole#FLEET_REPORTING_VIEWER} stays out entirely.</li>
  *   <li>{@link SflRole#FLEET_DRIVER}, {@link SflRole#IFIMP_REQUESTER} and
  *       {@link SflRole#VENDOR_TECHNICIAN} appear nowhere. A contractor is not CLET staff, a requester
  *       books rooms, and a driver drives - none of the three has a reason to enumerate the estate's
@@ -105,6 +109,12 @@ public final class AssetVisibilityPermissionMatrix {
         matrix.put(SflRole.FACILITIES_DIRECTOR, READ_AND_MANAGE);
         matrix.put(SflRole.FACILITIES_MANAGER, READ_AND_MANAGE);
 
+        // The fleet office. The asset register is offered to them as part of the fleet programme (S168
+        // asset tagging), and a register they can open but not write is a screen of buttons that all
+        // answer 403. They own the vehicles and equipment they tag, move and hand over, so they hold the
+        // write grant; the reporting viewer stays read-only below.
+        matrix.put(SflRole.FLEET_MANAGER, READ_AND_MANAGE);
+        matrix.put(SflRole.FLEET_LOGISTICS_OFFICER, READ_AND_MANAGE);
         // Operational read. Each of these is placing, escorting or accounting for physical things and
         // needs to know where a tracked device is; none of them needs to move it.
         matrix.put(SflRole.IFIMP_MAINTENANCE_SUPERVISOR, READ_ONLY);
@@ -115,8 +125,6 @@ public final class AssetVisibilityPermissionMatrix {
         matrix.put(SflRole.SECURITY_OFFICER, READ_ONLY);
         matrix.put(SflRole.SOC_OPERATOR, READ_ONLY);
         matrix.put(SflRole.HSE_MANAGER, READ_ONLY);
-        matrix.put(SflRole.FLEET_MANAGER, READ_ONLY);
-        matrix.put(SflRole.FLEET_LOGISTICS_OFFICER, READ_ONLY);
         matrix.put(SflRole.DISPATCH_CONTROLLER, READ_ONLY);
 
         // Read and prove. Breadth is cheap because they change nothing.
