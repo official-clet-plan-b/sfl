@@ -10,6 +10,7 @@ reads.
 | [`incident-response.md`](incident-response.md) | A service is down or refusing requests. What do I check, in what order? |
 | [`backup-and-restore.md`](backup-and-restore.md) | How is each schema backed up, and how do I prove a restore worked? |
 | [`disaster-recovery.md`](disaster-recovery.md) | The site is gone. What comes back, in what order, and what is lost? |
+| [`s165-risk-assessment-library.md`](s165-risk-assessment-library.md) | S165: why is an assessment not current, why is S173 still refusing, what does the sweep do? |
 
 ## The three services, and what each owns
 

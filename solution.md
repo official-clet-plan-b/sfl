@@ -6,7 +6,8 @@
 > - **Reference implementation pattern:** the S074 comms-service (API-first, contract → 202 → fast/deferred processing → transactional audit outbox → runtime-resolved adapter registry → OIDC/JWT + permission checks → emergency fast-lane). We mirror its *shape*, re-expressed in Java/Spring with hexagonal layering.
 > - **ADRs:** `docs/adr/0001` (foundation), `0002` (build/buy/hybrid), `0003` (Java/Spring migration),
 >   `0004` (S174 as its own deployable), `0005` (programme-scoped portals), `0006` (one dashboard),
->   `0007` (row-level security). All seven, so this list cannot quietly fall behind `docs/adr/`.
+>   `0007` (row-level security), `0008` (pluggable authentication), `0009` (Phase 2 IFIMP), `0010`
+>   (Phase 2 SSEMP foundation and S165). All ten, so this list cannot quietly fall behind `docs/adr/`.
 
 We implement to the SRS. Where the SRS and any earlier note disagree, **the SRS wins** and this log is corrected.
 
@@ -18,7 +19,7 @@ The active SFL implementation is the **three-platform Spring Boot** workspace un
 one deployable per programme, five schemas, three databases:
 
 - `sfl-facilities-service` - **SFL.IFIMP**, port 8091. S152 CAFM/IWMS, S153 CMMS, S159 Room & Resource Booking, hall-readiness, plus the six Phase 2 systems: S156 Building Management System/IoT, S157 Energy & Sustainability Monitoring, S158 Space Planning & Move Management, S169 Cleaning & Janitorial Schedule Management, S173 Event Logistics & Set-Up Workflow, S176 Construction Project Management. Schema `facilities`.
-- `sfl-safety-security-service` - **SFL.SSEMP**, port 8092. All of S160 Visitor, S163 HSE Incident/Near-Miss, S160a Physical Access Control Integration, S161 CCTV/VMS Integration, S162 Intrusion Detection & Alarm Monitoring and S162a Fire/Life-Safety Monitoring are now built in `safety_security`; S174 Emergency Notification is built in `emergency_notification`. S160a governs access policy, provisioning, overrides, SOC exceptions and occupancy over a recorded vendor gateway - see `accesscontrol` - and never controls a door itself. S161 governs camera inventory/health, a governed evidence-request-and-approval workflow, evidence-by-reference with hashing and access logging, live-view authorisation, analytics-alert triage and retention/disclosure governance over a recorded VMS gateway - see `cctv` - and never stores raw video by default. S162 runs the SOC alarm queue, escalation, zone arming/disarm and armed-response coordination over a recorded panel gateway - see `intrusion` - and never sits in the certified intrusion actuation path. S162a is observe-only by design - no outbound command/actuation port exists, unlike its four siblings - and its fast-lane trigger calls S174's break-glass activation in-process, see `lifesafety`. All four SSEMP Buy-and-Integrate systems (S160a, S161, S162, S162a) are now built; none is left as scope only.
+- `sfl-safety-security-service` - **SFL.SSEMP**, port 8092. All of S160 Visitor, S163 HSE Incident/Near-Miss, S160a Physical Access Control Integration, S161 CCTV/VMS Integration, S162 Intrusion Detection & Alarm Monitoring and S162a Fire/Life-Safety Monitoring are now built in `safety_security`; S174 Emergency Notification is built in `emergency_notification`. Phase 2: S165 Risk Assessment Library is built in `safety_security` (package `riskassessment`, ADR 0010), on a Phase 2 foundation S164 and S175 will share - row-level security for Phase 2 tables, a `safety_security` outbox drainer, and an inbound listener bound to `ifimp.#`. S160a governs access policy, provisioning, overrides, SOC exceptions and occupancy over a recorded vendor gateway - see `accesscontrol` - and never controls a door itself. S161 governs camera inventory/health, a governed evidence-request-and-approval workflow, evidence-by-reference with hashing and access logging, live-view authorisation, analytics-alert triage and retention/disclosure governance over a recorded VMS gateway - see `cctv` - and never stores raw video by default. S162 runs the SOC alarm queue, escalation, zone arming/disarm and armed-response coordination over a recorded panel gateway - see `intrusion` - and never sits in the certified intrusion actuation path. S162a is observe-only by design - no outbound command/actuation port exists, unlike its four siblings - and its fast-lane trigger calls S174's break-glass activation in-process, see `lifesafety`. All four SSEMP Buy-and-Integrate systems (S160a, S161, S162, S162a) are now built; none is left as scope only.
 - `sfl-fleet-logistics-service` - **SFL.FTLMP**, port 8093. S166 Fleet, S168_fuel Fuel & Logbooks, S171 Mailroom/Courier & Dispatch (schema `fleet_logistics`) and AVAMP-Lite asset/device/location references (schema `asset_visibility`, package `..fleetlogistics.assets`). Serves the dashboard at `/ui`.
 - `sfl-service-common` - shared kernel (principal/RBAC, error & event envelopes, outbox/inbox contracts, integration-security primitives). Library, no schema.
 
@@ -1173,3 +1174,43 @@ populated one. Every module's own gap-and-conflict report is under `docs/facilit
 recurring theme is the same one S156 states plainly: SSEMP has nothing built yet that consumes an
 IFIMP event, so every cross-programme signal this pass adds is published, audited and SIEM-forwarded,
 and none of them is delivered.
+
+### Pass - Phase 2 SSEMP: foundation and S165 Risk Assessment Library (`sfl-safety-security-service`)
+
+The first of the three Phase 2 SSEMP systems (SRS CLET/DTI/CL9/SFL/SRS/2026/002 §3.2), built first because
+S164 refuses a permit without a current S165 assessment and S173 had been refusing every higher-risk
+event for want of one. Decisions in ADR 0010.
+
+**Foundation (V18), once, for S165, S164 and S175.** Row-level security ported from facilities, applied by
+explicit table list so Phase 1 SSEMP tables are untouched; `PlatformThreads` behind the scheduler and the
+listener. `SafetySecurityOutboxDrainer`: `safety_security.outbox_messages` had been written since V1 and
+never read - every SSEMP event was recorded and none delivered. It now drains, defaulting to S174's
+transport. An inbound listener bound to `ifimp.#`, claiming V1's never-used `inbox_messages`.
+
+**S165 (V19, `riskassessment`).** Versioned assessments scoped to an activity type and/or S152 location;
+hazards rated before and after controls, level computed from the highest residual; publish refused with
+"Hazard Without Control" naming every one; revision opens the next version and publishing supersedes the
+last in one transaction. Review intervals per level as runtime configuration; independent sign-off at
+HIGH/CRITICAL; the shared `RiskAssessmentCurrency` rule decides currency everywhere, and a sweep reminds and
+records the lapse once each. Coverage gaps against activity types actually observed (S176 work types over
+the broker, S163 incident activities in-process). S163 incidents gained an optional assessment and
+activity; S163 publishes `IncidentRiskObserver` and S165 implements it, so the review flag commits with the
+incident - deferred with a reason and date, or cleared by findings, never dismissed. Create honours
+`Idempotency-Key`. The four reserved `sfl.ssemp.risk-assessment-*` events carry exactly S173's contract,
+proven from both sides. HSE_MANAGER holds the module; no new role.
+
+**UI.** `modules/riskassessment`: dashboard, register, detail with every version, review-flag queue,
+coverage and hazards, templates and review cycle; risk-context fields on the incident screens. Driving the
+live API first found three contract gaps (computed scores and `linkable` not on the wire; generic wording
+where the SRS has its own), fixed in the service.
+
+**Found on the way.** Publishing superseded *after* the new version, which the one-PUBLISHED index refused
+- caught by the real-database suite. The Backend workflow had been red on `main` since the IFIMP Phase 2
+merge: facilities' distinct test contexts exhausted PostgreSQL's 100 connections ("too many clients
+already" x125); `spring.test.context.cache.maxSize=6` fixes it. The SSEMP role matrix doc was stale on
+`main`.
+
+**Verification.** Against real PostgreSQL and RabbitMQ: shared kernel + SSEMP 281 tests, facilities 785,
+0 failures, 0 skipped. Frontend: typecheck clean, 366 tests, production build green. SSEMP boots through
+V19 on an empty and a populated database; a pending row drained to a queue bound to `ssemp.#`. Gaps in
+`docs/hse/S165_Gap_And_Conflict_Report.md`, runbook `docs/runbooks/s165-risk-assessment-library.md`.

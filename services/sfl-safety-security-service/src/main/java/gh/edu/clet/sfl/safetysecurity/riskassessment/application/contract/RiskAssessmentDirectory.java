@@ -34,16 +34,21 @@ public interface RiskAssessmentDirectory {
             String locationCode, RiskAssessmentCurrency.RiskLevel riskLevel, Instant reviewDueAt,
             RiskAssessmentCurrency.Verdict verdict, boolean linkable) {
 
-        /** {@code linkable} is always derived, never supplied - a component so it is also on the wire. */
+        /**
+         * {@code linkable} is a component so it is on the wire, and it may only ever say what {@code found} and
+         * the verdict say - construct through the nine-argument constructor, which derives it.
+         */
         public LinkCheck {
-            linkable = found && verdict.current();
+            if (linkable != (found && verdict.current())) {
+                throw new IllegalArgumentException("linkable is derived from found and the verdict");
+            }
         }
 
         public LinkCheck(UUID assessmentId, boolean found, String reference, Integer version, String activityType,
                 String locationCode, RiskAssessmentCurrency.RiskLevel riskLevel, Instant reviewDueAt,
                 RiskAssessmentCurrency.Verdict verdict) {
             this(assessmentId, found, reference, version, activityType, locationCode, riskLevel, reviewDueAt, verdict,
-                    false);
+                    found && verdict.current());
         }
     }
 }

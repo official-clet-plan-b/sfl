@@ -8,11 +8,9 @@ import java.time.Instant;
  *
  * <p>S165 lives in {@code sfl-safety-security-service}, a different deployable, so S173 cannot read its
  * table and must not call it synchronously. It keeps what the currency check needs, from the four
- * reserved {@code sfl.ssemp.risk-assessment-*.v1} events. <strong>Nothing publishes those events
- * yet</strong> - S165 is not built - so in every current deployment this projection is empty, every
- * higher-risk confirmation finds no assessment, and every one is refused. That is the correct,
- * fail-closed behaviour and not a defect: the alternative is confirming a major event against an
- * assessment nobody has written.
+ * reserved {@code sfl.ssemp.risk-assessment-*.v1} events, which S165 publishes (ADR 0010). An
+ * assessment S173 has not heard of is refused, never assumed - the alternative is confirming a major
+ * event against an assessment nobody has written.
  *
  * <p>Deliberately holds nothing but currency inputs. Hazards, controls and the assessment text stay in
  * S165.
