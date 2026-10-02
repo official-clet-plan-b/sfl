@@ -48,21 +48,25 @@ export interface SiteRecords {
   scenario: (id: string | null | undefined) => EmergencyScenario | undefined;
 }
 
+/**
+ * An empty `siteCode` loads nothing: a detail screen calls this before its record has told it the site, and
+ * asking the service for "every template at no site" is a 400, not an empty list.
+ */
 export const useSiteRecords = (siteCode: string): SiteRecords => {
   const templates = useApiQuery(
-    (signal) => emergencyRecordsApi.templates({ siteCode, size: RECORD_PAGE }, signal),
+    (signal) => (siteCode ? emergencyRecordsApi.templates({ siteCode, size: RECORD_PAGE }, signal) : Promise.resolve(undefined)),
     [siteCode],
   );
   const scenarios = useApiQuery(
-    (signal) => emergencyRecordsApi.scenarios({ siteCode, size: RECORD_PAGE }, signal),
+    (signal) => (siteCode ? emergencyRecordsApi.scenarios({ siteCode, size: RECORD_PAGE }, signal) : Promise.resolve(undefined)),
     [siteCode],
   );
   const audiences = useApiQuery(
-    (signal) => emergencyRecordsApi.audienceGroups({ siteCode, size: RECORD_PAGE }, signal),
+    (signal) => (siteCode ? emergencyRecordsApi.audienceGroups({ siteCode, size: RECORD_PAGE }, signal) : Promise.resolve(undefined)),
     [siteCode],
   );
   const zones = useApiQuery(
-    (signal) => emergencyRecordsApi.recipientZones({ siteCode, size: RECORD_PAGE }, signal),
+    (signal) => (siteCode ? emergencyRecordsApi.recipientZones({ siteCode, size: RECORD_PAGE }, signal) : Promise.resolve(undefined)),
     [siteCode],
   );
 
