@@ -1,9 +1,6 @@
 import { useState } from 'react';
 import { sflActor } from 'shared/api/config';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
-import FormDialog from 'shared/components/FormDialog';
-import { TextInput } from 'shared/components/fields';
+import { Alert, Button, FuelFormSheet as FormDialog, TextField as TextInput } from 'modules/fuel/components/fuelUi';
 import { allProgrammes, allSystems, programmes, systems } from 'shared/layout/programmeModel';
 import {
   ActorOverride,

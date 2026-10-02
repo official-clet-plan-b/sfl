@@ -3,7 +3,7 @@ import { FuelAnomalyCase } from 'modules/fuel/api/dto';
 import { AnomalyAction, fuelAnomaliesApi } from 'modules/fuel/api/fuelApi';
 import { ANOMALY_RULES, anomalyClosureBlockers } from 'modules/fuel/api/workflow';
 import { searchEvidenceChoices } from 'modules/fleet/api/fleetApi';
-import { Alert, Button, EvidenceFileField, EvidenceSelect, FormDialog, TextAreaInput, TextInput } from 'modules/fuel/components/fuelMigration';
+import { Alert, Button, EvidenceFileField, EvidenceSelect, FormDialog, TextAreaInput, TextInput } from 'modules/fuel/components/fuelUi';
 import { evidenceFilesApi } from 'shared/evidence/evidenceFilesApi';
 import { FleetApiError } from 'shared/errors/FleetApiError';
 import { useFleetForm } from 'shared/validation/useFleetForm';

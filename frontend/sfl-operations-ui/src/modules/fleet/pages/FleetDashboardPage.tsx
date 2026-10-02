@@ -584,7 +584,7 @@ const FleetDashboardPage = () => {
             {canManageTrips() && (
               <Button variant="primary" onClick={() => setPlanOpen(true)}>
                 <Icon name="plus" size={14} aria-hidden="true" />
-                Plan a trip
+                <span className="whitespace-nowrap">Plan a trip</span>
               </Button>
             )}
           </SectionActions>
@@ -616,6 +616,7 @@ const FleetDashboardPage = () => {
          */}
         <PageSection>
           <Card className="bg-[var(--clet-surface-subtle)]">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-3 sm:p-4">
             <MetricCards>
               <MetricCard
                 variant="soft"
@@ -646,6 +647,7 @@ const FleetDashboardPage = () => {
                 description={`${indicators?.openWorkflowItems ?? 0} still open`}
               />
             </MetricCards>
+            </div>
           </Card>
         </PageSection>
 
