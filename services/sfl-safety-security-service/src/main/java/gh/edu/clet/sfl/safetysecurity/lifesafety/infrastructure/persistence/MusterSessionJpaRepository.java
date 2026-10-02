@@ -7,6 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MusterSessionJpaRepository extends JpaRepository<MusterSessionJpaEntity, UUID> {
 
-    Optional<MusterSessionJpaEntity> findFirstBySiteCodeAndZoneCodeAndStatus(String siteCode, String zoneCode,
-            MusterStatus status);
+    Optional<MusterSessionJpaEntity> findFirstBySiteCodeAndZoneCodeAndStatusAndDrillIdIsNull(String siteCode,
+            String zoneCode, MusterStatus status);
 }

@@ -26,6 +26,8 @@ public class MusterSessionJpaEntity {
     private String zoneCode;
     @Column(name = "triggering_event_id")
     private UUID triggeringEventId;
+    @Column(name = "drill_id")
+    private UUID drillId;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private MusterStatus status;
@@ -64,6 +66,7 @@ public class MusterSessionJpaEntity {
         siteCode = s.siteCode();
         zoneCode = s.zoneCode();
         triggeringEventId = s.triggeringEventId();
+        drillId = s.drillId();
         status = s.status();
         openedAt = s.openedAt();
         closedAt = s.closedAt();
@@ -78,6 +81,7 @@ public class MusterSessionJpaEntity {
     public MusterSession toDomain() {
         RecordMetadata metadata = RecordMetadata.rehydrate(createdBy, createdAt, lastModifiedBy, lastModifiedAt,
                 recordVersion, sourceChannel, correlationId);
-        return new MusterSession(id, siteCode, zoneCode, triggeringEventId, status, openedAt, closedAt, metadata);
+        return new MusterSession(id, siteCode, zoneCode, triggeringEventId, status, openedAt, closedAt, metadata,
+                drillId);
     }
 }
