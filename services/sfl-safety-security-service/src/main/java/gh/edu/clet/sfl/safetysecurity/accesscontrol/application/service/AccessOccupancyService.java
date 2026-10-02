@@ -2,14 +2,18 @@ package gh.edu.clet.sfl.safetysecurity.accesscontrol.application.service;
 
 import gh.edu.clet.sfl.common.security.ActorContext;
 import gh.edu.clet.sfl.common.security.SflPermission;
+import gh.edu.clet.sfl.safetysecurity.accesscontrol.application.contract.AccessOccupancySource;
 import gh.edu.clet.sfl.safetysecurity.accesscontrol.application.port.AccessControlRepository;
 import gh.edu.clet.sfl.safetysecurity.accesscontrol.domain.model.AccessDirection;
 import gh.edu.clet.sfl.safetysecurity.accesscontrol.domain.model.AccessEvent;
 import gh.edu.clet.sfl.safetysecurity.accesscontrol.domain.model.AccessEventKind;
 import gh.edu.clet.sfl.safetysecurity.accesscontrol.domain.model.AccessZone;
+import java.time.Instant;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
  * visitor population (see the implementation notes for that deliberate follow-up).
  */
 @Service
-public class AccessOccupancyService {
+public class AccessOccupancyService implements AccessOccupancySource {
 
     private static final int RECENT_EVENTS_PER_ZONE = 500;
 
@@ -65,5 +69,38 @@ public class AccessOccupancyService {
         List<AccessZone> zones = zoneCodes == null || zoneCodes.isEmpty() ? repository.findZonesBySite(siteCode)
                 : repository.findZonesBySite(siteCode).stream().filter(z -> zoneCodes.contains(z.zoneCode())).toList();
         return zones.stream().map(zone -> occupancy(siteCode, zone.zoneCode(), actor)).toList();
+    }
+
+    /**
+     * {@inheritDoc} The same derivation as {@link #occupancy}: a person is in when their latest granted,
+     * directional event in the zone is an entry.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public OccupancySnapshot occupancy(String siteCode, String zoneCode) {
+        List<String> zones = zoneCode != null ? List.of(zoneCode)
+                : repository.findZonesBySite(siteCode).stream().map(AccessZone::zoneCode).toList();
+        Set<String> personsIn = new HashSet<>();
+        Instant latest = null;
+        for (String zone : zones) {
+            List<AccessEvent> recent = repository.findRecentEvents(siteCode, zone, null, RECENT_EVENTS_PER_ZONE);
+            Map<String, AccessDirection> last = new LinkedHashMap<>();
+            for (int i = recent.size() - 1; i >= 0; i--) {
+                AccessEvent event = recent.get(i);
+                if (latest == null || event.occurredAt().isAfter(latest)) {
+                    latest = event.occurredAt();
+                }
+                if (event.kind() == AccessEventKind.GRANTED && event.personRef() != null
+                        && event.direction() != AccessDirection.UNKNOWN) {
+                    last.put(event.personRef(), event.direction());
+                }
+            }
+            last.forEach((person, direction) -> {
+                if (direction == AccessDirection.ENTRY) {
+                    personsIn.add(person);
+                }
+            });
+        }
+        return new OccupancySnapshot(Set.copyOf(personsIn), latest);
     }
 }
