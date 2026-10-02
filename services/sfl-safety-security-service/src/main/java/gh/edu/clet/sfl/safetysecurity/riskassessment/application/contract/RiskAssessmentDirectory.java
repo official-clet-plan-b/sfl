@@ -32,10 +32,18 @@ public interface RiskAssessmentDirectory {
      */
     record LinkCheck(UUID assessmentId, boolean found, String reference, Integer version, String activityType,
             String locationCode, RiskAssessmentCurrency.RiskLevel riskLevel, Instant reviewDueAt,
-            RiskAssessmentCurrency.Verdict verdict) {
+            RiskAssessmentCurrency.Verdict verdict, boolean linkable) {
 
-        public boolean linkable() {
-            return found && verdict.current();
+        /** {@code linkable} is always derived, never supplied - a component so it is also on the wire. */
+        public LinkCheck {
+            linkable = found && verdict.current();
+        }
+
+        public LinkCheck(UUID assessmentId, boolean found, String reference, Integer version, String activityType,
+                String locationCode, RiskAssessmentCurrency.RiskLevel riskLevel, Instant reviewDueAt,
+                RiskAssessmentCurrency.Verdict verdict) {
+            this(assessmentId, found, reference, version, activityType, locationCode, riskLevel, reviewDueAt, verdict,
+                    false);
         }
     }
 }

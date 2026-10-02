@@ -22,6 +22,7 @@ import gh.edu.clet.sfl.safetysecurity.riskassessment.application.service.ReviewF
 import gh.edu.clet.sfl.safetysecurity.riskassessment.application.service.RiskAssessmentAuthoringService;
 import gh.edu.clet.sfl.safetysecurity.riskassessment.application.service.RiskAssessmentReviewService;
 import gh.edu.clet.sfl.safetysecurity.riskassessment.application.service.RiskAssessmentReviewService.SweepOutcome;
+import gh.edu.clet.sfl.safetysecurity.riskassessment.application.service.VersionView;
 import gh.edu.clet.sfl.safetysecurity.riskassessment.domain.exception.RiskAssessmentErrorCode;
 import gh.edu.clet.sfl.safetysecurity.riskassessment.domain.exception.RiskAssessmentException;
 import gh.edu.clet.sfl.safetysecurity.riskassessment.domain.model.AssessmentContent;
@@ -114,7 +115,7 @@ class RiskAssessmentMandatoryScenariosEndToEndTest extends SafetySecurityPostgre
 
         clock.advance(Duration.ofDays(1));
         AssessmentDetail revising = authoring.openRevision(id, officer(), SourceChannel.WEB);
-        AssessmentVersion draft2 = revising.versions().get(0);
+        AssessmentVersion draft2 = revising.versions().get(0).version();
         assertThat(draft2.versionNumber()).isEqualTo(2);
         authoring.editDraft(id, new AssessmentContent("Hot work - revised", "Adds a second fire watch", List.of(
                 hazard(Likelihood.UNLIKELY, Severity.MINOR), hazard(Likelihood.RARE, Severity.MODERATE))),
@@ -122,12 +123,19 @@ class RiskAssessmentMandatoryScenariosEndToEndTest extends SafetySecurityPostgre
         AssessmentDetail v2 = publish(id, officer());
 
         assertThat(v2.assessment().currentVersion()).isEqualTo(2);
-        AssessmentVersion prior = authoring.version(id, 1, officer());
-        assertThat(prior.status()).isEqualTo(Status.SUPERSEDED);
-        assertThat(prior.supersededAt()).isNotNull();
-        assertThat(prior.content().hazards()).hasSize(1);
-        assertThat(authoring.version(id, 2, officer()).content().hazards()).hasSize(2);
-        assertThat(v2.versions()).extracting(AssessmentVersion::status)
+        VersionView prior = authoring.version(id, 1, officer());
+        assertThat(prior.version().status()).isEqualTo(Status.SUPERSEDED);
+        assertThat(prior.version().supersededAt()).isNotNull();
+        assertThat(prior.hazards()).hasSize(1);
+        assertThat(prior.current()).isFalse();
+        assertThat(prior.currencyReason()).isEqualTo(RiskAssessmentCurrency.Reason.SUPERSEDED);
+        VersionView current = authoring.version(id, 2, officer());
+        assertThat(current.hazards()).hasSize(2);
+        assertThat(current.current()).isTrue();
+        // The service scores and bands each hazard, so no client re-derives the matrix.
+        assertThat(current.hazards().get(1).residualScore()).isEqualTo(3); // RARE x MODERATE
+        assertThat(current.hazards().get(1).residualLevel()).isEqualTo(RiskLevel.LOW);
+        assertThat(v2.versions()).extracting(view -> view.version().status())
                 .containsExactly(Status.PUBLISHED, Status.SUPERSEDED);
 
         assertThat(eventTypes(id)).containsSubsequence("sfl.ssemp.risk-assessment-published.v1",

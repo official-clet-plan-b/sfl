@@ -13,7 +13,7 @@ import gh.edu.clet.sfl.safetysecurity.riskassessment.application.service.Assessm
 import gh.edu.clet.sfl.safetysecurity.riskassessment.application.service.AssessmentSummary;
 import gh.edu.clet.sfl.safetysecurity.riskassessment.application.service.RiskAssessmentAuthoringService;
 import gh.edu.clet.sfl.safetysecurity.riskassessment.application.service.RiskAssessmentReviewService;
-import gh.edu.clet.sfl.safetysecurity.riskassessment.domain.model.AssessmentVersion;
+import gh.edu.clet.sfl.safetysecurity.riskassessment.application.service.VersionView;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -90,7 +90,7 @@ public class RiskAssessmentController {
     @GetMapping("/{assessmentId}/versions/{versionNumber}")
     @Operation(summary = "Read one version, superseded or not", description = "SRS-SFL-S165-01: a superseded "
             + "version remains retrievable for audit, clearly marked as not current.")
-    public ApiResponse<AssessmentVersion> version(@PathVariable UUID assessmentId, @PathVariable int versionNumber,
+    public ApiResponse<VersionView> version(@PathVariable UUID assessmentId, @PathVariable int versionNumber,
             HttpServletRequest http) {
         return ApiResponse.ok(authoring.version(assessmentId, versionNumber, actors.resolve(http)));
     }

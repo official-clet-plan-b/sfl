@@ -77,12 +77,19 @@ public final class RiskAssessmentRequests {
     public record SignOffRequest(@Size(max = 2000) String notes, Long expectedVersion) {
     }
 
-    /** S165-04: a deferral names its reason and the date the flag comes back. */
-    public record DeferRequest(@NotBlank @Size(max = 1000) String reason, @NotNull LocalDate until, Long expectedVersion) {
+    /**
+     * S165-04: a deferral names its reason and the date the flag comes back. Deliberately not
+     * {@code @NotBlank}/{@code @NotNull}: a missing reason or date is the domain's refusal, in the SRS's own
+     * words, not Bean Validation's generic one.
+     */
+    public record DeferRequest(@Size(max = 1000) String reason, LocalDate until, Long expectedVersion) {
     }
 
-    /** S165-04: a flag clears only with recorded findings. */
-    public record CompleteReviewRequest(@NotBlank @Size(max = 4000) String findings, Long expectedVersion) {
+    /**
+     * S165-04: a flag clears only with recorded findings. Not {@code @NotBlank}, for the same reason - blank
+     * findings must come back as "Flag Dismissed Without Review", which is what the reviewer needs to read.
+     */
+    public record CompleteReviewRequest(@Size(max = 4000) String findings, Long expectedVersion) {
     }
 
     public record TemplateRequest(@NotBlank @Size(max = 200) String name, @Size(max = 80) String activityType,

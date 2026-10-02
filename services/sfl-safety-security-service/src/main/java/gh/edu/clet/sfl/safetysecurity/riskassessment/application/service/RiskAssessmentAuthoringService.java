@@ -226,11 +226,11 @@ public class RiskAssessmentAuthoringService {
 
     /** One version, superseded or not - S165-01 "remains retrievable for audit". */
     @Transactional(readOnly = true)
-    public AssessmentVersion version(UUID assessmentId, int versionNumber, ActorContext actor) {
+    public VersionView version(UUID assessmentId, int versionNumber, ActorContext actor) {
         RiskAssessment assessment = requireAssessment(assessmentId);
         access.require(actor, SflPermission.RISK_ASSESSMENT_READ, assessment.siteCode(), "RiskAssessment",
                 assessmentId.toString());
-        return requireVersion(assessmentId, versionNumber);
+        return VersionView.of(requireVersion(assessmentId, versionNumber), clock.instant());
     }
 
     public record SearchAssessments(String siteCode, String activityType, RiskLevel riskLevel,
@@ -251,7 +251,8 @@ public class RiskAssessmentAuthoringService {
         List<AssessmentVersion> versions = repository.findVersions(assessment.id());
         List<SignOff> signOffs = repository.findSignOffs(assessment.id());
         List<ReviewFlag> flags = repository.findFlags(assessment.id());
-        return new AssessmentDetail(AssessmentSummary.of(assessment, now), versions, signOffs, flags);
+        return new AssessmentDetail(AssessmentSummary.of(assessment, now),
+                versions.stream().map(version -> VersionView.of(version, now)).toList(), signOffs, flags);
     }
 
     RiskAssessment requireAssessment(UUID id) {
