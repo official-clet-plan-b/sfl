@@ -1,7 +1,6 @@
-import { ReactNode, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
-  Badge,
   Button,
   EmptyState,
   HeroBanner,
@@ -12,7 +11,7 @@ import {
   TableContent,
   type TableColumn,
 } from '@rfdtech/components';
-import { ChevronRight, Plus, RefreshCw, TriangleAlert } from 'lucide-react';
+import { ChevronRight, Plus, RefreshCw } from 'lucide-react';
 import { DispatchManifest } from 'modules/dispatch/api/dto';
 import { humanise } from 'modules/fleet/api/enums';
 import {
@@ -36,19 +35,6 @@ import { formatDateTime, formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { dispatchPaths } from 'shared/layout/navigation';
 import { canCreateManifests } from 'modules/fleet/api/access';
-
-/** Header metadata: when the snapshot was taken and what it covers. Facts, so no tone. */
-const MetaBadge = ({ children, stale }: { children: ReactNode; stale?: boolean }) => (
-  <Badge variant="default">
-    {stale && (
-      <>
-        <TriangleAlert size={13} strokeWidth={1.75} className="mr-1 inline text-warning" aria-hidden="true" />
-        <span className="sr-only">May be out of date.</span>
-      </>
-    )}
-    {children}
-  </Badge>
-);
 
 interface AttentionRowProps {
   title: string;
@@ -228,13 +214,12 @@ const DispatchDashboardPage = () => {
         meta={
           data && (
             <>
-              <MetaBadge stale={data.stale}>{`Snapshot ${formatDateTime(data.generatedAt)}`}</MetaBadge>
-              <MetaBadge>{`Site ${siteCode}`}</MetaBadge>
-              <MetaBadge>
+              <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">{`Site ${siteCode}`}</span>
+              <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
                 {data.sourceUpdatedAt
                   ? `Records last changed ${formatDateTime(data.sourceUpdatedAt)}`
-                  : 'No dispatch records at this site'}
-              </MetaBadge>
+                  : 'No dispatch activity yet'}
+              </span>
             </>
           )
         }

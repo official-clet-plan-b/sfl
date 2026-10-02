@@ -53,6 +53,12 @@ public record AssetReference(
                 locationReference, newCustodianReference, externalReference, evidenceReference, createdAt, now);
     }
 
+    /** Attaches (or replaces) the physical tag - an RFID, barcode or QR value - this asset is read by. */
+    public AssetReference withTag(String newTag, Instant now) {
+        return new AssetReference(id, assetCode, name, category, status, siteCode, locationType,
+                locationReference, custodianReference, newTag, evidenceReference, createdAt, now);
+    }
+
     public AssetReference linkEvidence(String newEvidenceReference, Instant now) {
         return new AssetReference(id, assetCode, name, category, status, siteCode, locationType,
                 locationReference, custodianReference, externalReference, newEvidenceReference, createdAt, now);

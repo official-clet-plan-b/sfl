@@ -1,11 +1,11 @@
 import { ImportResult } from 'modules/fuel/api/dto';
 import { CSV_OPTIONAL_HEADERS, CSV_REQUIRED_HEADERS } from 'modules/fuel/api/enums';
 import { fuelImportsApi } from 'modules/fuel/api/fuelApi';
-import { FileField } from 'modules/fuel/components/fuelMigration';
+import { FileField } from 'modules/fuel/components/fuelUi';
 import { MAX_IMPORT_BYTES } from 'shared/evidence/evidenceFilesApi';
-import { Alert, FormDialog } from 'modules/fuel/components/fuelMigration';
+import { Alert, FormDialog } from 'modules/fuel/components/fuelUi';
 import SiteSelect from 'shared/components/SiteSelect';
-import { TextInput } from 'modules/fuel/components/fuelMigration';
+import { TextInput } from 'modules/fuel/components/fuelUi';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { compose, maxLength, required } from 'shared/validation/validators';
 

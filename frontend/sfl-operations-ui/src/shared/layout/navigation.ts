@@ -216,6 +216,12 @@ export const fleetPaths = {
   integrations: '/fleetvehicle/fleet/integrations',
 };
 
+export const phase2FleetPaths = {
+  telematics: '/fleetvehicle/telematics',
+  vipTransport: '/fleetvehicle/vip-transport',
+  assetVisibility: '/fleetvehicle/asset-visibility',
+};
+
 /**
  * S168 fuel routes.
  *
@@ -309,6 +315,15 @@ export const riskAssessmentPaths = {
   configuration: '/safetysecurity/risk-assessments/configuration',
 };
 
+export type SecuritySystemCode = 'S160a' | 'S161' | 'S162' | 'S162a';
+
+export const securitySystemPaths: Record<SecuritySystemCode, string> = {
+  S160a: '/safetysecurity/access-control',
+  S161: '/safetysecurity/cctv',
+  S162: '/safetysecurity/intrusion',
+  S162a: '/safetysecurity/life-safety',
+};
+
 /**
  * S175 Crisis & Evacuation Drill Management. The register is also the calendar; a drill's own screen carries
  * it from plan to roll-call to after-action review, because one drill is one piece of work. Compliance is its
@@ -347,6 +362,30 @@ export const navSections: NavSection[] = [
   //
   // Each is `persona`-gated, so an operator never sees them: the sections below are unchanged for
   // everybody who was already served.
+  {
+    heading: 'Physical access control',
+    programme: 'SSEMP',
+    system: 'S160a',
+    items: [{ label: 'Access control', to: securitySystemPaths.S160a, icon: 'lock', description: 'Zones, exceptions and occupancy' }],
+  },
+  {
+    heading: 'CCTV / VMS',
+    programme: 'SSEMP',
+    system: 'S161',
+    items: [{ label: 'CCTV operations', to: securitySystemPaths.S161, icon: 'camera', description: 'Cameras and evidence requests' }],
+  },
+  {
+    heading: 'Intrusion & alarms',
+    programme: 'SSEMP',
+    system: 'S162',
+    items: [{ label: 'Alarm queue', to: securitySystemPaths.S162, icon: 'shield-alert', description: 'SOC alarms and dispatch' }],
+  },
+  {
+    heading: 'Fire & life safety',
+    programme: 'SSEMP',
+    system: 'S162a',
+    items: [{ label: 'Life safety', to: securitySystemPaths.S162a, icon: 'alert-triangle', description: 'Detectors and compliance exceptions' }],
+  },
   {
     heading: 'My work',
     programme: 'FTLMP',
@@ -813,6 +852,27 @@ export const navSections: NavSection[] = [
           // the register to their own records, so this offers them their work, not the fleet's.
           'FLEET_TRIP_ACKNOWLEDGE',
         ],
+      },
+      {
+        label: 'GPS & telematics',
+        to: phase2FleetPaths.telematics,
+        icon: 'map-pin',
+        description: 'Tracking freshness and untracked vehicles',
+        permission: 'FLEET_VEHICLE_READ',
+      },
+      {
+        label: 'VIP transport requests',
+        to: phase2FleetPaths.vipTransport,
+        icon: 'calendar',
+        description: 'Dignitary transport requests and assignments',
+        permission: 'FLEET_TRIP_READ',
+      },
+      {
+        label: 'Asset tagging & inventory',
+        to: phase2FleetPaths.assetVisibility,
+        icon: 'package',
+        description: 'Stable asset identity, tags and custody',
+        permission: 'ASSET_REFERENCE_READ',
       },
     ],
   },

@@ -97,8 +97,8 @@ describe('programme entitlement', () => {
       expect(systemsFor(['VISITOR_HOST'])).toEqual(['S160']);
       // RiskAssessmentPermissionMatrix: an investigator reads the assessment an incident happened under.
       expect(systemsFor(['INCIDENT_INVESTIGATOR'])).toEqual(['S163', 'S165']);
-      expect(systemsFor(['SOC_OPERATOR'])).toEqual(['S160', 'S163', 'S174', 'S175']);
-      expect(systemsFor(['SECURITY_DIRECTOR'])).toEqual(['S160', 'S163', 'S165', 'S174', 'S175']);
+      expect(systemsFor(['SOC_OPERATOR'])).toEqual(['S160', 'S160a', 'S161', 'S162', 'S162a', 'S163', 'S174', 'S175']);
+      expect(systemsFor(['SECURITY_DIRECTOR'])).toEqual(['S160', 'S160a', 'S161', 'S162', 'S162a', 'S163', 'S165', 'S174', 'S175']);
       expect(programmesFor(['INCIDENT_INVESTIGATOR'])).toEqual(['SSEMP']);
     });
 

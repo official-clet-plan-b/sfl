@@ -67,6 +67,7 @@ interface TripJpaRepository extends JpaRepository<TripEntity, UUID> {
               and (:operatingMode is null or t.operatingMode = :operatingMode)
               and t.plannedEnd >= coalesce(:from, t.plannedEnd)
               and t.plannedStart <= coalesce(:to, t.plannedStart)
+              and t.purpose like coalesce(:purposePrefix, '%') escape '\\'
             """)
     Page<TripEntity> search(
             @Param("allSites") boolean allSites,
@@ -78,6 +79,7 @@ interface TripJpaRepository extends JpaRepository<TripEntity, UUID> {
             @Param("operatingMode") OperatingMode operatingMode,
             @Param("from") Instant from,
             @Param("to") Instant to,
+            @Param("purposePrefix") String purposePrefix,
             Pageable pageable);
 
     @Query("""

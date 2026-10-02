@@ -12,6 +12,8 @@ interface JpaAssetReferenceRepository extends JpaRepository<AssetReferenceRecord
 
     Optional<AssetReferenceRecord> findByAssetCode(String assetCode);
 
+    Optional<AssetReferenceRecord> findFirstByExternalReferenceIgnoreCase(String externalReference);
+
     List<AssetReferenceRecord> findBySiteCodeOrderByAssetCodeAsc(String siteCode);
 
     List<AssetReferenceRecord> findAllByOrderBySiteCodeAscAssetCodeAsc();

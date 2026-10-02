@@ -1,6 +1,7 @@
 package gh.edu.clet.sfl.fleetlogistics.assets.api;
 
 import gh.edu.clet.sfl.fleetlogistics.assets.application.AssetVisibilityAuthorizationException;
+import gh.edu.clet.sfl.fleetlogistics.assets.application.DuplicateAssetTagException;
 import gh.edu.clet.sfl.common.api.ApiError;
 import gh.edu.clet.sfl.common.api.ApiResponse;
 import gh.edu.clet.sfl.common.security.AuthorizationException;
@@ -121,7 +122,14 @@ class AssetVisibilityApiExceptionHandler {
             HttpServletRequest request) {
         log.warn("Database constraint rejected a write: {}", exception.getMostSpecificCause().getMessage());
         return respond(HttpStatus.CONFLICT, DUPLICATE_IDENTIFIER,
-                "An asset with this code is already registered.", null, request);
+                "An asset with this code or tag is already registered.", null, request);
+    }
+
+    /** A tag identifies one asset; asking for it to identify a second is a conflict, not a bad request. */
+    @ExceptionHandler(DuplicateAssetTagException.class)
+    ResponseEntity<ApiResponse<Object>> duplicateTag(DuplicateAssetTagException exception,
+            HttpServletRequest request) {
+        return respond(HttpStatus.CONFLICT, DUPLICATE_IDENTIFIER, exception.getMessage(), null, request);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

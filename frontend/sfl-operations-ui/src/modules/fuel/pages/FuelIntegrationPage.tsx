@@ -6,10 +6,10 @@ import { MAX_PAGE_SIZE, fuelIntegrationsApi, fuelTransactionsApi } from 'modules
 import { DerivedNote } from 'modules/fuel/components/Provenance';
 import { shortId } from 'modules/fuel/components/fuelFormat';
 import { humanise } from 'modules/fleet/api/enums';
-import { Alert, Button, CellStack, DataTable, PageHeader, SectionCard, StatCard, StatusChip } from 'modules/fuel/components/fuelMigration';
+import { Alert, Button, CellStack, DataTable, PageHeader, SectionCard, StatCard, StatusChip } from 'modules/fuel/components/fuelUi';
 import DataState from 'shared/components/DataState';
-import type { Column } from 'modules/fuel/components/fuelMigration';
-import { FilterBar } from 'modules/fuel/components/fuelMigration';
+import type { FuelColumn as Column } from 'modules/fuel/components/fuelUi';
+import { FilterBar } from 'modules/fuel/components/fuelUi';
 import { useNotifier } from 'shared/components/Notifier';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
 import { formatDateTime, formatNumber } from 'shared/components/format';
