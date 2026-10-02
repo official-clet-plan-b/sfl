@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import Alert from 'shared/components/Alert';
 import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
@@ -13,12 +13,13 @@ import { Checkbox, EnumSelect, NumberInput, TextAreaInput, TextInput } from 'sha
 import { formatDateTime } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { permits } from 'shared/layout/actorPermissions';
-import { incidentPaths } from 'shared/layout/navigation';
+import { incidentPaths, riskAssessmentPaths } from 'shared/layout/navigation';
+import RiskContextFields from 'modules/riskassessment/components/RiskAssessmentSelect';
 import { incidentApi } from '../api/incidentApi';
 import { incidentRiskScore, incidentWorkflow } from '../api/workflow';
 import type { CorrectiveAction, Impact, Likelihood, RetentionClass, Severity } from '../api/dto';
 
-type Action = 'triage' | 'investigate' | 'evidence' | 'capa' | 'close' | null;
+type Action = 'triage' | 'investigate' | 'evidence' | 'capa' | 'close' | 'risk' | null;
 type CapaTransition = 'IN_PROGRESS' | 'VERIFY' | 'CANCEL';
 const severities: Severity[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'EMERGENCY'];
 const likelihoods: Likelihood[] = ['RARE', 'UNLIKELY', 'POSSIBLE', 'LIKELY', 'ALMOST_CERTAIN'];
@@ -38,6 +39,7 @@ const IncidentDetailPage = () => {
   const [evidence, setEvidence] = useState({ fileReference: '', fileName: '', mediaType: '', sizeBytes: '', contentHash: '', retentionClass: 'STANDARD' as RetentionClass, notes: '' });
   const [capa, setCapa] = useState({ description: '', ownerId: '', dueDate: '', mandatory: true });
   const [closureNotes, setClosureNotes] = useState('');
+  const [riskContext, setRiskContext] = useState({ riskAssessmentId: '', activityType: '' });
   const [transitioning, setTransitioning] = useState<{ item: CorrectiveAction; next: CapaTransition } | null>(null);
   const [transitionNotes, setTransitionNotes] = useState('');
   const incident = query.data;
@@ -52,6 +54,7 @@ const IncidentDetailPage = () => {
       if (action === 'evidence') { await incidentApi.attachEvidence(incident.id, { fileReference: evidence.fileReference, fileName: evidence.fileName || undefined, mediaType: evidence.mediaType || undefined, sizeBytes: evidence.sizeBytes ? Number(evidence.sizeBytes) : undefined, contentHash: evidence.contentHash, retentionClass: evidence.retentionClass, notes: evidence.notes || undefined }); evidenceQuery.refetch(); finish('Evidence reference attached'); }
       if (action === 'capa') { await incidentApi.openCapa(incident.id, capa); capaQuery.refetch(); finish('Corrective action opened'); }
       if (action === 'close') { await incidentApi.close(incident.id, closureNotes, incident.metadata.version); finish('Incident closed'); }
+      if (action === 'risk') { await incidentApi.recordRiskContext(incident.id, { riskAssessmentId: riskContext.riskAssessmentId || undefined, activityType: riskContext.activityType.trim() || undefined, expectedVersion: incident.metadata.version }); finish('Risk context recorded - any linked assessment is flagged for review'); }
     } catch (error) { notify.notifyError(error); } finally { setSubmitting(false); }
   };
   const transition = async () => {
@@ -75,7 +78,8 @@ const IncidentDetailPage = () => {
       {incidentWorkflow.canInvestigate(incident) && permits('INCIDENT_INVESTIGATE') && <Button variant="primary" onClick={() => setAction('investigate')}>{incident.status === 'TRIAGE' ? 'Open investigation' : 'Update investigation'}</Button>}
       {permits('INCIDENT_EVIDENCE_MANAGE') && <Button variant="outline" onClick={() => setAction('evidence')}>Attach evidence</Button>}
       {permits('INCIDENT_CAPA_MANAGE') && <Button variant="outline" onClick={() => setAction('capa')}>Add CAPA</Button>}
-      {incidentWorkflow.canClose(incident) && permits('INCIDENT_CLOSE') && <Button variant="accent" onClick={() => setAction('close')}>Close case</Button>}
+      {(permits('INCIDENT_TRIAGE') || permits('INCIDENT_INVESTIGATE')) && <Button variant="outline" onClick={() => { setRiskContext({ riskAssessmentId: incident.riskAssessmentId ?? '', activityType: incident.activityType ?? '' }); setAction('risk'); }}>Risk context</Button>}
+            {incidentWorkflow.canClose(incident) && permits('INCIDENT_CLOSE') && <Button variant="accent" onClick={() => setAction('close')}>Close case</Button>}
     </> : undefined} />
     <DataState loading={query.initialising} error={query.error} onRetry={query.refetch}>
       {incident && <div className="space-y-5">
@@ -84,6 +88,9 @@ const IncidentDetailPage = () => {
           <KeyValueGrid columns={4} items={[{ label: 'Site', value: incident.siteCode }, { label: 'Type', value: incident.nearMiss ? 'Near miss' : 'Incident' }, { label: 'Source', value: <StatusChip value={incident.source} /> }, { label: 'Severity', value: incident.severity ? <StatusChip value={incident.severity} /> : 'Not triaged' }, { label: 'Likelihood', value: incident.riskRating?.likelihood }, { label: 'Impact', value: incident.riskRating?.impact }, { label: 'Risk score', value: score }, { label: 'Reportable', value: incident.reportable ? 'Yes' : 'No' }]} />
         </SectionCard>
         <SectionCard title="Reported facts"><p className="whitespace-pre-wrap text-theme-sm leading-6 text-gray-800">{incident.description}</p><div className="mt-5"><KeyValueGrid columns={3} items={[{ label: 'Reporter', value: incident.anonymous ? 'Anonymous' : incident.reporterId }, { label: 'Reporter contact', value: incident.reporterContact }, { label: 'Reported', value: formatDateTime(incident.metadata.createdAt) }]} /></div></SectionCard>
+        <SectionCard title="Risk context" subtitle="Phase 2 S165-04: the assessment this happened under is flagged for out-of-cycle review.">
+          <KeyValueGrid columns={2} items={[{ label: 'Activity under way', value: incident.activityType ?? 'Not recorded' }, { label: 'Risk assessment', value: incident.riskAssessmentId ? (permits('RISK_ASSESSMENT_READ') ? <Link className="text-teal-700 underline-offset-2 hover:underline" to={riskAssessmentPaths.detail(incident.riskAssessmentId)}>Open the linked assessment</Link> : 'Linked') : 'Not linked' }]} />
+        </SectionCard>
         <div className="grid gap-5 lg:grid-cols-2">
           <SectionCard title="Investigation"><KeyValueGrid columns={2} items={[{ label: 'Investigator', value: incident.investigatorId }, { label: 'Last changed', value: formatDateTime(incident.metadata.lastModifiedAt) }, { label: 'Findings', value: incident.investigationNotes, span: 2 }, { label: 'Reportability notes', value: incident.reportabilityNotes, span: 2 }, { label: 'Closure notes', value: incident.closureNotes, span: 2 }]} /></SectionCard>
           <SectionCard title="Record provenance"><KeyValueGrid columns={2} items={[{ label: 'Created by', value: incident.metadata.createdBy }, { label: 'Source channel', value: incident.metadata.sourceChannel }, { label: 'Last changed by', value: incident.metadata.lastModifiedBy }, { label: 'Version', value: incident.metadata.version }, { label: 'Closed', value: formatDateTime(incident.closedAt) }, { label: 'Correlation ID', value: incident.metadata.correlationId }]} /></SectionCard>
@@ -97,11 +104,12 @@ const IncidentDetailPage = () => {
       </div>}
     </DataState>
 
-    <FormDialog open={action !== null} title={action === 'triage' ? 'Triage case' : action === 'investigate' ? 'Investigation' : action === 'evidence' ? 'Attach evidence reference' : action === 'capa' ? 'Open corrective action' : 'Close case'} submitLabel={action === 'close' ? 'Close case' : 'Save'} submitting={submitting} destructive={false} submitDisabled={action === 'investigate' ? !investigation.investigatorId.trim() : action === 'evidence' ? !evidence.fileReference.trim() || evidence.contentHash.trim().length !== 64 : action === 'capa' ? !capa.description.trim() || !capa.ownerId.trim() || !capa.dueDate : action === 'close' ? !closureNotes.trim() : false} onClose={() => setAction(null)} onSubmit={submit}>
+    <FormDialog open={action !== null} title={action === 'triage' ? 'Triage case' : action === 'investigate' ? 'Investigation' : action === 'evidence' ? 'Attach evidence reference' : action === 'capa' ? 'Open corrective action' : action === 'risk' ? 'Record the risk context' : 'Close case'} submitLabel={action === 'close' ? 'Close case' : 'Save'} submitting={submitting} destructive={false} submitDisabled={action === 'investigate' ? !investigation.investigatorId.trim() : action === 'evidence' ? !evidence.fileReference.trim() || evidence.contentHash.trim().length !== 64 : action === 'capa' ? !capa.description.trim() || !capa.ownerId.trim() || !capa.dueDate : action === 'close' ? !closureNotes.trim() : false} onClose={() => setAction(null)} onSubmit={submit}>
       {action === 'triage' && <div className="space-y-4"><div className="grid gap-4 sm:grid-cols-3"><EnumSelect label="Severity" value={triage.severity} options={severities} onChange={(value) => value && setTriage((current) => ({ ...current, severity: value }))} required /><EnumSelect label="Likelihood" value={triage.likelihood} options={likelihoods} onChange={(value) => value && setTriage((current) => ({ ...current, likelihood: value }))} required /><EnumSelect label="Impact" value={triage.impact} options={impacts} onChange={(value) => value && setTriage((current) => ({ ...current, impact: value }))} required /></div><Checkbox checked={triage.reportable} onChange={(value) => setTriage((current) => ({ ...current, reportable: value }))} label="Potentially statutorily reportable" /><TextAreaInput label="Reportability notes" value={triage.notes} onChange={(value) => setTriage((current) => ({ ...current, notes: value }))} /></div>}
       {action === 'investigate' && <div className="space-y-4"><TextInput label="Investigator ID" value={investigation.investigatorId} onChange={(value) => setInvestigation((current) => ({ ...current, investigatorId: value }))} required /><TextAreaInput label="Investigation findings" value={investigation.notes} onChange={(value) => setInvestigation((current) => ({ ...current, notes: value }))} rows={5} /></div>}
       {action === 'evidence' && <div className="grid gap-4 sm:grid-cols-2"><TextInput label="File reference" value={evidence.fileReference} onChange={(value) => setEvidence((current) => ({ ...current, fileReference: value }))} required /><TextInput label="File name" value={evidence.fileName} onChange={(value) => setEvidence((current) => ({ ...current, fileName: value }))} /><TextInput label="Media type" value={evidence.mediaType} onChange={(value) => setEvidence((current) => ({ ...current, mediaType: value }))} /><NumberInput label="Size" suffix="bytes" value={evidence.sizeBytes} onChange={(value) => setEvidence((current) => ({ ...current, sizeBytes: value }))} /><TextInput label="SHA-256 digest" value={evidence.contentHash} onChange={(value) => setEvidence((current) => ({ ...current, contentHash: value }))} helperText="Exactly 64 hexadecimal characters." className="sm:col-span-2" required /><EnumSelect label="Retention class" value={evidence.retentionClass} options={retention} onChange={(value) => value && setEvidence((current) => ({ ...current, retentionClass: value }))} required /><TextAreaInput label="Notes" value={evidence.notes} onChange={(value) => setEvidence((current) => ({ ...current, notes: value }))} /></div>}
       {action === 'capa' && <div className="space-y-4"><TextAreaInput label="Corrective action" value={capa.description} onChange={(value) => setCapa((current) => ({ ...current, description: value }))} required /><div className="grid gap-4 sm:grid-cols-2"><TextInput label="Owner ID" value={capa.ownerId} onChange={(value) => setCapa((current) => ({ ...current, ownerId: value }))} required /><label className="text-theme-sm font-medium text-gray-800">Due date<input type="date" className="mt-2 h-10 w-full rounded-md border border-gray-500 px-3" value={capa.dueDate} onChange={(event) => setCapa((current) => ({ ...current, dueDate: event.target.value }))} required /></label></div><Checkbox checked={capa.mandatory} onChange={(value) => setCapa((current) => ({ ...current, mandatory: value }))} label="Mandatory for closure" hint="The incident cannot close until this action is verified or cancelled." /></div>}
+      {action === 'risk' && incident && <><Alert variant="info" title="Saving flags the assessment for review">A linked assessment - or every published assessment at {incident.siteCode} for this activity - goes on the S165 review queue, ahead of its normal cycle. A link to an assessment at another site is refused.</Alert><RiskContextFields siteCode={incident.siteCode} riskAssessmentId={riskContext.riskAssessmentId} activityType={riskContext.activityType} onRiskAssessmentChange={(value) => setRiskContext((current) => ({ ...current, riskAssessmentId: value }))} onActivityTypeChange={(value) => setRiskContext((current) => ({ ...current, activityType: value }))} /></>}
       {action === 'close' && <><Alert variant="warning" title="Closure is final">The service will refuse closure while any mandatory corrective action remains open.</Alert><TextAreaInput label="Closure notes" value={closureNotes} onChange={setClosureNotes} rows={5} required /></>}
     </FormDialog>
     <FormDialog open={transitioning !== null} title={transitioning?.next === 'IN_PROGRESS' ? 'Start corrective action' : transitioning?.next === 'VERIFY' ? 'Verify effectiveness' : 'Cancel corrective action'} description={transitioning?.item.description} submitLabel={transitioning?.next === 'IN_PROGRESS' ? 'Start work' : transitioning?.next === 'VERIFY' ? 'Verify action' : 'Cancel action'} submitting={submitting} destructive={transitioning?.next === 'CANCEL'} submitDisabled={transitioning?.next !== 'IN_PROGRESS' && !transitionNotes.trim()} onClose={() => { setTransitioning(null); setTransitionNotes(''); }} onSubmit={() => void transition()}>

@@ -6,7 +6,7 @@ shared kernel.
 | Module                        | Platform | Systems                          | Schemas                                 | Port   |
 | ----------------------------- | -------- | -------------------------------- | --------------------------------------- | ------ |
 | `sfl-facilities-service`      | IFIMP    | S152, S153, S159                 | `facilities`                            | `8091` |
-| `sfl-safety-security-service` | SSEMP    | S160, S163, S174                 | `safety_security`, `emergency_notification` | `8092` |
+| `sfl-safety-security-service` | SSEMP    | S160, S160a, S161, S162, S162a, S163, S174; Phase 2 S165 | `safety_security`, `emergency_notification` | `8092` |
 | `sfl-fleet-logistics-service` | FTLMP    | S166, S168_fuel, S171, AVAMP-Lite | `fleet_logistics`, `asset_visibility`   | `8093` |
 | `sfl-service-common`          | -        | Shared kernel                    | -                                       | -      |
 
@@ -145,8 +145,9 @@ Flyway, with `ddl-auto: validate`. Two rules:
 - A service owns its own schemas only, and each module inside it owns exactly one. No cross-schema
   foreign keys in either direction - not between services, and not between two schemas that happen
   to share a database. Cross-context identifiers are held by value.
-- Cross-service changes are published through the service outbox. No drainer exists yet - events
-  are recorded, not delivered.
+- Cross-service changes are published through the service outbox and delivered by that service's
+  drainer. `safety_security` gained its drainer in Phase 2 (ADR 0010); until then SSEMP recorded every
+  event and delivered none.
 - External events are consumed idempotently through the service inbox.
 - Vendor payloads go through adapters. No vendor model reaches a domain package.
 - Store evidence references and hashes only - never large files or CCTV video.

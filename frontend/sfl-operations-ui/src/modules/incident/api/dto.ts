@@ -40,6 +40,10 @@ export interface SecurityIncident {
   reportabilityNotes: string | null;
   closureNotes: string | null;
   closedAt: string | null;
+  /** Phase 2 S165-04: the risk assessment the incident happened under, if recorded. */
+  riskAssessmentId: string | null;
+  /** The activity under way, as the reporter or investigator recorded it. */
+  activityType: string | null;
   metadata: RecordMetadata;
 }
 

@@ -37,6 +37,12 @@ import java.util.UUID;
  * @param emergencyEscalated sticky once {@code true} - see {@link IncidentStatus}'s Javadoc for why
  *        this is not a status node.
  * @param reportable set manually at triage, not computed - see the class Javadoc on Q-163-2.
+ * @param riskAssessmentId the S165 risk assessment the incident happened under, if known - held by value,
+ *        never resolved against S165's tables from here. Phase 2 SRS S165-04 flags that assessment for
+ *        out-of-cycle review when this is set.
+ * @param activityType the activity the incident happened during (e.g. {@code HOT_WORK}), if known - S165-04
+ *        flags every published assessment for that activity at the site, and S165-03 counts it as an
+ *        activity the platform actually performs.
  */
 public record SecurityIncident(
         UUID id,
@@ -58,6 +64,8 @@ public record SecurityIncident(
         String reportabilityNotes,
         String closureNotes,
         Instant closedAt,
+        UUID riskAssessmentId,
+        String activityType,
         RecordMetadata metadata) {
 
     public SecurityIncident {
@@ -81,16 +89,49 @@ public record SecurityIncident(
         if ((status == IncidentStatus.CLOSED) != (closedAt != null)) {
             throw new IllegalArgumentException("closedAt must be set exactly when the status is CLOSED");
         }
+        activityType = blankToNull(activityType);
+        if (activityType != null && activityType.length() > MAX_ACTIVITY_TYPE_LENGTH) {
+            throw new IllegalArgumentException("activityType is at most " + MAX_ACTIVITY_TYPE_LENGTH + " characters");
+        }
         Objects.requireNonNull(metadata, "metadata is required");
     }
+
+    private static final int MAX_ACTIVITY_TYPE_LENGTH = 80;
 
     /** A newly reported incident or near-miss. Always starts in {@link IncidentStatus#TRIAGE}. */
     public static SecurityIncident report(UUID id, String siteCode, IncidentSource source, String reference,
             boolean anonymous, String reporterId, String reporterContact, String description, boolean nearMiss,
             String actorId, Instant at, SourceChannel channel, String correlationId) {
+        return report(id, siteCode, source, reference, anonymous, reporterId, reporterContact, description, nearMiss,
+                null, null, actorId, at, channel, correlationId);
+    }
+
+    /** As {@link #report}, with the S165 risk context known at report time. Both may be null. */
+    public static SecurityIncident report(UUID id, String siteCode, IncidentSource source, String reference,
+            boolean anonymous, String reporterId, String reporterContact, String description, boolean nearMiss,
+            UUID riskAssessmentId, String activityType, String actorId, Instant at, SourceChannel channel,
+            String correlationId) {
         return new SecurityIncident(id, siteCode, source, reference, anonymous, anonymous ? null : reporterId,
                 reporterContact, description, nearMiss, IncidentStatus.TRIAGE, null, null, false, null, null,
-                false, null, null, null, RecordMetadata.createdBy(actorId, at, channel, correlationId));
+                false, null, null, null, riskAssessmentId, activityType,
+                RecordMetadata.createdBy(actorId, at, channel, correlationId));
+    }
+
+    /**
+     * Records the risk context an investigator identified after the report - the assessment the work was
+     * done under, the activity, or both. Phase 2 SRS S165-04: saving it flags that assessment for review,
+     * so it is refused once the case is closed, when there is no longer anything to learn from.
+     */
+    public SecurityIncident withRiskContext(UUID newRiskAssessmentId, String newActivityType, String actorId,
+            Instant at, SourceChannel channel, String correlationId) {
+        if (status == IncidentStatus.CLOSED) {
+            throw new IncidentException(IncidentErrorCode.INCIDENT_INVALID_STATE_TRANSITION,
+                    Map.of("reason", "A closed incident's risk context cannot be changed."));
+        }
+        return new SecurityIncident(id, siteCode, source, reference, anonymous, reporterId, reporterContact,
+                description, nearMiss, status, severity, riskRating, emergencyEscalated, investigatorId,
+                investigationNotes, reportable, reportabilityNotes, closureNotes, closedAt, newRiskAssessmentId,
+                newActivityType, metadata.modifiedBy(actorId, at, channel, correlationId));
     }
 
     /**
@@ -166,7 +207,7 @@ public record SecurityIncident(
         return new SecurityIncident(id, siteCode, source, reference, anonymous, reporterId, reporterContact,
                 description, nearMiss, newStatus, newSeverity, newRiskRating, newEmergencyEscalated,
                 newInvestigatorId, newInvestigationNotes, newReportable, newReportabilityNotes, newClosureNotes,
-                newClosedAt, metadata.modifiedBy(actorId, at, channel, correlationId));
+                newClosedAt, riskAssessmentId, activityType, metadata.modifiedBy(actorId, at, channel, correlationId));
     }
 
     private static String normalizeSite(String siteCode) {

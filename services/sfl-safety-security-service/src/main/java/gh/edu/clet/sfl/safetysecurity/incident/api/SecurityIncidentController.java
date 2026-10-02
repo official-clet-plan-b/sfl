@@ -25,6 +25,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
@@ -82,9 +83,21 @@ public class SecurityIncidentController {
         SecurityIncident incident = reporting.report(new IncidentReportingService.ReportIncident(
                 request.siteCode(), request.source() == null ? IncidentSource.REPORTED : request.source(),
                 request.anonymous(), request.reporterId(), request.reporterContact(), request.description(),
-                request.nearMiss(), actors.resolve(http), actors.resolveSourceChannel(http)));
+                request.nearMiss(), actors.resolve(http), actors.resolveSourceChannel(http), request.riskAssessmentId(),
+                request.activityType()));
         return ResponseEntity.created(URI.create("/api/v1/incidents/" + incident.id()))
                 .body(ApiResponse.ok(incident));
+    }
+
+    @PatchMapping("/{incidentId}/risk-context")
+    @Operation(summary = "Record the risk assessment or activity the incident happened under",
+            description = "Phase 2 SRS S165-04: saving a linked assessment, or an activity type with published "
+                    + "assessments at the site, flags each for out-of-cycle review in the same transaction. A "
+                    + "link naming no assessment at this site is refused. Requires triage or investigation authority.")
+    public ApiResponse<SecurityIncident> recordRiskContext(@PathVariable UUID incidentId,
+            @Valid @RequestBody RiskContextRequest request, HttpServletRequest http) {
+        return ApiResponse.ok(reporting.recordRiskContext(incidentId, request.riskAssessmentId(), request.activityType(),
+                request.expectedVersion(), actors.resolve(http), actors.resolveSourceChannel(http)));
     }
 
     @PatchMapping("/{incidentId}/triage")
@@ -207,8 +220,13 @@ public class SecurityIncidentController {
         return ApiResponse.ok(reporting.dashboard(siteCode, actors.resolve(http)));
     }
 
+    /**
+     * @param riskAssessmentId optional S165 assessment the incident happened under (Phase 2 SRS S165-04)
+     * @param activityType optional activity the incident happened during, e.g. {@code HOT_WORK}
+     */
     public record ReportRequest(@NotBlank String siteCode, IncidentSource source, boolean anonymous,
-            String reporterId, String reporterContact, @NotBlank String description, boolean nearMiss) {
+            String reporterId, String reporterContact, @NotBlank String description, boolean nearMiss,
+            UUID riskAssessmentId, @Size(max = 80) String activityType) {
 
         public ReportRequest {
             if (anonymous && reporterId != null && !reporterId.isBlank()) {
@@ -216,6 +234,10 @@ public class SecurityIncidentController {
                         java.util.Map.of("field", "reporterId", "message", "An anonymous report must not name a reporter."));
             }
         }
+    }
+
+    public record RiskContextRequest(UUID riskAssessmentId, @Size(max = 80) String activityType,
+            Long expectedVersion) {
     }
 
     public record TriageRequest(@NotNull Severity severity, @NotNull Likelihood likelihood, @NotNull Impact impact,

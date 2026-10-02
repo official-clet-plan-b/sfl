@@ -138,6 +138,13 @@ const IncidentDashboardPage = lazy(() => import('modules/incident/pages/Incident
 const IncidentsPage = lazy(() => import('modules/incident/pages/IncidentsPage'));
 const IncidentDetailPage = lazy(() => import('modules/incident/pages/IncidentDetailPage'));
 
+const RiskAssessmentDashboardPage = lazy(() => import('modules/riskassessment/pages/RiskAssessmentDashboardPage'));
+const RiskAssessmentsPage = lazy(() => import('modules/riskassessment/pages/RiskAssessmentsPage'));
+const RiskAssessmentDetailPage = lazy(() => import('modules/riskassessment/pages/RiskAssessmentDetailPage'));
+const ReviewFlagsPage = lazy(() => import('modules/riskassessment/pages/ReviewFlagsPage'));
+const RiskCoveragePage = lazy(() => import('modules/riskassessment/pages/RiskCoveragePage'));
+const RiskConfigurationPage = lazy(() => import('modules/riskassessment/pages/RiskConfigurationPage'));
+
 /**
  * The router basename comes from Vite's `BASE_URL`, which is set by `base` in `vite.config.ts`.
  * Keeping it derived means the mount point is stated once: move the bundle and the routes follow.
@@ -445,6 +452,17 @@ const App = () => {
                   <Route index element={<IncidentsPage />} />
                   <Route path=":incidentId" element={<IncidentDetailPage />} />
                 </Route>
+              </Route>
+              {/* Phase 2 S165 - the first Phase 2 SSEMP system with screens. */}
+              <Route path="risk-assessments" element={<SystemRoutes system="S165" />}>
+                <Route index element={<RiskAssessmentDashboardPage />} />
+                <Route path="register">
+                  <Route index element={<RiskAssessmentsPage />} />
+                  <Route path=":assessmentId" element={<RiskAssessmentDetailPage />} />
+                </Route>
+                <Route path="review-flags" element={<ReviewFlagsPage />} />
+                <Route path="coverage" element={<RiskCoveragePage />} />
+                <Route path="configuration" element={<RiskConfigurationPage />} />
               </Route>
               <Route path="emergency" element={<SystemRoutes system="S174" />}>
               <Route index element={<EmergencyDashboardPage />} />

@@ -10,6 +10,7 @@ import gh.edu.clet.sfl.safetysecurity.emergency.domain.policy.EmergencyPermissio
 import gh.edu.clet.sfl.safetysecurity.incident.domain.policy.IncidentPermissionMatrix;
 import gh.edu.clet.sfl.safetysecurity.intrusion.domain.policy.IntrusionPermissionMatrix;
 import gh.edu.clet.sfl.safetysecurity.lifesafety.domain.policy.LifeSafetyPermissionMatrix;
+import gh.edu.clet.sfl.safetysecurity.riskassessment.domain.policy.RiskAssessmentPermissionMatrix;
 import gh.edu.clet.sfl.safetysecurity.visitor.domain.policy.VisitorPermissionMatrix;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,8 +35,9 @@ import org.springframework.web.bind.annotation.RestController;
  * simply learns nothing about S174 permissions and stops narrowing, rather than hiding every emergency
  * screen from a coordinator who is entitled to all of them.
  *
- * <p><strong>Also answers for S160, S163, S160a, S161, S162 and S162a</strong> - every SSEMP system in
- * this phase is now built. Those modules share this deployable with S174 (one process, one port, {@code
+ * <p><strong>Also answers for S160, S163, S160a, S161, S162, S162a and S165</strong> - every Phase 1 SSEMP
+ * system, and S165 as the first of Phase 2's three (S164 and S175 join this union when they are built).
+ * Those modules share this deployable with S174 (one process, one port, {@code
  * services/README.md}'s "SFL.SSEMP" row), and the frontend's {@code actorPermissions.ts} already has
  * exactly one URL per platform, not per module - its own comment on the {@code SSEMP} entry says
  * "S174's matrix today, joined by S160-S163 as they are built." So this stays one route that unions
@@ -74,7 +76,8 @@ public class ActorPermissionsController {
                         || AccessControlPermissionMatrix.grants(roles, permission)
                         || CctvPermissionMatrix.grants(roles, permission)
                         || IntrusionPermissionMatrix.grants(roles, permission)
-                        || LifeSafetyPermissionMatrix.grants(roles, permission))
+                        || LifeSafetyPermissionMatrix.grants(roles, permission)
+                        || RiskAssessmentPermissionMatrix.grants(roles, permission))
                 .map(Enum::name)
                 .sorted()
                 .toList());

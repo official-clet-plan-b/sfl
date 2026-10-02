@@ -7,6 +7,8 @@ module inherits it rather than deciding it again.
 
 **Modules built:** `fleet` (S166) and `fuel` (S168). Two modules in, §9 records what the second one
 had to add to the shared layer and what it learned that §4 did not already cover.
+Since then: `dispatch` (S171), `emergency` (S174), `facilities`, `booking`, `visitor`, `incident`, and
+`riskassessment` (S165, the first Phase 2 module - see `docs/hse/S165_UI_Gap_Report.md`).
 
 ---
 

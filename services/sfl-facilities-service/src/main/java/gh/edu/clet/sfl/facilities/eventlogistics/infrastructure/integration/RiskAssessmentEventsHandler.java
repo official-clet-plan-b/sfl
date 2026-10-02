@@ -17,10 +17,12 @@ import org.springframework.stereotype.Component;
  * SSEMP says something about an S165 risk assessment; S173 keeps what its currency check needs -
  * SRS-SFL-S173-03.
  *
- * <p>Four reserved event names, contracts in {@code docs/facilities/S173_Event_Contracts.md}.
- * <strong>Nothing publishes them yet</strong>: S165 is not built. Until it is, this handler never runs,
- * the projection stays empty, and every higher-risk event is refused confirmation. That is the intended,
- * fail-closed behaviour.
+ * <p>Four reserved event names, contracts in {@code docs/facilities/S173_Event_Contracts.md}, published by
+ * S165 in {@code sfl-safety-security-service} since Phase 2 (ADR 0010) and proven against this handler by
+ * {@code RiskAssessmentEventsContractTest}. Until an assessment's {@code published} event arrives the
+ * projection holds nothing for it and every higher-risk event citing it is refused - the intended,
+ * fail-closed behaviour, which also covers a deployment on the {@code local} transport, where nothing
+ * arrives at all.
  *
  * <p>A payload that can never be handled - no assessment id, an unknown risk level - is logged and
  * dropped rather than thrown, because throwing makes the broker redeliver it forever (see

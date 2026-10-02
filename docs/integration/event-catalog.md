@@ -122,6 +122,22 @@ carry references, hashes and classifications only - never raw video or unmasked 
 | `sfl.ssemp.cctv-retention-purged.v1` | An evidence item's reference is purged by the retention sweep. |
 | `sfl.ssemp.cctv-disclosure-decided.v1` | A disclosure of footage outside CLET is approved or rejected. |
 
+#### S165 Risk Assessment Library additions (Phase 2)
+
+Added October 2026 with S165, the first Phase 2 SSEMP system. Published from schema `safety_security`
+and, unlike every SSEMP event before them, actually delivered: `SafetySecurityOutboxDrainer` (ADR 0010).
+The first four were reserved by S173 before S165 existed and are reused verbatim; payloads in
+[`../hse/S165_Event_Contracts.md`](../hse/S165_Event_Contracts.md).
+
+| Event | Trigger |
+|---|---|
+| `sfl.ssemp.risk-assessment-published.v1` | A draft is published as the current version. |
+| `sfl.ssemp.risk-assessment-superseded.v1` | The previous current version is retired (sent before its successor's `published`). |
+| `sfl.ssemp.risk-assessment-review-lapsed.v1` | A review date passes without a renewed sign-off. |
+| `sfl.ssemp.risk-assessment-signed-off.v1` | A review sign-off renews the review date. |
+| `sfl.ssemp.risk-assessment-review-due.v1` | The review reminder, sent once ahead of the date. |
+| `sfl.ssemp.risk-assessment-review-flagged.v1` | An S163 incident flags the assessment for out-of-cycle review. |
+
 ### SFL.FTLMP
 
 | Event | Trigger |

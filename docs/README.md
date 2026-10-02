@@ -23,6 +23,7 @@ named after the platform:
 | [`fuel/`](fuel/) | S168 Fuel Management & Driver Logbooks |
 | [`dispatch/`](dispatch/) | S171 Mailroom, Courier & Dispatch |
 | [`emergency/`](emergency/) | S174 Emergency Mass Notification |
+| [`hse/`](hse/) | S165 Risk Assessment Library (Phase 2 SSEMP) - API reference, event contracts, gap and UI gap reports |
 
 S160 Visitor Management, S163 HSE Incident/Near-Miss, S160a Access Control, S161 CCTV/VMS, S162
 Intrusion Detection and S162a Fire & Life-Safety are built (see `solution.md`) but don't yet have a

@@ -296,6 +296,20 @@ export const incidentPaths = {
 };
 
 /**
+ * S165 Risk Assessment Library - the first Phase 2 SSEMP system with screens. The register and the review
+ * queue are separate screens because they are different people's work: authors and reviewers keep the
+ * register current; whoever owns HSE reviews works the incident-raised flags.
+ */
+export const riskAssessmentPaths = {
+  dashboard: '/safetysecurity/risk-assessments',
+  register: '/safetysecurity/risk-assessments/register',
+  detail: (assessmentId: string) => `/safetysecurity/risk-assessments/register/${assessmentId}`,
+  reviewFlags: '/safetysecurity/risk-assessments/review-flags',
+  coverage: '/safetysecurity/risk-assessments/coverage',
+  configuration: '/safetysecurity/risk-assessments/configuration',
+};
+
+/**
  * Personal landings - the "what do I have to do today" views.
  *
  * Under `/me/` rather than inside a system's routes because they cross systems: a driver's day is
@@ -1110,6 +1124,61 @@ export const navSections: NavSection[] = [
         description: 'Report, investigate, correct and close',
         permission: 'INCIDENT_REPORT_READ',
         capability: ['INCIDENT_REPORT_CREATE', 'INCIDENT_TRIAGE', 'INCIDENT_INVESTIGATE', 'INCIDENT_CAPA_MANAGE'],
+      },
+    ],
+  },
+  {
+    // Phase 2 S165. Every gate below is read off RiskAssessmentPermissionMatrix and the service that
+    // enforces it - the register's read is the whole requirement for the IFIMP roles who come here only
+    // to find the current assessment to link, so it carries no capability.
+    heading: 'Risk assessment library',
+    programme: 'SSEMP',
+    system: 'S165',
+    items: [
+      {
+        label: 'Risk dashboard',
+        to: riskAssessmentPaths.dashboard,
+        icon: 'shield-check',
+        description: 'Standing, review dates, flags and coverage gaps',
+        permission: 'RISK_ASSESSMENT_READ',
+        capability: [
+          'RISK_ASSESSMENT_AUTHOR',
+          'RISK_ASSESSMENT_SIGN_OFF',
+          'RISK_ASSESSMENT_REVIEW_FLAG_MANAGE',
+          'RISK_ASSESSMENT_ANALYTICS_READ',
+        ],
+      },
+      {
+        label: 'Assessment register',
+        to: riskAssessmentPaths.register,
+        icon: 'clipboard-list',
+        matchPrefix: riskAssessmentPaths.register,
+        description: 'Author, publish, revise and sign off',
+        permission: 'RISK_ASSESSMENT_READ',
+      },
+      {
+        label: 'Review flags',
+        to: riskAssessmentPaths.reviewFlags,
+        icon: 'flag',
+        description: 'Out-of-cycle reviews raised by incidents',
+        permission: 'RISK_ASSESSMENT_READ',
+        capability: ['RISK_ASSESSMENT_REVIEW_FLAG_MANAGE'],
+      },
+      {
+        label: 'Coverage and hazards',
+        to: riskAssessmentPaths.coverage,
+        icon: 'target',
+        description: 'Work in use with no current assessment',
+        // Reading the analytics is the work for a director or auditor, so no capability.
+        permission: 'RISK_ASSESSMENT_ANALYTICS_READ',
+      },
+      {
+        label: 'Templates and review cycle',
+        to: riskAssessmentPaths.configuration,
+        icon: 'layers',
+        description: 'Hazard templates and review intervals',
+        permission: 'RISK_ASSESSMENT_READ',
+        capability: ['RISK_ASSESSMENT_CONFIGURE'],
       },
     ],
   },
