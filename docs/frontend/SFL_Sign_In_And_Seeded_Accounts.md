@@ -19,7 +19,6 @@ One password for all of them: **`Password@Clet1`**
 | `fleetmanager@clet.gh` | `FLEET_MANAGER` | Fleet, fuel, dispatch |
 | `driver@clet.gh` | `FLEET_DRIVER` | My driving day, trips, vehicles |
 | `fleetofficer@clet.gh` | `FLEET_LOGISTICS_OFFICER` | Fleet, fuel, dispatch |
-| `reportingviewer@clet.gh` | `FLEET_REPORTING_VIEWER` | Fleet, fuel, dispatch - read only |
 | `dispatchcontroller@clet.gh` | `DISPATCH_CONTROLLER` | Dispatch |
 | `logisticscoordinator@clet.gh` | `LOGISTICS_COORDINATOR` | Dispatch |
 | `mailroomofficer@clet.gh` | `MAILROOM_OFFICER` | Mailroom |
