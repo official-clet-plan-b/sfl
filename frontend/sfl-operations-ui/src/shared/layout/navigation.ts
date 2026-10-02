@@ -216,6 +216,12 @@ export const fleetPaths = {
   integrations: '/fleetvehicle/fleet/integrations',
 };
 
+export const phase2FleetPaths = {
+  telematics: '/fleetvehicle/telematics',
+  vipTransport: '/fleetvehicle/vip-transport',
+  assetVisibility: '/fleetvehicle/asset-visibility',
+};
+
 /**
  * S168 fuel routes.
  *
@@ -834,6 +840,27 @@ export const navSections: NavSection[] = [
           // the register to their own records, so this offers them their work, not the fleet's.
           'FLEET_TRIP_ACKNOWLEDGE',
         ],
+      },
+      {
+        label: 'GPS & telematics',
+        to: phase2FleetPaths.telematics,
+        icon: 'map-pin',
+        description: 'Tracking freshness and untracked vehicles',
+        permission: 'FLEET_VEHICLE_READ',
+      },
+      {
+        label: 'VIP transport requests',
+        to: phase2FleetPaths.vipTransport,
+        icon: 'calendar',
+        description: 'Dignitary transport requests and assignments',
+        permission: 'FLEET_TRIP_READ',
+      },
+      {
+        label: 'Asset tagging & inventory',
+        to: phase2FleetPaths.assetVisibility,
+        icon: 'package',
+        description: 'Stable asset identity, tags and custody',
+        permission: 'ASSET_REFERENCE_READ',
       },
     ],
   },

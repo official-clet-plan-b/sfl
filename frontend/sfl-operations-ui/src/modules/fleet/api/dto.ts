@@ -461,6 +461,8 @@ export interface TripSearchParams {
   operatingMode?: OperatingMode;
   from?: string;
   to?: string;
+  /** Only trips whose purpose starts with this text - how the VIP portal finds its own requests. */
+  purposePrefix?: string;
   page?: number;
   size?: number;
   sort?: string;

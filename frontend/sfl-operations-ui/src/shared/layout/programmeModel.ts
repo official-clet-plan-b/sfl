@@ -89,7 +89,7 @@ export const allProgrammes = Object.keys(programmes) as ProgrammeCode[];
  */
 export type SystemCode =
   | 'S152' | 'S153' | 'S156' | 'S157' | 'S158' | 'S159'
-  | 'S160' | 'S160a' | 'S161' | 'S162' | 'S162a' | 'S163' | 'S165' | 'S166' | 'S168' | 'S169' | 'S171' | 'S173' | 'S174' | 'S176';
+  | 'S160' | 'S160a' | 'S161' | 'S162' | 'S162a' | 'S163' | 'S165' | 'S166' | 'S167' | 'S168' | 'S168a' | 'AVAMP' | 'S169' | 'S171' | 'S173' | 'S174' | 'S176';
 
 export interface SflSystem {
   code: SystemCode;
@@ -115,7 +115,10 @@ export const systems: Record<SystemCode, SflSystem> = {
   // Phase 2. The first Phase 2 system with screens; S164 and S175 follow it into SSEMP.
   S165: { code: 'S165', label: 'Risk assessment library', programme: 'SSEMP' },
   S166: { code: 'S166', label: 'Fleet & vehicle management', programme: 'FTLMP' },
+  S167: { code: 'S167', label: 'GPS & telematics', programme: 'FTLMP' },
   S168: { code: 'S168', label: 'Fuel & driver logbooks', programme: 'FTLMP' },
+  S168a: { code: 'S168a', label: 'VIP trip booking', programme: 'FTLMP' },
+  AVAMP: { code: 'AVAMP', label: 'Asset tagging & inventory', programme: 'FTLMP' },
   S169: { code: 'S169', label: 'Cleaning operations', programme: 'IFIMP' },
   S171: { code: 'S171', label: 'Courier & dispatch', programme: 'FTLMP' },
   S173: { code: 'S173', label: 'Event logistics', programme: 'IFIMP' },
@@ -258,10 +261,11 @@ export const roleSystems: Record<string, SystemCode[]> = {
   EVENT_LOGISTICS_COORDINATOR: ['S152', 'S153', 'S159', 'S165', 'S169', 'S173'],
 
   // SFL.FTLMP - all three systems live in `sfl-fleet-logistics-service`
-  FLEET_MANAGER: ['S166', 'S168', 'S171'],
-  FLEET_LOGISTICS_OFFICER: ['S166', 'S168', 'S171'],
-  FLEET_REPORTING_VIEWER: ['S166', 'S168', 'S171'],
-  FLEET_DRIVER: ['S166', 'S168'],
+  FLEET_MANAGER: ['S166', 'S167', 'S168', 'S168a', 'AVAMP', 'S171'],
+  FLEET_LOGISTICS_OFFICER: ['S166', 'S167', 'S168', 'S168a', 'AVAMP', 'S171'],
+  // No AVAMP: the asset register grants this role nothing, so offering the system would open a page of 403s.
+  FLEET_REPORTING_VIEWER: ['S166', 'S167', 'S168', 'S168a', 'S171'],
+  FLEET_DRIVER: ['S166', 'S167', 'S168'],
   DISPATCH_CONTROLLER: ['S171'],
   MAILROOM_OFFICER: ['S171'],
   LOGISTICS_COORDINATOR: ['S171'],
