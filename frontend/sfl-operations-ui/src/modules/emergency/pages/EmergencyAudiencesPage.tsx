@@ -14,9 +14,8 @@ import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { useClampPage, useServerPage } from 'shared/hooks/useServerPage';
 import { emergencyPaths } from 'shared/layout/navigation';
 import { canManageAudiences } from 'modules/emergency/api/workflow';
-import { Button, Banner, type TableColumn } from '@rfdtech/components';
-import DataTable from 'shared/components/DataTable';
-import Tabs from 'shared/components/Tabs';
+import { Button, Banner, Tabs, TabsList, TabsTrigger, type TableColumn } from '@rfdtech/components';
+import RegisterTable from 'modules/emergency/components/RegisterTable';
 import PageHeading from 'modules/emergency/components/PageHeading';
 import Panel from 'modules/emergency/components/Panel';
 import StatMetric from 'modules/emergency/components/StatMetric';
@@ -285,22 +284,12 @@ const EmergencyAudiencesPage = () => {
 
       <Panel>
         <div className="px-5 pt-4">
-          <Tabs
-            value={tab}
-            onChange={setTab}
-            items={[
-              {
-                value: 'audiences',
-                label: 'Audience groups',
-                count: audienceQuery.data?.totalElements,
-              },
-              {
-                value: 'zones',
-                label: 'Recipient zones',
-                count: zoneQuery.data?.totalElements,
-              },
-            ]}
-          />
+          <Tabs value={tab} onValueChange={setTab} variant="pill">
+            <TabsList>
+              <TabsTrigger value="audiences">Audience groups</TabsTrigger>
+              <TabsTrigger value="zones">Recipient zones</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         <DataState
@@ -310,32 +299,28 @@ const EmergencyAudiencesPage = () => {
           minHeight={300}
         >
           {tab === 'audiences' ? (
-            <DataTable
+            <RegisterTable
+              paramPrefix="emergency-audiences"
               rows={audienceQuery.data?.content ?? []}
               columns={audienceColumns}
-              getRowId={(row) => row.id}
+              rowKey={(row) => row.id}
               loading={audienceQuery.loading}
-              caption="Audience groups at this site, with their recipient count, share of the site total, lifecycle and creation time."
-              emptyMessage="No audience group matches this search."
-              page={audienceQuery.data?.page ?? paging.page}
-              pageSize={audienceQuery.data?.size ?? paging.size}
-              totalElements={audienceQuery.data?.totalElements ?? 0}
-              onPageChange={paging.setPage}
-              onPageSizeChange={paging.setSize}
+              emptyTitle="No audience group matches this search."
+              totalItems={audienceQuery.data?.totalElements ?? 0}
+              size={audienceQuery.data?.size ?? paging.size}
+              framed={false}
             />
           ) : (
-            <DataTable
+            <RegisterTable
+              paramPrefix="emergency-zones"
               rows={zoneQuery.data?.content ?? []}
               columns={zoneColumns}
-              getRowId={(row) => row.id}
+              rowKey={(row) => row.id}
               loading={zoneQuery.loading}
-              caption="Recipient zones at this site, with their facilities location reference, lifecycle, creator and creation time."
-              emptyMessage="No zone matches this search."
-              page={zoneQuery.data?.page ?? paging.page}
-              pageSize={zoneQuery.data?.size ?? paging.size}
-              totalElements={zoneQuery.data?.totalElements ?? 0}
-              onPageChange={paging.setPage}
-              onPageSizeChange={paging.setSize}
+              emptyTitle="No zone matches this search."
+              totalItems={zoneQuery.data?.totalElements ?? 0}
+              size={zoneQuery.data?.size ?? paging.size}
+              framed={false}
             />
           )}
         </DataState>

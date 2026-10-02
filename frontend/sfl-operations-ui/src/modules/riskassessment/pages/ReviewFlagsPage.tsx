@@ -12,7 +12,7 @@ import { riskWorkflow } from '../api/workflow';
 import { ReviewFlagChip } from '../components/riskChips';
 import { CompleteReviewDialog, DeferFlagDialog } from '../dialogs/reviewFlagDialogs';
 import { Button, type TableColumn } from '@rfdtech/components';
-import DataTable from 'shared/components/DataTable';
+import RegisterTable from 'modules/emergency/components/RegisterTable';
 import PageHeading from 'modules/emergency/components/PageHeading';
 import Panel from 'modules/emergency/components/Panel';
 import { EnumField } from 'modules/emergency/components/FormFields';
@@ -28,7 +28,7 @@ const ReviewFlagsPage = () => {
   const [siteCode, setSiteCode] = useState(defaultSite);
   const [status, setStatus] = useState<ReviewFlagStatus | ''>('OPEN');
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(25);
+  const [size] = useState(25);
   const [working, setWorking] = useState<{ flag: ReviewFlag; kind: 'complete' | 'defer' } | null>(null);
   const query = useApiQuery(
     (signal) => (siteCode ? riskAssessmentApi.reviewFlags({ siteCode, status: status || undefined, page, size }, signal) : Promise.resolve<ReviewFlagPage | undefined>(undefined)),
@@ -74,19 +74,17 @@ const ReviewFlagsPage = () => {
           <SiteSelect value={siteCode} onChange={(value) => { setSiteCode(value); setPage(0); }} required />
           <EnumField label="Status" value={status} options={reviewFlagStatuses} allowEmpty onChange={(value) => { setStatus(value); setPage(0); }} />
         </div>
-        <DataTable
+        <RegisterTable
+          paramPrefix="risk-review-flags"
           rows={query.data?.content ?? []}
           columns={columns}
-          getRowId={(row) => row.id}
+          rowKey={(row) => row.id}
           loading={query.loading}
           onRowClick={(row) => navigate(riskAssessmentPaths.detail(row.assessmentId))}
-          caption="Review flags"
-          page={page}
-          pageSize={size}
-          totalElements={query.data?.totalElements ?? 0}
-          onPageChange={setPage}
-          onPageSizeChange={(value) => { setSize(value); setPage(0); }}
-          emptyMessage={siteCode ? 'Nothing on the queue with this status.' : 'Choose a site.'}
+          emptyTitle={siteCode ? 'Nothing on the queue with this status.' : 'Choose a site.'}
+          totalItems={query.data?.totalElements ?? 0}
+          size={query.data?.size ?? size}
+          framed={false}
         />
       </Panel>
       {working?.kind === 'complete' && <CompleteReviewDialog flag={working.flag} onClose={() => setWorking(null)} onDone={done} />}

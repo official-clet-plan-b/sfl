@@ -13,7 +13,7 @@ import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { emergencyPaths } from 'shared/layout/navigation';
 import type { NotificationActivation } from 'modules/emergency/api/dto';
 import { Button, Banner, type TableColumn } from '@rfdtech/components';
-import DataTable from 'shared/components/DataTable';
+import RegisterTable from 'modules/emergency/components/RegisterTable';
 import PageHeading from 'modules/emergency/components/PageHeading';
 import Panel from 'modules/emergency/components/Panel';
 import StatusBadge from 'modules/emergency/components/StatusBadge';
@@ -177,13 +177,14 @@ const EmergencyTemplateDetailPage = () => {
                   emptyHint="No activation at this site cites this template."
                   minHeight={180}
                 >
-                  <DataTable
+                  <RegisterTable
+                    paramPrefix="emergency-template-activations"
                     rows={usedBy}
                     columns={columns}
-                    getRowId={(row) => row.id}
+                    rowKey={(row) => row.id}
                     onRowClick={(row) => navigate(emergencyPaths.activationDetail(row.id))}
-                    caption="Activations at this site that cite this template, with mode, composition time and status."
-                    dense
+                    emptyTitle="No activations use this template"
+                    framed={false}
                   />
                 </DataState>
                 <div className="px-5 pb-4">

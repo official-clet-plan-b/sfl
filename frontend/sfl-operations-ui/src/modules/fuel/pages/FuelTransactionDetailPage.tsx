@@ -22,17 +22,14 @@ import {
   siteOf,
 } from 'modules/fuel/components/fuelFormat';
 import { humanise } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
+import { Alert } from 'modules/fuel/components/fuelMigration';
+import { Button, DataTable, PageHeader, SectionCard, StatusChip, CellStack } from 'modules/fuel/components/fuelMigration';
+import type { Column } from 'modules/fuel/components/fuelMigration';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
 import Icon from 'shared/components/Icon';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import { EvidenceFileActions } from 'shared/components/EvidenceFileField';
-import StatusChip from 'shared/components/StatusChip';
+import { EvidenceFileActions } from 'modules/fuel/components/fuelMigration';
 import { formatDateTime, formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fleetPaths, fuelPaths } from 'shared/layout/navigation';

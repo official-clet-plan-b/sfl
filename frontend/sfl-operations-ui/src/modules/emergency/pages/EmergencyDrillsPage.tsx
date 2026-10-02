@@ -15,12 +15,12 @@ import { useClampPage, useServerPage } from 'shared/hooks/useServerPage';
 import { emergencyPaths } from 'shared/layout/navigation';
 import { canManageScenarios } from 'modules/emergency/api/workflow';
 import { Button, Banner, type TableColumn } from '@rfdtech/components';
-import DataTable from 'shared/components/DataTable';
 import PageHeading from 'modules/emergency/components/PageHeading';
 import Panel from 'modules/emergency/components/Panel';
 import StatMetric from 'modules/emergency/components/StatMetric';
 import StatusBadge from 'modules/emergency/components/StatusBadge';
 import { CellStack } from 'modules/emergency/components/RegisterTable';
+import RegisterTable from 'modules/emergency/components/RegisterTable';
 import Icon from 'shared/components/Icon';
 
 /**
@@ -277,13 +277,15 @@ const EmergencyDrillsPage = () => {
           )}
 
           <Panel title="Drill register">
-            <DataTable
+            <RegisterTable
+              paramPrefix="emergency-drills"
               rows={[...running, ...[...completed].reverse()]}
               columns={columns}
-              getRowId={(row) => row.id}
+              rowKey={(row) => row.id}
               loading={query.loading}
-              caption="Drills at this site, with target, reached and acknowledged counts, elapsed time, start time and status."
-              emptyMessage="No drill has been run at this site."
+              emptyTitle="No drill has been run at this site."
+              emptyDescription="Run a drill to measure the notification path."
+              framed={false}
             />
             <div className="px-5 pt-2 pb-4">
               <DerivedNote>

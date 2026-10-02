@@ -1,6 +1,6 @@
 import { Button } from '@rfdtech/components';
 import type { ButtonProps } from '@rfdtech/components';
-import type { ControlState } from 'shared/components/ControlButton';
+import type { ControlState } from 'shared/layout/controlState';
 
 interface ControlButtonProps extends Omit<ButtonProps, 'disabled' | 'title'> {
   state: ControlState;

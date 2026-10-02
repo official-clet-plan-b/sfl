@@ -18,9 +18,8 @@ import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { useClampPage, useServerPage } from 'shared/hooks/useServerPage';
 import { emergencyPaths } from 'shared/layout/navigation';
 import { canManageScenarios, canManageTemplates } from 'modules/emergency/api/workflow';
-import { Button, Banner, type TableColumn } from '@rfdtech/components';
-import DataTable from 'shared/components/DataTable';
-import Tabs from 'shared/components/Tabs';
+import { Button, Banner, Tabs, TabsList, TabsTrigger, type TableColumn } from '@rfdtech/components';
+import RegisterTable from 'modules/emergency/components/RegisterTable';
 import PageHeading from 'modules/emergency/components/PageHeading';
 import Panel from 'modules/emergency/components/Panel';
 import StatusBadge from 'modules/emergency/components/StatusBadge';
@@ -293,22 +292,12 @@ const EmergencyTemplatesPage = () => {
 
       <Panel>
         <div className="px-5 pt-4">
-          <Tabs
-            value={tab}
-            onChange={setTab}
-            items={[
-              {
-                value: 'templates',
-                label: 'Templates',
-                count: templateQuery.data?.totalElements,
-              },
-              {
-                value: 'scenarios',
-                label: 'Scenarios',
-                count: scenarioQuery.data?.totalElements,
-              },
-            ]}
-          />
+          <Tabs value={tab} onValueChange={setTab} variant="pill">
+            <TabsList>
+              <TabsTrigger value="templates">Templates</TabsTrigger>
+              <TabsTrigger value="scenarios">Scenarios</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         <DataState
@@ -318,33 +307,29 @@ const EmergencyTemplatesPage = () => {
           minHeight={300}
         >
           {tab === 'templates' ? (
-            <DataTable
+            <RegisterTable
+              paramPrefix="emergency-templates"
               rows={templateQuery.data?.content ?? []}
               columns={templateColumns}
-              getRowId={(row) => row.id}
+              rowKey={(row) => row.id}
               loading={templateQuery.loading}
               onRowClick={(row) => navigate(emergencyPaths.templateDetail(row.id))}
-              caption="Notification templates at this site, with their channels, break-glass eligibility, lifecycle and creation time."
-              emptyMessage="No template matches this search."
-              page={templateQuery.data?.page ?? paging.page}
-              pageSize={templateQuery.data?.size ?? paging.size}
-              totalElements={templateQuery.data?.totalElements ?? 0}
-              onPageChange={paging.setPage}
-              onPageSizeChange={paging.setSize}
+              emptyTitle="No template matches this search."
+              totalItems={templateQuery.data?.totalElements ?? 0}
+              size={templateQuery.data?.size ?? paging.size}
+              framed={false}
             />
           ) : (
-            <DataTable
+            <RegisterTable
+              paramPrefix="emergency-scenarios"
               rows={scenarioQuery.data?.content ?? []}
               columns={scenarioColumns}
-              getRowId={(row) => row.id}
+              rowKey={(row) => row.id}
               loading={scenarioQuery.loading}
-              caption="Emergency scenarios at this site, with their default template, priority, break-glass eligibility, lifecycle and creation time."
-              emptyMessage="No scenario matches this search."
-              page={scenarioQuery.data?.page ?? paging.page}
-              pageSize={scenarioQuery.data?.size ?? paging.size}
-              totalElements={scenarioQuery.data?.totalElements ?? 0}
-              onPageChange={paging.setPage}
-              onPageSizeChange={paging.setSize}
+              emptyTitle="No scenario matches this search."
+              totalItems={scenarioQuery.data?.totalElements ?? 0}
+              size={scenarioQuery.data?.size ?? paging.size}
+              framed={false}
             />
           )}
         </DataState>

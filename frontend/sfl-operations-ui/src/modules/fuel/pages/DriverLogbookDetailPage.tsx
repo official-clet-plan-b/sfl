@@ -11,15 +11,11 @@ import { CreateLogbookDialog, LogbookTransitionDialog } from 'modules/fuel/dialo
 import HistoryTimeline from 'modules/fuel/components/HistoryTimeline';
 import { siteOf } from 'modules/fuel/components/fuelFormat';
 import { humanise } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
+import { Alert, Button, PageHeader, SectionCard, StatusChip } from 'modules/fuel/components/fuelMigration';
 import DataState from 'shared/components/DataState';
 import Icon from 'shared/components/Icon';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatusChip from 'shared/components/StatusChip';
 import { formatDate, formatDateTime, formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fleetPaths, fuelPaths } from 'shared/layout/navigation';

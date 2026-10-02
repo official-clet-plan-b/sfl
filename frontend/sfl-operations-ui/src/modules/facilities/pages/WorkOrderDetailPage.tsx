@@ -1,14 +1,12 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
+import { Banner, Button, MetricCard } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
+import DataTable, { FacilitiesColumn as Column } from '../components/FacilitiesDataTable';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatCard from 'shared/components/StatCard';
-import StatusChip from 'shared/components/StatusChip';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import TitledSection from '../components/TitledSection';
+import StatusBadge from '../components/StatusBadge';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
@@ -160,7 +158,7 @@ const WorkOrderDetailPage = () => {
       width: 160,
       cell: (item) => (
         <div className="flex flex-col gap-0.5">
-          <StatusChip value={humaniseCode(item.retentionClass)} tone="neutral" />
+          <StatusBadge value={humaniseCode(item.retentionClass)} tone="neutral" />
           {item.legalHold && (
             <span className="text-theme-xs font-medium text-warning-600">Legal hold</span>
           )}
@@ -180,7 +178,7 @@ const WorkOrderDetailPage = () => {
       <DataState loading={order.loading} error={order.error} onRetry={order.refetch} minHeight={280}>
         {order.data && (
           <>
-            <PageHeader
+            <PageHeading
               title={order.data.title}
               subtitle={`${order.data.workOrderNumber} · ${humaniseCode(order.data.workOrderType)} · ${orDash(order.data.locationCode)}`}
               crumbs={[
@@ -248,88 +246,68 @@ const WorkOrderDetailPage = () => {
 
             <div className="space-y-5">
               {order.data.overdue && (
-                <Alert variant="error" title={`Past its SLA - ${overdueBy(order.data.minutesOverdue)}`}>
-                  The deadline was {formatDateTime(order.data.slaDueAt)}.
+                <Banner variant="danger" heading={`Past its SLA - ${overdueBy(order.data.minutesOverdue)}`} subtext={<>The deadline was {formatDateTime(order.data.slaDueAt)}.
                   {order.data.escalationLevel > 0
                     ? ` Escalated to level ${order.data.escalationLevel}.`
                     : ' The next scheduled sweep will escalate it.'}
                   {order.data.totalHeldSeconds > 0 &&
                     ` ${heldFor(order.data.totalHeldSeconds)} of that was spent on hold - the clock does not stop for a hold.`}
-                </Alert>
+                </>} />
               )}
 
               {order.data.status === 'ON_HOLD' && (
-                <Alert variant="warning" title="On hold">
-                  {order.data.holdReason} · held {relativeTime(order.data.heldAt)}. Assigning it to
-                  somebody releases the hold.
-                </Alert>
+                <Banner variant="warning" heading="On hold" subtext={`${order.data.holdReason} · held ${relativeTime(order.data.heldAt)}. Assigning it to somebody releases the hold.`} />
               )}
 
               {order.data.open && order.data.evidenceRequired > 0 && (
-                <Alert
+                <Banner
                   variant={closureEvidence >= order.data.evidenceRequired ? 'success' : 'info'}
-                  title="Closure evidence"
-                >
-                  {closureEvidence >= order.data.evidenceRequired
-                    ? `${closureEvidence} attached. This work order can be closed.`
-                    : `${evidenceGap(closureEvidence, order.data.evidenceRequired)}. Closure is refused until the shortfall is attached.`}
-                </Alert>
+                  heading="Closure evidence"
+                  subtext={
+                    closureEvidence >= order.data.evidenceRequired
+                      ? `${closureEvidence} attached. This work order can be closed.`
+                      : `${evidenceGap(closureEvidence, order.data.evidenceRequired)}. Closure is refused until the shortfall is attached.`
+                  }
+                />
               )}
 
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <StatCard
+                <MetricCard
                   label="Status"
                   value={humaniseCode(order.data.status)}
-                  caption={
+                  description={
                     order.data.assignedTo
                       ? `Assigned to ${order.data.assignedTo}`
                       : 'Nobody assigned'
                   }
-                  tone={
-                    order.data.status === 'CLOSED'
-                      ? 'good'
-                      : order.data.status === 'ON_HOLD'
-                        ? 'caution'
-                        : 'neutral'
-                  }
-                  icon="wrench"
+                  variant="soft"
                 />
-                <StatCard
+                <MetricCard
                   label="SLA"
                   value={order.data.overdue ? 'Overdue' : order.data.slaDueAt ? 'On time' : '-'}
-                  caption={
+                  description={
                     order.data.slaDueAt ? `Due ${formatDateTime(order.data.slaDueAt)}` : 'No deadline'
                   }
-                  tone={order.data.overdue ? 'critical' : 'good'}
-                  icon="clock"
+                  variant="soft"
                 />
-                <StatCard
+                <MetricCard
                   label="Evidence"
                   value={`${closureEvidence}/${order.data.evidenceRequired}`}
-                  caption={
+                  description={
                     order.data.evidenceRequired === 0
                       ? 'None required at this priority'
                       : 'Counts towards closure'
                   }
-                  tone={
-                    order.data.evidenceRequired === 0
-                      ? 'neutral'
-                      : closureEvidence >= order.data.evidenceRequired
-                        ? 'good'
-                        : 'caution'
-                  }
-                  icon="document"
                 />
-                <StatCard
+                <MetricCard
                   label="Parts"
                   value={parts.data?.length ?? 0}
-                  caption="Recorded against this job"
-                  tone="neutral"
-                  icon="package"
+                  description="Recorded against this job"
+                  variant="soft"
                 />
               </div>
 
-              <SectionCard
+              <TitledSection
                 title="Work order record"
                 actions={
                   <div className="flex gap-2">
@@ -390,9 +368,9 @@ const WorkOrderDetailPage = () => {
                     {order.data.cancellationReason}
                   </p>
                 )}
-              </SectionCard>
+              </TitledSection>
 
-              <SectionCard
+              <TitledSection
                 title="Parts"
                 subtitle="What was fitted. Not a stores system - no stock is tracked."
                 flush
@@ -428,9 +406,9 @@ const WorkOrderDetailPage = () => {
                     }
                   />
                 </DataState>
-              </SectionCard>
+              </TitledSection>
 
-              <SectionCard
+              <TitledSection
                 title="Evidence"
                 subtitle="By reference. The files live in document storage; this records where and what they hashed to."
                 flush
@@ -462,7 +440,7 @@ const WorkOrderDetailPage = () => {
                     onRowClick={(item) => navigate(facilitiesPaths.evidenceDetail(item.id))}
                   />
                 </DataState>
-              </SectionCard>
+              </TitledSection>
             </div>
           </>
         )}

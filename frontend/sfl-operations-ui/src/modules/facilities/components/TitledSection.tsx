@@ -10,6 +10,8 @@ import {
 interface TitledSectionProps {
   title: string;
   description?: string;
+  subtitle?: string;
+  flush?: boolean;
   actions?: ReactNode;
   children: ReactNode;
 }
@@ -20,11 +22,11 @@ interface TitledSectionProps {
  * The detail pages carry five to eight of these each, and the four-element composition is identical
  * every time - this is that composition, not a replacement for any part of it.
  */
-const TitledSection = ({ title, description, actions, children }: TitledSectionProps) => (
+const TitledSection = ({ title, description, subtitle, actions, children }: TitledSectionProps) => (
   <PageSection>
     <SectionHeader>
       <SectionTitle>{title}</SectionTitle>
-      {description && <SectionDescription>{description}</SectionDescription>}
+      {(description ?? subtitle) && <SectionDescription>{description ?? subtitle}</SectionDescription>}
       {actions && <SectionActions>{actions}</SectionActions>}
     </SectionHeader>
     {children}

@@ -40,17 +40,40 @@ import DataState from 'shared/components/DataState';
 import Icon from 'shared/components/Icon';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
 import { useNotifier } from 'shared/components/Notifier';
-import WorkflowTimeline, { TimelineEntry } from 'shared/components/WorkflowTimeline';
 import { formatDateTime, formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { emergencyPaths } from 'shared/layout/navigation';
-import { Button, Banner, type TableColumn } from '@rfdtech/components';
-import DataTable from 'shared/components/DataTable';
+import { Button, Banner, Timeline, TimelineData, TimelineFooter, TimelineItem, TimelineTitle, type TableColumn } from '@rfdtech/components';
+import RegisterTable from 'modules/emergency/components/RegisterTable';
 import PageHeading from 'modules/emergency/components/PageHeading';
 import Panel from 'modules/emergency/components/Panel';
 import StatMetric from 'modules/emergency/components/StatMetric';
 import StatusBadge from 'modules/emergency/components/StatusBadge';
 import { CellStack } from 'modules/emergency/components/RegisterTable';
+
+type TimelineEntry = {
+  id: string;
+  title: string;
+  detail?: string | null;
+  actor?: string | null;
+  occurredAt: string;
+  tone?: 'default' | 'accent' | 'danger';
+};
+
+const ActivationTimeline = ({ entries }: { entries: TimelineEntry[] }) =>
+  entries.length === 0 ? (
+    <p className="text-theme-sm text-gray-600">No transition has been recorded against this activation.</p>
+  ) : (
+    <Timeline>
+      {entries.map((entry, index) => (
+        <TimelineItem key={entry.id} isLast={index === entries.length - 1} mode={entry.tone === 'danger' ? 'error' : entry.tone === 'accent' ? 'warning' : 'primary'}>
+          <TimelineTitle as="h3">{entry.title}</TimelineTitle>
+          {entry.detail && <TimelineData>{entry.detail}</TimelineData>}
+          <TimelineFooter>{formatDateTime(entry.occurredAt)}{entry.actor ? ` · by ${entry.actor}` : ''}</TimelineFooter>
+        </TimelineItem>
+      ))}
+    </Timeline>
+  );
 
 /**
  * One activation, end to end.
@@ -473,12 +496,13 @@ const ActivationDetailPage = () => {
                   emptyHint="Channel records are created when the activation is sent. This one has not been."
                   minHeight={160}
                 >
-                  <DataTable
+                  <RegisterTable
+                    paramPrefix="emergency-activation-channels"
                     rows={channels}
                     columns={channelColumns}
-                    getRowId={(row) => row.id}
-                    caption="Per-channel fan-out for this activation, with target, sent, delivered, failed and acknowledged counts and the channel's status."
-                    dense
+                    rowKey={(row) => row.id}
+                    emptyTitle="No channel deliveries"
+                    framed={false}
                   />
                 </DataState>
                 {channels.length > 0 && totals.delivered === 0 && totals.sent > 0 && (
@@ -502,10 +526,7 @@ const ActivationDetailPage = () => {
                   onRetry={history.refetch}
                   minHeight={120}
                 >
-                  <WorkflowTimeline
-                    entries={timeline}
-                    emptyMessage="No transition has been recorded against this activation."
-                  />
+                  <ActivationTimeline entries={timeline} />
                 </DataState>
               </Panel>
 

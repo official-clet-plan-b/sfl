@@ -8,7 +8,7 @@ import { formatDateTime, formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { emergencyPaths } from 'shared/layout/navigation';
 import { Button, Banner, type TableColumn } from '@rfdtech/components';
-import DataTable from 'shared/components/DataTable';
+import RegisterTable from 'modules/emergency/components/RegisterTable';
 import PageHeading from 'modules/emergency/components/PageHeading';
 import Panel from 'modules/emergency/components/Panel';
 import StatMetric from 'modules/emergency/components/StatMetric';
@@ -241,12 +241,13 @@ const EmergencyIntegrationPage = () => {
                 emptyHint="Every emergency event this service raised has been published."
                 minHeight={180}
               >
-                <DataTable
+                <RegisterTable
+                  paramPrefix="emergency-dead-letters"
                   rows={outbox.recentDeadLetters}
                   columns={columns}
-                  getRowId={(row) => row.id}
-                  caption="Emergency outbound messages that could not be published, with the recorded failure, attempt count, status and a control to replay each."
-                  dense
+                  rowKey={(row) => row.id}
+                  emptyTitle="No dead-letter messages"
+                  framed={false}
                 />
               </DataState>
             </Panel>
@@ -305,12 +306,13 @@ const EmergencyIntegrationPage = () => {
                       emptyHint="Which is why delivered and acknowledged read zero: nothing else writes them."
                       minHeight={160}
                     >
-                      <DataTable
+                      <RegisterTable
+                        paramPrefix="emergency-inbox"
                         rows={inbox.data.recentMessages}
                         columns={inboxColumns}
-                        getRowId={(row) => row.id}
-                        caption="Recent inbound provider callbacks, with source, event type, site scope, receipt time, recorded failure, attempt count and status."
-                        dense
+                        rowKey={(row) => row.id}
+                        emptyTitle="No provider callbacks"
+                        framed={false}
                       />
                     </DataState>
 

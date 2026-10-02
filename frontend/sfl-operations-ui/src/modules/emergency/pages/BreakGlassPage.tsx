@@ -30,7 +30,7 @@ import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { emergencyPaths } from 'shared/layout/navigation';
 import type { NotificationActivation } from 'modules/emergency/api/dto';
 import { Button, Banner, type TableColumn } from '@rfdtech/components';
-import DataTable from 'shared/components/DataTable';
+import RegisterTable from 'modules/emergency/components/RegisterTable';
 import PageHeading from 'modules/emergency/components/PageHeading';
 import Panel from 'modules/emergency/components/Panel';
 import { TextField, SelectField, EnumField } from 'modules/emergency/components/FormFields';
@@ -387,13 +387,14 @@ const BreakGlassPage = () => {
             emptyHint="No activation at this site has been sent without approval."
             minHeight={180}
           >
-            <DataTable
+            <RegisterTable
+              paramPrefix="emergency-break-glass"
               rows={breakGlassHistory}
               columns={historyColumns}
-              getRowId={(row) => row.id}
+              rowKey={(row) => row.id}
               onRowClick={(row) => navigate(emergencyPaths.activationDetail(row.id))}
-              caption="Break-glass activations at this site, with time to send, whether after-the-fact approval has been recorded, when they were sent and their status."
-              dense
+              emptyTitle="No break-glass activations"
+              framed={false}
             />
           </DataState>
         </Panel>

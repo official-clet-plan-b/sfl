@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { MapPin, Pencil, X } from 'lucide-react';
-import type { ControlState } from 'shared/components/ControlButton';
+import type { ControlState } from 'shared/layout/controlState';
 import ControlButton from './ControlButton';
 
 /**
