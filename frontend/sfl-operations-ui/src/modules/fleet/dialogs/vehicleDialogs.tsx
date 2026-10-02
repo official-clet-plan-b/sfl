@@ -476,11 +476,16 @@ export const RegisterComplianceDocumentDialog = ({
         retentionClass: values.retentionClass,
       });
       onSaved();
-      onClose();
-      setFile(null);
-      form.reset();
+      closeDialog();
     },
   });
+
+  const closeDialog = () => {
+    setFile(null);
+    setUseExisting(false);
+    form.reset();
+    onClose();
+  };
 
   const isMandatory =
     form.values.documentType !== '' &&
@@ -495,10 +500,10 @@ export const RegisterComplianceDocumentDialog = ({
       submitting={form.submitting}
       formError={form.formError}
       maxWidth="md"
-      onClose={onClose}
+      onClose={closeDialog}
       onSubmit={form.submit}
     >
-      <div className={twoColumn}>
+      <div className={`${twoColumn} items-start`}>
         <EnumSelect
           label="Document type"
           required

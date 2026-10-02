@@ -68,20 +68,20 @@ const sites = sflActor.sites
   .map((site) => site.trim())
   .filter(Boolean);
 
-const FontScaleMenu = () => {
+const FontScaleMenu = ({ embedded = false }: { embedded?: boolean }) => {
   const { fontScale, setFontScale, resetFontScale } = useSystemPreferences();
   const percentage = Math.round(fontScale * 100);
 
   return (
-    <details className="relative">
+    <details className="relative" open={embedded || undefined}>
       <summary
-        className="flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-md px-2 text-theme-sm font-medium text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
+        className={embedded ? 'sr-only' : 'flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-md px-2 text-theme-sm font-medium text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700'}
         aria-label="System preferences"
       >
         <span aria-hidden="true" className="text-base leading-none">A</span>
         <span className="hidden sm:inline">Text size</span>
       </summary>
-      <div className="absolute top-11 right-0 z-50 w-64 rounded-lg border border-gray-200 bg-white p-4 shadow-theme-lg">
+      <div className={embedded ? 'mt-4 w-full' : 'absolute top-11 right-0 z-50 w-64 rounded-lg border border-gray-200 bg-white p-4 shadow-theme-lg'}>
         <div className="flex items-center justify-between gap-3">
           <p className="text-theme-sm font-semibold text-gray-900">System preferences</p>
           <span className="text-theme-xs font-medium text-gray-600">{percentage}%</span>
@@ -137,6 +137,7 @@ const AppShell = () => {
   /** Null when nobody has signed in - the header-based development actor is then in force. */
   const session = readSession();
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [preferencesOpen, setPreferencesOpen] = useState(false);
   /*
     Read once per render rather than held in state: it is decided before the first paint and cannot
     change without a reload, so subscribing to it would be machinery for a value that never moves.
@@ -186,6 +187,10 @@ const AppShell = () => {
   }, [navigate, query, sections]);
 
   const primaryRole = roles[0] ? words(roles[0]) : 'operator';
+  const handleSignOut = () => {
+    signOut();
+    window.location.assign(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/login`);
+  };
 
   return (
     <AppLayout>
@@ -209,7 +214,6 @@ const AppShell = () => {
             showEmpty
             emptyLabel="No matching pages"
           />
-          <FontScaleMenu />
           <ProfilePopover
             variant="full"
             side="bottom"
@@ -232,16 +236,7 @@ const AppShell = () => {
                   ]
                 : []
             }
-            onSignOut={
-              session
-                ? () => {
-                    signOut();
-                    // Full reload for the same reason sign-in does one: entitlement, permissions
-                    // and the landing path are all resolved once at module scope.
-                    window.location.assign(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/login`);
-                  }
-                : undefined
-            }
+            onSignOut={session ? handleSignOut : undefined}
             noConfirmSignOut
           />
         </AppHeaderActions>
@@ -275,6 +270,23 @@ const AppShell = () => {
                   ))}
                 </SidebarGroup>
               ))}
+
+              <SidebarGroup>
+                <SidebarGroupLabel>System</SidebarGroupLabel>
+                <SidebarLink
+                  asChild
+                  icon={<Icon name="settings" size={18} />}
+                >
+                  <button type="button" onClick={() => setPreferencesOpen(true)}>
+                    System preferences
+                  </button>
+                </SidebarLink>
+                {session && (
+                  <SidebarLink asChild icon={<Icon name="log-out" size={18} />}>
+                    <button type="button" onClick={handleSignOut}>Logout</button>
+                  </SidebarLink>
+                )}
+              </SidebarGroup>
 
               {/*
                 An empty rail has two causes and they are not the same conversation. "Your roles
@@ -342,6 +354,23 @@ const AppShell = () => {
         <Suspense fallback={null}>
           <ActorSwitcher open onClose={() => setSwitcherOpen(false)} />
         </Suspense>
+      )}
+
+      {preferencesOpen && (
+        <div className="fixed inset-0 z-[100] flex items-start justify-end bg-black/30 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPreferencesOpen(false); }}>
+          <section className="mt-14 w-[min(360px,calc(100vw-2rem))] rounded-xl border border-gray-200 bg-white p-5 shadow-theme-lg" role="dialog" aria-modal="true" aria-labelledby="system-preferences-title">
+            <div className="flex items-center justify-between gap-4">
+              <h2 id="system-preferences-title" className="text-base font-semibold text-gray-900">System preferences</h2>
+              <button type="button" className="text-sm text-gray-500" onClick={() => setPreferencesOpen(false)} aria-label="Close system preferences">×</button>
+            </div>
+            <FontScaleMenu embedded />
+            {session && (
+              <button type="button" className="mt-5 w-full rounded-md border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-800" onClick={handleSignOut}>
+                Logout
+              </button>
+            )}
+          </section>
+        </div>
       )}
     </AppLayout>
   );

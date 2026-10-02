@@ -15,6 +15,7 @@ import {
 import { driversApi, tripsApi, vehiclesApi } from 'modules/fleet/api/fleetApi';
 import { humanise } from 'modules/fleet/api/enums';
 import { Alert, FormDialog } from 'modules/fuel/components/fuelUi';
+import { Banner } from '@rfdtech/components';
 import SiteSelect from 'shared/components/SiteSelect';
 import { DateField, DateTimeField, CheckboxField as Checkbox, EnumSelect, NumberInput, TextAreaInput, TextInput } from 'modules/fuel/components/fuelUi';
 import { useFleetForm } from 'shared/validation/useFleetForm';
@@ -329,6 +330,13 @@ export const CreateLogbookDialog = ({
       onClose={onClose}
       onSubmit={form.submit}
     >
+      {!editing && (
+        <Banner
+          variant="info"
+          heading="Create the journey draft in three steps"
+          subtext="Select the assigned trip first, check the pre-filled driver and vehicle details, then complete the actual times and odometer readings before saving. Submit the draft from its detail page when the journey is complete."
+        />
+      )}
       <div className={twoColumn}>
         <SiteSelect
           required

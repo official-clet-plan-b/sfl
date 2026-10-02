@@ -71,14 +71,6 @@ export const seededAccounts: SeededAccount[] = [
     description: 'Fleet, fuel and dispatch operations',
   },
   {
-    email: 'reportingviewer@clet.gh',
-    username: 'reporting.viewer',
-    displayName: 'Reporting Viewer',
-    roles: ['FLEET_REPORTING_VIEWER'],
-    sites: ['CLET-HQ'],
-    description: 'Fleet, fuel and dispatch - read only',
-  },
-  {
     email: 'dispatchcontroller@clet.gh',
     username: 'dispatch.controller',
     displayName: 'Dispatch Controller',

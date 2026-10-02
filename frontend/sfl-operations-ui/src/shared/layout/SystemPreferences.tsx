@@ -3,7 +3,8 @@ import { createContext, type ReactNode, useContext, useEffect, useMemo, useState
 const STORAGE_KEY = 'sfl-font-scale';
 const MIN_SCALE = 1;
 const MAX_SCALE = 1.5;
-const STEP = 0.1;
+// Keep the slider continuous while storing a stable, two-decimal CSS value.
+const STEP = 0.01;
 
 interface SystemPreferencesValue {
   fontScale: number;
@@ -14,7 +15,7 @@ interface SystemPreferencesValue {
 const PreferencesContext = createContext<SystemPreferencesValue | null>(null);
 
 const clamp = (value: number): number =>
-  Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.round(value / STEP) * STEP));
+  Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.round(value * 100) / 100));
 
 const initialScale = (): number => {
   if (typeof window === 'undefined') return MIN_SCALE;

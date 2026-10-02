@@ -264,7 +264,7 @@ export const FuelFormSheet = ({
   open ? (
     <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-50 flex justify-end bg-black/30">
       <div
-        className={`${sheetWidths[maxWidth]} pointer-events-auto`}
+        className={`${sheetWidths[maxWidth]} flex h-full max-h-screen flex-col overflow-hidden bg-white shadow-xl pointer-events-auto`}
         style={{ pointerEvents: 'auto' }}
         onKeyDown={(event) => {
           if (

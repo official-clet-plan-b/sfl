@@ -60,7 +60,6 @@ The **Serves** column is which sign-in pages list the account - 8091 IFIMP, 8092
 | fleetmanager@clet.gh | `FLEET_MANAGER` | 8093 |
 | driver@clet.gh | `FLEET_DRIVER` | 8093 |
 | fleetofficer@clet.gh | `FLEET_LOGISTICS_OFFICER` | 8093 |
-| reportingviewer@clet.gh | `FLEET_REPORTING_VIEWER` | 8093 |
 | dispatchcontroller@clet.gh | `DISPATCH_CONTROLLER` | 8093 |
 | mailroomofficer@clet.gh | `MAILROOM_OFFICER` | 8093 |
 | centremanager@clet.gh | `CENTRE_MANAGER` | 8091, 8093 |

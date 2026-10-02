@@ -1,3 +1,5 @@
+import { Link } from 'react-router';
+import { Banner } from '@rfdtech/components';
 import SiteSelect from 'shared/components/SiteSelect';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { compose, maxLength, nonNegativeInteger, nonNegativeNumber, required } from 'shared/validation/validators';
@@ -6,6 +8,7 @@ import { spaceTypes } from '../api/enums';
 import type { SpaceType } from '../api/enums';
 import { FloorPicker } from '../components/estatePickers';
 import { humaniseCode } from '../components/facilitiesFormat';
+import { facilitiesPaths } from 'shared/layout/navigation';
 import { StaleWriteNotice } from './common';
 import { Checkbox, FormDialog, NumberInput, SelectInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
 
@@ -83,6 +86,19 @@ export const CreateSpaceDialog = ({ siteCode, onClose, onSubmit }: CreateSpaceDi
       onSubmit={() => void form.submit()}
     >
       <div className="space-y-4">
+        <Banner
+          variant="info"
+          heading="Create the space’s parents first"
+          subtext={
+            <>
+              Spaces belong to a floor, and floors belong to a building. Register the building and
+              floor from the site record, then return here to add the room or hall.
+              <Link className="ml-1 font-medium underline" to={facilitiesPaths.sites} onClick={onClose}>
+                Open Sites
+              </Link>
+            </>
+          }
+        />
         <SiteSelect
           value={form.values.siteCode}
           onChange={(value) => form.setValue('siteCode', value)}

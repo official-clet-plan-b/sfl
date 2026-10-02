@@ -318,6 +318,7 @@ interface DonutChartProps {
   height?: number;
   /** Shown in the middle of the ring - usually the total the slices add up to. */
   centreLabel?: string;
+  showPercentages?: boolean;
 }
 
 /** Composition of a whole - readiness mix, workflow status mix. */
@@ -327,6 +328,7 @@ export const DonutChart = ({
   colors,
   height = 260,
   centreLabel = 'Total',
+  showPercentages = true,
 }: DonutChartProps) => {
   const total = values.reduce((sum, value) => sum + value, 0);
   const rows = labels.map((label, index) => ({ name: label, value: values[index] ?? 0 }));
@@ -406,9 +408,11 @@ export const DonutChart = ({
               <span className="text-sm font-semibold text-foreground tabular-nums">
                 {row.value}
               </span>
-              <span className="w-10 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
-                {share}%
-              </span>
+              {showPercentages && (
+                <span className="w-10 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                  {share}%
+                </span>
+              )}
             </li>
           );
         })}
