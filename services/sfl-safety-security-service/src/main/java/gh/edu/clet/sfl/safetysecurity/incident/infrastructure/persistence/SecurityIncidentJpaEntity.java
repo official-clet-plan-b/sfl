@@ -94,6 +94,10 @@ public class SecurityIncidentJpaEntity {
     private String closureNotes;
     @Column(name = "closed_at")
     private Instant closedAt;
+    @Column(name = "risk_assessment_id")
+    private UUID riskAssessmentId;
+    @Column(name = "activity_type", length = 80)
+    private String activityType;
     @Column(name = "created_by", nullable = false, length = 160)
     private String createdBy;
     @Column(name = "created_at", nullable = false)
@@ -142,6 +146,8 @@ public class SecurityIncidentJpaEntity {
         reportabilityNotes = incident.reportabilityNotes();
         closureNotes = incident.closureNotes();
         closedAt = incident.closedAt();
+        riskAssessmentId = incident.riskAssessmentId();
+        activityType = incident.activityType();
         RecordMetadata metadata = incident.metadata();
         createdBy = metadata.createdBy();
         createdAt = metadata.createdAt();
@@ -160,7 +166,8 @@ public class SecurityIncidentJpaEntity {
                 recordVersion, sourceChannel, correlationId);
         return new SecurityIncident(id, siteCode, source, reference, anonymous, reporterId, reporterContact,
                 description, nearMiss, status, severity, rating, emergencyEscalated, investigatorId,
-                investigationNotes, reportable, reportabilityNotes, closureNotes, closedAt, metadata);
+                investigationNotes, reportable, reportabilityNotes, closureNotes, closedAt, riskAssessmentId,
+                activityType, metadata);
     }
 
     public UUID getId() {

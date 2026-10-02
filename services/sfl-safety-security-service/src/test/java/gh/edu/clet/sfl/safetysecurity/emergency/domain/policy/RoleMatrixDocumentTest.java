@@ -9,6 +9,7 @@ import gh.edu.clet.sfl.safetysecurity.cctv.domain.policy.CctvPermissionMatrix;
 import gh.edu.clet.sfl.safetysecurity.incident.domain.policy.IncidentPermissionMatrix;
 import gh.edu.clet.sfl.safetysecurity.intrusion.domain.policy.IntrusionPermissionMatrix;
 import gh.edu.clet.sfl.safetysecurity.lifesafety.domain.policy.LifeSafetyPermissionMatrix;
+import gh.edu.clet.sfl.safetysecurity.riskassessment.domain.policy.RiskAssessmentPermissionMatrix;
 import gh.edu.clet.sfl.safetysecurity.visitor.domain.policy.VisitorPermissionMatrix;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -94,7 +95,8 @@ class RoleMatrixDocumentTest {
                     || AccessControlPermissionMatrix.grants(roles, permission)
                     || CctvPermissionMatrix.grants(roles, permission)
                     || IntrusionPermissionMatrix.grants(roles, permission)
-                    || LifeSafetyPermissionMatrix.grants(roles, permission)) {
+                    || LifeSafetyPermissionMatrix.grants(roles, permission)
+                    || RiskAssessmentPermissionMatrix.grants(roles, permission)) {
                 held.add(permission);
             }
         }

@@ -385,5 +385,17 @@ public enum SflPermission {
     FACILITIES_CONTRACTOR_MANAGE,
 
     // Phase 2 vendor-integration governance (SRS CORR-07, §5.2)
-    FACILITIES_VENDOR_INTEGRATION_READ
+    FACILITIES_VENDOR_INTEGRATION_READ,
+
+    // S165 Risk Assessment Library (Phase 2 SRS §3.2, SSEMP). Additive only - adding enum constants
+    // changes no existing signature and no existing service behaviour. Split by authority level, not by
+    // screen: authoring, publishing and signing off are separate acts, and S165-02 requires the last to
+    // be able to fall to someone other than the author.
+    RISK_ASSESSMENT_READ,
+    RISK_ASSESSMENT_AUTHOR,
+    RISK_ASSESSMENT_PUBLISH,
+    RISK_ASSESSMENT_SIGN_OFF,
+    RISK_ASSESSMENT_REVIEW_FLAG_MANAGE,
+    RISK_ASSESSMENT_ANALYTICS_READ,
+    RISK_ASSESSMENT_CONFIGURE
 }
