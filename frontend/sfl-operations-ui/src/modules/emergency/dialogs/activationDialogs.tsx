@@ -10,6 +10,7 @@ import {
 } from 'modules/emergency/api/enums';
 import type { ChannelType, Priority, RetentionClass } from 'modules/emergency/api/enums';
 import { activationsApi } from 'modules/emergency/api/emergencyApi';
+import { emergencyNotificationProvider } from 'modules/emergency/api/notificationProvider';
 import { closureBlockers } from 'modules/emergency/api/workflow';
 import {
   CheckboxGroup,
@@ -293,6 +294,11 @@ export const SendActivationDialog = ({
     initialValues: {},
     onSubmit: async () => {
       const sent = await activationsApi.activate(activation.id);
+      await emergencyNotificationProvider.dispatch({
+        activationId: activation.id,
+        channels: activation.channels,
+        recipientCount: reach,
+      });
       onDone(sent);
       onClose();
     },

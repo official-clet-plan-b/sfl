@@ -77,6 +77,9 @@ const WorkflowDetailPage = lazy(() => import('modules/fleet/pages/WorkflowDetail
 const CompliancePage = lazy(() => import('modules/fleet/pages/CompliancePage'));
 const EvidenceAuditPage = lazy(() => import('modules/fleet/pages/EvidenceAuditPage'));
 const IntegrationHealthPage = lazy(() => import('modules/fleet/pages/IntegrationHealthPage'));
+const TelematicsDashboardPage = lazy(() => import('modules/phase2/pages/Phase2OperationsPages').then((module) => ({ default: module.TelematicsDashboardPage })));
+const VipTripPortalPage = lazy(() => import('modules/phase2/pages/Phase2OperationsPages').then((module) => ({ default: module.VipTripPortalPage })));
+const AssetVisibilityPage = lazy(() => import('modules/phase2/pages/Phase2OperationsPages').then((module) => ({ default: module.AssetVisibilityPage })));
 
 const FuelDashboardPage = lazy(() => import('modules/fuel/pages/FuelDashboardPage'));
 const FuelTransactionsPage = lazy(() => import('modules/fuel/pages/FuelTransactionsPage'));
@@ -144,6 +147,7 @@ const RiskAssessmentDetailPage = lazy(() => import('modules/riskassessment/pages
 const ReviewFlagsPage = lazy(() => import('modules/riskassessment/pages/ReviewFlagsPage'));
 const RiskCoveragePage = lazy(() => import('modules/riskassessment/pages/RiskCoveragePage'));
 const RiskConfigurationPage = lazy(() => import('modules/riskassessment/pages/RiskConfigurationPage'));
+const SecuritySystemsPage = lazy(() => import('modules/security/SecuritySystemsPage'));
 const DrillDashboardPage = lazy(() => import('modules/drill/pages/DrillDashboardPage'));
 const DrillsPage = lazy(() => import('modules/drill/pages/DrillsPage'));
 const DrillDetailPage = lazy(() => import('modules/drill/pages/DrillDetailPage'));
@@ -372,6 +376,9 @@ const App = () => {
               entitlement is unchanged; only the address moved.
             */}
             <Route path="fleetvehicle">
+              <Route path="telematics" element={<SystemRoutes system="S167" />}><Route index element={<TelematicsDashboardPage />} /></Route>
+              <Route path="vip-transport" element={<SystemRoutes system="S168a" />}><Route index element={<VipTripPortalPage />} /></Route>
+              <Route path="asset-visibility" element={<SystemRoutes system="AVAMP" />}><Route index element={<AssetVisibilityPage />} /></Route>
               <Route path="fleet" element={<SystemRoutes system="S166" />}>
                 <Route index element={<FleetDashboardPage />} />
                 <Route path="vehicles">
@@ -442,6 +449,18 @@ const App = () => {
               named for the system, which is the same split FTLMP and IFIMP now use.
             */}
             <Route path="safetysecurity">
+              <Route path="access-control" element={<SystemRoutes system="S160a" />}>
+                <Route index element={<SecuritySystemsPage system="S160a" />} />
+              </Route>
+              <Route path="cctv" element={<SystemRoutes system="S161" />}>
+                <Route index element={<SecuritySystemsPage system="S161" />} />
+              </Route>
+              <Route path="intrusion" element={<SystemRoutes system="S162" />}>
+                <Route index element={<SecuritySystemsPage system="S162" />} />
+              </Route>
+              <Route path="life-safety" element={<SystemRoutes system="S162a" />}>
+                <Route index element={<SecuritySystemsPage system="S162a" />} />
+              </Route>
               <Route path="visitors" element={<SystemRoutes system="S160" />}>
                 <Route index element={<VisitorDashboardPage />} />
                 <Route path="visits">

@@ -15,9 +15,14 @@ import {
   SectionTitle,
   Table,
   TableContent,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   useBreadcrumbs,
 } from '@rfdtech/components';
 import type { TableColumn } from '@rfdtech/components';
+import { DonutChart } from 'shared/charts/Charts';
 import { sflActor } from 'shared/api/config';
 import DataState from 'shared/components/DataState';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
@@ -52,6 +57,7 @@ const FacilitiesDashboardPage = () => {
   const navigate = useNavigate();
   useBreadcrumbs([{ label: 'Facilities' }]);
   const [siteCode, setSiteCode] = useState<string>(defaultSite);
+  const [exceptionTab, setExceptionTab] = useState<'unavailable' | 'stale'>('unavailable');
 
   const { data, loading, error, refetch } = useApiQuery(
     (signal) => getDashboard(siteCode || undefined, signal),
@@ -246,6 +252,22 @@ const FacilitiesDashboardPage = () => {
         </PageSection>
 
         <PageSection>
+          <SectionHeader>
+            <SectionTitle>Readiness mix</SectionTitle>
+            <SectionDescription>How the spaces at this site are currently assessed.</SectionDescription>
+          </SectionHeader>
+          <Card bordered className="max-w-md">
+            <DonutChart
+              labels={['Ready', 'Degraded', 'Blocked', 'Unknown']}
+              values={data ? [data.spaces.ready, data.spaces.degraded, data.spaces.blocked, data.spaces.unknown] : [0, 0, 0, 0]}
+              colors={['#15803d', '#ca8a04', '#b91c1c', '#64748b']}
+              centreLabel={`${data?.spaces.total ?? 0} spaces`}
+              showPercentages={false}
+            />
+          </Card>
+        </PageSection>
+
+        <PageSection>
           <MetricCards>
             <MetricCard
               variant="soft"
@@ -334,43 +356,44 @@ const FacilitiesDashboardPage = () => {
           'No examination-capable space is at risk.',
         )}
 
-        {exceptionSection(
-          'unavailable',
-          'Unavailable spaces',
-          'Bookable spaces that cannot currently be booked',
-          data?.unavailableSpaces ?? [],
-          'Every bookable space is available.',
-        )}
-
-        {exceptionSection(
-          'stale',
-          'Stale readiness',
-          'Spaces not reassessed inside the configured window, or never assessed',
-          data?.staleReadiness ?? [],
-          'Every space has been assessed inside the window.',
-          [
-            exceptionColumns[0],
-            exceptionColumns[1],
-            {
-              id: 'reason',
-              header: 'Last assessed',
-              cell: ({ row }) => <span className="text-muted-foreground">{row.reason}</span>,
-            },
-            {
-              id: 'severity',
-              header: '',
-              align: 'right',
-              width: 120,
-              cell: ({ row }) => (
-                <StatusBadge
-                  value={row.severity === 'MAJOR' ? 'NEVER ASSESSED' : 'OVERDUE'}
-                  tone={row.severity === 'MAJOR' ? 'blocked' : 'caution'}
-                  label={humaniseCode(row.severity === 'MAJOR' ? 'NEVER_ASSESSED' : 'OVERDUE')}
-                />
-              ),
-            },
-          ],
-        )}
+        <PageSection>
+          <Tabs value={exceptionTab} onValueChange={(value) => setExceptionTab(value as typeof exceptionTab)}>
+            <TabsList aria-label="Facilities exceptions">
+              <TabsTrigger value="unavailable">Unavailable spaces</TabsTrigger>
+              <TabsTrigger value="stale">Stale readiness</TabsTrigger>
+            </TabsList>
+            <TabsContent value="unavailable">
+              {exceptionSection('unavailable', 'Unavailable spaces', 'Bookable spaces that cannot currently be booked', data?.unavailableSpaces ?? [], 'Every bookable space is available.')}
+            </TabsContent>
+            <TabsContent value="stale">
+              {exceptionSection(
+                'stale',
+                'Stale readiness',
+                'Spaces not reassessed inside the configured window, or never assessed',
+                data?.staleReadiness ?? [],
+                'Every space has been assessed inside the window.',
+                [
+                  exceptionColumns[0],
+                  exceptionColumns[1],
+                  { id: 'reason', header: 'Last assessed', cell: ({ row }) => <span className="text-muted-foreground">{row.reason}</span> },
+                  {
+                    id: 'severity',
+                    header: '',
+                    align: 'right',
+                    width: 120,
+                    cell: ({ row }) => (
+                      <StatusBadge
+                        value={row.severity === 'MAJOR' ? 'NEVER ASSESSED' : 'OVERDUE'}
+                        tone={row.severity === 'MAJOR' ? 'blocked' : 'caution'}
+                        label={humaniseCode(row.severity === 'MAJOR' ? 'NEVER_ASSESSED' : 'OVERDUE')}
+                      />
+                    ),
+                  },
+                ],
+              )}
+            </TabsContent>
+          </Tabs>
+        </PageSection>
       </DataState>
     </>
   );

@@ -95,6 +95,7 @@ class TripController {
             @RequestParam(required = false) OperatingMode operatingMode,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
+            @RequestParam(required = false) String purposePrefix,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String sort,
@@ -103,7 +104,7 @@ class TripController {
         // The driverId the caller supplied is a filter, not an authorisation input: for a driver-only
         // actor the query service overrides it with their own. See TripQueryService.search.
         TripQueryService.ScopedTrips scoped = tripQueries.search(new TripRepository.TripSearchCriteria(siteCode,
-                status, vehicleId, driverId, operatingMode, from, to, page, size, sort), actor);
+                status, vehicleId, driverId, operatingMode, from, to, page, size, sort, purposePrefix), actor);
         TripRepository.TripPage result = scoped.page();
 
         return ApiResponse.ok(new PageResponse<>(

@@ -1,4 +1,4 @@
-import { type LucideIcon, Activity, ArrowLeft, Bell, Book, Building2, Calendar, Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsLeft, ChevronsRight, CircleAlert, CircleCheck, Clipboard, ClipboardList, Clock, Cloud, Coins, Download, Ellipsis, Eye, EyeOff, FileText, Flag, Fuel, Gauge, Inbox, Info, Layers, LayoutDashboard, Link, ListFilter, Lock, MapPin, Megaphone, Menu, Package, Pencil, Play, Plus, RefreshCw, Route, Scale, Search, ShieldAlert, ShieldCheck, Siren, Square, Target, TriangleAlert, Truck, Upload, User, UserPlus, UserRound, Users, Workflow, Wrench, X, Zap } from 'lucide-react';
+import { type LucideIcon, Activity, ArrowLeft, Bell, Book, Building2, Calendar, Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsLeft, ChevronsRight, CircleAlert, CircleCheck, Clipboard, ClipboardList, Clock, Cloud, Coins, Download, Ellipsis, Eye, EyeOff, FileText, Flag, Fuel, Gauge, Inbox, Info, Layers, LayoutDashboard, Link, ListFilter, Lock, LogOut, MapPin, Megaphone, Menu, Package, Pencil, Play, Plus, RefreshCw, Route, Scale, Search, Settings, ShieldAlert, ShieldCheck, Siren, Square, Target, TriangleAlert, Truck, Upload, User, UserPlus, UserRound, Users, Workflow, Wrench, X, Zap } from 'lucide-react';
 import type { SVGProps } from 'react';
 
 /**
@@ -18,6 +18,7 @@ export type IconName =
   | 'route'
   | 'workflow'
   | 'shield-check'
+  | 'shield-alert'
   | 'document'
   | 'camera'
   | 'cloud'
@@ -71,7 +72,9 @@ export type IconName =
   | 'siren'
   | 'zap'
   | 'users'
-  | 'target';
+  | 'target'
+  | 'settings'
+  | 'log-out';
 
 const glyphs: Record<IconName, LucideIcon> = {
   'dashboard': LayoutDashboard,
@@ -82,6 +85,7 @@ const glyphs: Record<IconName, LucideIcon> = {
   'route': Route,
   'workflow': Workflow,
   'shield-check': ShieldCheck,
+  'shield-alert': ShieldAlert,
   'document': FileText,
   'camera': Camera,
   'cloud': Cloud,
@@ -136,6 +140,8 @@ const glyphs: Record<IconName, LucideIcon> = {
   'zap': Zap,
   'users': Users,
   'target': Target,
+  'settings': Settings,
+  'log-out': LogOut,
 };
 
 export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name' | 'ref'> {

@@ -88,6 +88,115 @@ class AssetReferenceControllerTest {
                 .header("X-SFL-Sites", "MAIN");
     }
 
+
+    private static MockHttpServletRequestBuilder asRole(MockHttpServletRequestBuilder request, String role) {
+        return request.header("X-SFL-User", role.toLowerCase() + "@sfl.local")
+                .header("X-SFL-Roles", role)
+                .header("X-SFL-Sites", "MAIN");
+    }
+
+    @Test
+    void the_fleet_manager_and_logistics_officer_can_register_an_asset_in_their_own_programme() throws Exception {
+        when(service.register(any(RegisterAssetCommand.class)))
+                .thenReturn(asset(ASSET_ID, "CAM-001", "MAIN", "ROOM-A"));
+        String body = """
+                {"assetCode":"cam-001","name":"Camera","category":"EQUIPMENT","siteCode":"MAIN",
+                 "locationType":"SITE","locationReference":"main","externalReference":"rfid-1"}
+                """;
+
+        for (String role : List.of("FLEET_MANAGER", "FLEET_LOGISTICS_OFFICER")) {
+            mockMvc.perform(asRole(post("/api/v1/assets"), role).contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isCreated());
+        }
+    }
+
+    @Test
+    void the_fleet_reporting_viewer_holds_no_asset_permission_at_all() throws Exception {
+        mockMvc.perform(asRole(get("/api/v1/assets"), "FLEET_REPORTING_VIEWER"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.data.requiredPermission").value("ASSET_REFERENCE_READ"));
+    }
+
+    @Test
+    void a_tag_is_resolved_to_its_asset() throws Exception {
+        when(service.findByTag("RFID-1")).thenReturn(asset(ASSET_ID, "CAM-001", "MAIN", "ROOM-A"));
+
+        mockMvc.perform(asManager(get("/api/v1/assets/by-tag/{tagId}", "RFID-1")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(ASSET_ID.toString()));
+    }
+
+    @Test
+    void history_is_returned_for_an_asset_in_scope() throws Exception {
+        when(service.findById(ASSET_ID)).thenReturn(asset(ASSET_ID, "CAM-001", "MAIN", "ROOM-A"));
+        when(service.history(ASSET_ID)).thenReturn(List.of(new gh.edu.clet.sfl.fleetlogistics.assets.domain.AssetHistoryEntry(
+                UUID.randomUUID(), ASSET_ID, gh.edu.clet.sfl.fleetlogistics.assets.domain.AssetChangeType.MOVED,
+                "SITE:MAIN", "ROOM:ROOM 12", gh.edu.clet.sfl.fleetlogistics.assets.domain.AssetChangeSource.MANUAL,
+                null, "operator@sfl.local", Instant.parse("2026-07-13T08:00:00Z"))));
+
+        mockMvc.perform(asManager(get("/api/v1/assets/{assetId}/history", ASSET_ID)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].changeType").value("MOVED"))
+                .andExpect(jsonPath("$.data[0].toValue").value("ROOM:ROOM 12"));
+    }
+
+    @Test
+    void history_of_an_asset_at_another_site_is_refused() throws Exception {
+        when(service.findById(ASSET_ID)).thenReturn(asset(ASSET_ID, "CAM-001", "ELSEWHERE", "ROOM-A"));
+
+        mockMvc.perform(asManager(get("/api/v1/assets/{assetId}/history", ASSET_ID)))
+                .andExpect(status().isForbidden());
+        verify(service, never()).history(any());
+    }
+
+    @Test
+    void tagging_an_asset_passes_the_actor_and_reports_a_taken_tag_as_a_conflict() throws Exception {
+        when(service.findById(ASSET_ID)).thenReturn(asset(ASSET_ID, "CAM-001", "MAIN", "ROOM-A"));
+        when(service.assignTag(any(gh.edu.clet.sfl.fleetlogistics.assets.application.AssignTagCommand.class)))
+                .thenThrow(new gh.edu.clet.sfl.fleetlogistics.assets.application.DuplicateAssetTagException("RFID-1", "AST-9"));
+
+        mockMvc.perform(asManager(patch("/api/v1/assets/{assetId}/tag", ASSET_ID))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tagId\":\"RFID-1\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("ASSETVIS_DUPLICATE_IDENTIFIER"))
+                .andExpect(jsonPath("$.error.message").value("Tag RFID-1 is already assigned to asset AST-9"));
+    }
+
+    @Test
+    void a_blank_tag_is_refused_before_the_service_is_asked() throws Exception {
+        when(service.findById(ASSET_ID)).thenReturn(asset(ASSET_ID, "CAM-001", "MAIN", "ROOM-A"));
+
+        mockMvc.perform(asManager(patch("/api/v1/assets/{assetId}/tag", ASSET_ID))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tagId\":\" \"}"))
+                .andExpect(status().isBadRequest());
+        verify(service, never()).assignTag(any());
+    }
+
+    @Test
+    void a_reader_sighting_is_applied_by_a_principal_that_may_manage_the_asset_site() throws Exception {
+        when(service.findByTag("RFID-1")).thenReturn(asset(ASSET_ID, "CAM-001", "MAIN", "ROOM-A"));
+        when(service.recordScan(any(gh.edu.clet.sfl.fleetlogistics.assets.application.RecordScanCommand.class)))
+                .thenReturn(asset(ASSET_ID, "CAM-001", "MAIN", "ROOM-A"));
+
+        mockMvc.perform(asRole(post("/api/v1/assets/scans"), "SERVICE_INTEGRATION")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tagId\":\"RFID-1\",\"locationType\":\"ROOM\",\"locationReference\":\"Dock 2\",\"readerId\":\"reader-7\"}"))
+                .andExpect(status().isOk());
+        verify(service).recordScan(any());
+    }
+
+    @Test
+    void a_read_only_role_cannot_report_a_sighting() throws Exception {
+        mockMvc.perform(asRole(post("/api/v1/assets/scans"), "FLEET_REPORTING_VIEWER")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tagId\":\"RFID-1\",\"locationType\":\"ROOM\",\"locationReference\":\"Dock 2\"}"))
+                .andExpect(status().isForbidden());
+        verify(service, never()).recordScan(any());
+    }
+
     @Test
     void register_asset_returns_created_contract() throws Exception {
         when(service.register(any(RegisterAssetCommand.class)))

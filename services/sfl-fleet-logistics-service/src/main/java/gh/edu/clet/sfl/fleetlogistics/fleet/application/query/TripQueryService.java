@@ -177,7 +177,7 @@ public class TripQueryService {
             UUID driverId) {
         return new TripRepository.TripSearchCriteria(criteria.siteCode(), criteria.status(), criteria.vehicleId(),
                 driverId, criteria.operatingMode(), criteria.from(), criteria.to(), criteria.page(),
-                criteria.size(), criteria.sort());
+                criteria.size(), criteria.sort(), criteria.purposePrefix());
     }
 
     /**

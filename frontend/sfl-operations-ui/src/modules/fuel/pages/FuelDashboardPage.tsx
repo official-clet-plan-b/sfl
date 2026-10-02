@@ -19,7 +19,7 @@ import {
   TabsTrigger,
   type TableColumn,
 } from '@rfdtech/components';
-import { Plus, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import {
   DailyFuelTotals,
   DriverLogbook,
@@ -46,11 +46,8 @@ import {
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
 import { formatDateTime, formatNumber } from 'shared/components/format';
 import { sflActor } from 'shared/api/config';
-import { canCaptureFuel } from 'modules/fleet/api/access';
-import { CaptureTransactionDialog } from 'modules/fuel/dialogs/transactionDialogs';
 import { CellStack, ErrorBanner, FuelBadge, Panel } from 'modules/fuel/components/fuelUi';
 import { metricLink } from 'modules/fuel/components/metricLink';
-import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fuelPaths } from 'shared/layout/navigation';
 
@@ -101,8 +98,6 @@ const FuelDashboardPage = () => {
   const navigate = useNavigate();
   const [attentionTab, setAttentionTab] = useState<'cases' | 'reconciliation'>('cases');
   const [siteCode, setSiteCode] = useState(defaultSite);
-  const [capturing, setCapturing] = useState(false);
-  const { notifySuccess } = useNotifier();
 
   const windowStart = useMemo(
     () =>
@@ -304,12 +299,6 @@ const FuelDashboardPage = () => {
               <RefreshCw size={14} strokeWidth={1.5} aria-hidden />
               Refresh
             </Button>
-            {canCaptureFuel() && (
-              <Button variant="primary" onClick={() => setCapturing(true)}>
-                <Plus size={14} strokeWidth={1.5} aria-hidden />
-                Capture transaction
-              </Button>
-            )}
           </SectionActions>
         </SectionHeader>
       </PageSection>
@@ -569,20 +558,6 @@ const FuelDashboardPage = () => {
         </Panel>
       </PageSection>
 
-      {capturing && (
-        <CaptureTransactionDialog
-          open
-          defaultSiteCode={siteCode}
-          onClose={() => setCapturing(false)}
-          onSaved={(transaction) => {
-            notifySuccess(
-              `Transaction captured against ${transaction.vendorReference}.`,
-              'It is in the received state until reconciliation runs.',
-            );
-            refreshAll();
-          }}
-        />
-      )}
     </>
   );
 };
