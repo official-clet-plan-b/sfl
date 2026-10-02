@@ -19,6 +19,18 @@ import java.util.UUID;
  */
 public interface EmergencyDrillTrigger {
 
+    /**
+     * The site's active drill templates - the only ones a drill plan may name. Each carries the drill marker
+     * in its title and body; a real template never appears here.
+     */
+    List<DrillTemplate> drillTemplates(String siteCode);
+
+    /**
+     * Refuses, with "Test/Real Ambiguity", a template that could not be sent as a drill from this site - so a
+     * plan naming one is refused when it is scheduled, not when the drill starts.
+     */
+    void requireDrillTemplate(String siteCode, UUID templateId);
+
     /** Sends the drill notification now. Throws "Test/Real Ambiguity" unless {@code templateId} is a drill template. */
     DrillNotification trigger(DrillNotificationRequest request, ActorContext actor);
 
@@ -35,6 +47,9 @@ public interface EmergencyDrillTrigger {
      */
     record DrillNotificationRequest(String siteCode, String drillReference, UUID templateId,
             List<UUID> audienceGroupIds, List<UUID> recipientZoneIds, List<String> channels) {
+    }
+
+    record DrillTemplate(UUID templateId, String templateCode, String title, List<String> channels) {
     }
 
     /**
