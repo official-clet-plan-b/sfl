@@ -23,7 +23,7 @@ interface Source {
 const SOURCE_FOR: Record<'IFIMP' | 'SSEMP' | 'FTLMP', Source> = {
   // FTLMP - fleet, fuel, dispatch and asset visibility. Four matrices, one deployable, one answer.
   FTLMP: { path: '/api/v1/fleet/actor/permissions' },
-  // SSEMP - S174's matrix today, joined by S160-S163 as they are built.
+  // SSEMP - one union of every SSEMP module's matrix: S174, S160-S163, and Phase 2's S165.
   SSEMP: { path: '/api/v1/emergency/actor/permissions', service: 'safetySecurity' },
   // IFIMP - S152, S153 and S159, one matrix in `shared` answering for all three.
   IFIMP: { path: '/api/v1/facilities/actor/permissions', service: 'facilities' },

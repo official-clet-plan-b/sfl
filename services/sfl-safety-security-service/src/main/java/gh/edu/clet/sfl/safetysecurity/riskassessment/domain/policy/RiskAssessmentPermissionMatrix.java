@@ -58,6 +58,10 @@ public final class RiskAssessmentPermissionMatrix {
         m.put(SflRole.COMMAND_ROLE, EnumSet.of(SflPermission.RISK_ASSESSMENT_READ,
                 SflPermission.RISK_ASSESSMENT_ANALYTICS_READ));
 
+        // Integration Engineer: maintains the inbound feeds S165-03 coverage is built from (S176 work types
+        // arrive over the SSEMP listener), and reads every SSEMP system on that account. Changes nothing.
+        m.put(SflRole.INTEGRATION_ENGINEER, EnumSet.of(SflPermission.RISK_ASSESSMENT_READ));
+
         // The two IFIMP roles whose systems the mapping lists as S165 consumers (S176 construction, and
         // S173, whose S173-03 requires a linked, current assessment for a higher-risk event): each has to
         // find the current assessment to link it. Read only.

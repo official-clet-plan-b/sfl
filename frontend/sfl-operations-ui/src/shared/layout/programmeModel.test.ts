@@ -92,13 +92,25 @@ describe('programme entitlement', () => {
       expect(systemsFor(['INTEGRATION_ENGINEER'])).toEqual(allSystems);
     });
 
-    it('maps the two implemented SSEMP workflows to the roles their backend matrices grant', () => {
+    it('maps the implemented SSEMP workflows to the roles their backend matrices grant', () => {
       expect(systemsFor(['RECEPTION_OFFICER'])).toEqual(['S160']);
       expect(systemsFor(['VISITOR_HOST'])).toEqual(['S160']);
-      expect(systemsFor(['INCIDENT_INVESTIGATOR'])).toEqual(['S163']);
+      // RiskAssessmentPermissionMatrix: an investigator reads the assessment an incident happened under.
+      expect(systemsFor(['INCIDENT_INVESTIGATOR'])).toEqual(['S163', 'S165']);
       expect(systemsFor(['SOC_OPERATOR'])).toEqual(['S160', 'S163', 'S174']);
-      expect(systemsFor(['SECURITY_DIRECTOR'])).toEqual(['S160', 'S163', 'S174']);
+      expect(systemsFor(['SECURITY_DIRECTOR'])).toEqual(['S160', 'S163', 'S165', 'S174']);
       expect(programmesFor(['INCIDENT_INVESTIGATOR'])).toEqual(['SSEMP']);
+    });
+
+    it('places S165 in SSEMP and gives its two IFIMP consumer roles the library without losing their IFIMP systems', () => {
+      expect(systems.S165.programme).toBe('SSEMP');
+      expect(systemsFor(['HSE_MANAGER'])).toContain('S165');
+      // Declaring S165 ended systemsFor's fallback for these roles, so their IFIMP systems are listed too.
+      expect(systemsFor(['CONSTRUCTION_PROJECT_MANAGER'])).toEqual(['S152', 'S153', 'S159', 'S165']);
+      expect(systemsFor(['EVENT_LOGISTICS_COORDINATOR'])).toEqual(['S152', 'S153', 'S159', 'S165']);
+      expect(programmesFor(['CONSTRUCTION_PROJECT_MANAGER'])).toEqual(['IFIMP', 'SSEMP']);
+      // A role with no S165 grant does not see it.
+      expect(systemsFor(['SOC_OPERATOR'])).not.toContain('S165');
     });
 
     it('places S152 in IFIMP', () => {

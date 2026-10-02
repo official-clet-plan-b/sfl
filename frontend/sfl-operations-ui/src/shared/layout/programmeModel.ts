@@ -89,7 +89,7 @@ export const allProgrammes = Object.keys(programmes) as ProgrammeCode[];
  */
 export type SystemCode =
   | 'S152' | 'S153' | 'S156' | 'S157' | 'S158' | 'S159'
-  | 'S160' | 'S163' | 'S166' | 'S168' | 'S169' | 'S171' | 'S173' | 'S174' | 'S176';
+  | 'S160' | 'S163' | 'S165' | 'S166' | 'S168' | 'S169' | 'S171' | 'S173' | 'S174' | 'S176';
 
 export interface SflSystem {
   code: SystemCode;
@@ -108,6 +108,8 @@ export const systems: Record<SystemCode, SflSystem> = {
   S159: { code: 'S159', label: 'Room & resource booking', programme: 'IFIMP' },
   S160: { code: 'S160', label: 'Visitor management', programme: 'SSEMP' },
   S163: { code: 'S163', label: 'HSE incidents & near misses', programme: 'SSEMP' },
+  // Phase 2. The first Phase 2 system with screens; S164 and S175 follow it into SSEMP.
+  S165: { code: 'S165', label: 'Risk assessment library', programme: 'SSEMP' },
   S166: { code: 'S166', label: 'Fleet & vehicle management', programme: 'FTLMP' },
   S168: { code: 'S168', label: 'Fuel & driver logbooks', programme: 'FTLMP' },
   S169: { code: 'S169', label: 'Cleaning operations', programme: 'IFIMP' },
@@ -151,8 +153,8 @@ export const roleProgrammes: Record<string, ProgrammeCode[]> = {
   IFIMP_TECHNICIAN: ['IFIMP'],
   IFIMP_REQUESTER: ['IFIMP'],
   VENDOR_TECHNICIAN: ['IFIMP'],
-  // Phase 2 IFIMP user classes (S156, S157, S158, S173, S176). Backend only so far - no screens -
-  // so none has a `roleSystems` entry; `systemsFor`'s documented fallback applies until they do.
+  // Phase 2 IFIMP user classes (S156, S157, S158, S169, S173, S176). Their systems are in `roleSystems`
+  // below; the construction and event-logistics roles also read S165, which entitles them to SSEMP.
   FACILITIES_ENGINEER: ['IFIMP'],
   ENERGY_SUSTAINABILITY_OFFICER: ['IFIMP'],
   SPACE_PLANNING_OFFICER: ['IFIMP'],
@@ -249,8 +251,10 @@ export const roleSystems: Record<string, SystemCode[]> = {
   FACILITIES_ENGINEER: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S169', 'S173', 'S176'],
   ENERGY_SUSTAINABILITY_OFFICER: ['S152', 'S153', 'S156', 'S157', 'S159'],
   SPACE_PLANNING_OFFICER: ['S152', 'S153', 'S158', 'S159', 'S176'],
-  CONSTRUCTION_PROJECT_MANAGER: ['S152', 'S153', 'S158', 'S159', 'S176'],
-  EVENT_LOGISTICS_COORDINATOR: ['S152', 'S153', 'S159', 'S169', 'S173'],
+  // S165 too: both systems' work needs a current risk assessment linked, so both roles read the library
+  // (RiskAssessmentPermissionMatrix, read only).
+  CONSTRUCTION_PROJECT_MANAGER: ['S152', 'S153', 'S158', 'S159', 'S165', 'S176'],
+  EVENT_LOGISTICS_COORDINATOR: ['S152', 'S153', 'S159', 'S165', 'S169', 'S173'],
 
   // SFL.FTLMP - all three systems live in `sfl-fleet-logistics-service`
   FLEET_MANAGER: ['S166', 'S168', 'S171'],
@@ -266,15 +270,17 @@ export const roleSystems: Record<string, SystemCode[]> = {
 
   // SFL.SSEMP - S174 is its own deployable, split by ADR 0004
   EMERGENCY_COORDINATOR: ['S174'],
-  SECURITY_DIRECTOR: ['S160', 'S163', 'S174'],
+  // S165 from RiskAssessmentPermissionMatrix: the HSE manager owns the library; the security director,
+  // the investigator (an incident's assessment) and command read it.
+  SECURITY_DIRECTOR: ['S160', 'S163', 'S165', 'S174'],
   RECEPTION_OFFICER: ['S160'],
   VISITOR_HOST: ['S160'],
   SOC_OPERATOR: ['S160', 'S163', 'S174'],
-  INCIDENT_INVESTIGATOR: ['S163'],
+  INCIDENT_INVESTIGATOR: ['S163', 'S165'],
   // An HSE manager reads the estate to place an incident and judge a location's standing. It takes
   // the matrix's shared READ_ONLY set, which carries FACILITIES_BOOKING_READ - so the diary is
   // readable, and nothing in the section can book, approve or turn a room around.
-  HSE_MANAGER: ['S152', 'S153', 'S156', 'S159', 'S163', 'S173', 'S174', 'S176'],
+  HSE_MANAGER: ['S152', 'S153', 'S156', 'S159', 'S163', 'S165', 'S173', 'S174', 'S176'],
 
   // Roles that span programmes at the system grain too
   SECURITY_OFFICER: ['S171', 'S174'],
