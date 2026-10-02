@@ -11,7 +11,7 @@ import { CreateLogbookDialog, LogbookTransitionDialog } from 'modules/fuel/dialo
 import HistoryTimeline from 'modules/fuel/components/HistoryTimeline';
 import { siteOf } from 'modules/fuel/components/fuelFormat';
 import { humanise } from 'modules/fleet/api/enums';
-import { Alert, Button, PageHeader, SectionCard, StatusChip } from 'modules/fuel/components/fuelMigration';
+import { Alert, Button, PageHeader, SectionCard, StatusChip } from 'modules/fuel/components/fuelUi';
 import DataState from 'shared/components/DataState';
 import Icon from 'shared/components/Icon';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
