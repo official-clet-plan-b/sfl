@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import DataState from 'shared/components/DataState';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
-import WorkflowTimeline, { type TimelineEntry } from 'shared/components/WorkflowTimeline';
 import { formatDate, formatDateTime } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { permits } from 'shared/layout/actorPermissions';
@@ -15,13 +14,21 @@ import HazardTable from '../components/HazardTable';
 import { ReviewFlagChip, RiskLevelChip, StandingChip, VersionStatusBadge } from '../components/riskChips';
 import { EditDraftDialog, OpenRevisionDialog, PublishDialog, SignOffDialog } from '../dialogs/assessmentDialogs';
 import { CompleteReviewDialog, DeferFlagDialog } from '../dialogs/reviewFlagDialogs';
-import { Button, Banner } from '@rfdtech/components';
-import Tabs from 'shared/components/Tabs';
+import { Button, Banner, Tabs, TabsList, TabsTrigger, Timeline, TimelineData, TimelineFooter, TimelineItem, TimelineTitle } from '@rfdtech/components';
 import PageHeading from 'modules/emergency/components/PageHeading';
 import Panel from 'modules/emergency/components/Panel';
 import Icon from 'shared/components/Icon';
 
 type Action = 'edit' | 'publish' | 'revise' | 'sign-off' | null;
+
+type TimelineEntry = {
+  id: string;
+  title: string;
+  detail?: string | null;
+  actor?: string | null;
+  occurredAt: string;
+  tone?: 'default' | 'accent' | 'danger';
+};
 
 /**
  * The trail is assembled from the records this screen already holds - versions, sign-offs, flags - and
@@ -56,6 +63,25 @@ const timeline = (detail: AssessmentDetail): TimelineEntry[] => {
   });
   return entries.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
 };
+
+const AssessmentTimeline = ({ entries }: { entries: TimelineEntry[] }) =>
+  entries.length === 0 ? (
+    <p className="text-theme-sm text-gray-600">No history yet.</p>
+  ) : (
+    <Timeline>
+      {entries.map((entry, index) => (
+        <TimelineItem
+          key={entry.id}
+          isLast={index === entries.length - 1}
+          mode={entry.tone === 'danger' ? 'error' : entry.tone === 'accent' ? 'warning' : 'primary'}
+        >
+          <TimelineTitle as="h3">{entry.title}</TimelineTitle>
+          {entry.detail && <TimelineData>{entry.detail}</TimelineData>}
+          <TimelineFooter>{formatDateTime(entry.occurredAt)}{entry.actor ? ` · by ${entry.actor}` : ''}</TimelineFooter>
+        </TimelineItem>
+      ))}
+    </Timeline>
+  );
 
 const VersionPanel = ({ view }: { view: VersionView }) => {
   const { version } = view;
@@ -153,9 +179,16 @@ const RiskAssessmentDetailPage = () => {
               <Tabs
                 variant="pill"
                 value={shown ? String(shown.version.versionNumber) : ''}
-                onChange={setSelectedVersion}
-                items={detail.versions.map((view) => ({ value: String(view.version.versionNumber), label: `v${view.version.versionNumber} · ${view.version.status.toLowerCase()}` }))}
-              />
+                onValueChange={setSelectedVersion}
+              >
+                <TabsList>
+                  {detail.versions.map((view) => (
+                    <TabsTrigger key={view.version.id} value={String(view.version.versionNumber)}>
+                      v{view.version.versionNumber} · {view.version.status.toLowerCase()}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
               <div className="mt-4">{shown && <VersionPanel view={shown} />}</div>
             </Panel>
 
@@ -188,7 +221,7 @@ const RiskAssessmentDetailPage = () => {
                 )}
               </Panel>
               <Panel title="History" subtitle="Assembled from the versions, sign-offs and flags above.">
-                <WorkflowTimeline entries={timeline(detail)} emptyMessage="No history yet." />
+                <AssessmentTimeline entries={timeline(detail)} />
               </Panel>
             </div>
           </div>
