@@ -1,11 +1,11 @@
 import { useParams } from 'react-router';
-import Alert from 'shared/components/Alert';
+import { Banner } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
+import DataTable, { FacilitiesColumn as Column } from '../components/FacilitiesDataTable';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatusChip from 'shared/components/StatusChip';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import TitledSection from '../components/TitledSection';
+import StatusBadge from '../components/StatusBadge';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
 import type { AssessmentItem } from '../api/dto';
@@ -43,7 +43,7 @@ const ReadinessAssessmentDetailPage = () => {
       header: '',
       width: 90,
       cell: (item) => (
-        <StatusChip
+        <StatusBadge
           value={item.passed ? 'PASS' : 'FAIL'}
           tone={item.passed ? 'ready' : 'blocked'}
         />
@@ -62,7 +62,7 @@ const ReadinessAssessmentDetailPage = () => {
       width: 130,
       hideBelowLg: true,
       cell: (item) => (
-        <StatusChip value={item.severityIfFailed} tone={severityTone(item.severityIfFailed)} />
+        <StatusBadge value={item.severityIfFailed} tone={severityTone(item.severityIfFailed)} />
       ),
     },
     {
@@ -82,7 +82,7 @@ const ReadinessAssessmentDetailPage = () => {
     >
       {assessment.data && (
         <>
-          <PageHeader
+          <PageHeading
             title="Readiness assessment"
             subtitle={`${space.data ? `${space.data.roomCode} - ${space.data.name} · ` : ''}${formatDateTime(assessment.data.assessedAt)}`}
             crumbs={[
@@ -91,7 +91,7 @@ const ReadinessAssessmentDetailPage = () => {
               { label: assessment.data.checklistCode ?? 'Assessment' },
             ]}
             meta={
-              <StatusChip
+              <StatusBadge
                 value={assessment.data.outcome}
                 tone={readinessTone(assessment.data.outcome)}
                 size="md"
@@ -101,18 +101,16 @@ const ReadinessAssessmentDetailPage = () => {
 
           <div className="space-y-5">
             {assessment.data.hasMandatoryFailure && (
-              <Alert variant="warning" title="A mandatory check failed">
-                At least one item marked mandatory was not passed, whatever the score says.
-              </Alert>
+              <Banner variant="warning" heading="A mandatory check failed" subtext="At least one item marked mandatory was not passed, whatever the score says." />
             )}
 
-            <SectionCard title="Assessment">
+            <TitledSection title="Assessment">
               <KeyValueGrid
                 items={[
                   {
                     label: 'Outcome',
                     value: (
-                      <StatusChip
+                      <StatusBadge
                         value={assessment.data.outcome}
                         tone={readinessTone(assessment.data.outcome)}
                       />
@@ -128,7 +126,7 @@ const ReadinessAssessmentDetailPage = () => {
                   {
                     label: 'Operating mode',
                     value: (
-                      <StatusChip
+                      <StatusBadge
                         value={assessment.data.operatingMode}
                         tone={
                           assessment.data.operatingMode === 'EXAMINATION' ? 'accent' : 'neutral'
@@ -141,9 +139,9 @@ const ReadinessAssessmentDetailPage = () => {
                   { label: 'Notes', value: orDash(assessment.data.notes), span: 2 },
                 ]}
               />
-            </SectionCard>
+            </TitledSection>
 
-            <SectionCard
+            <TitledSection
               title="Answers"
               subtitle="The questions as they were worded when this was taken"
             >
@@ -154,7 +152,7 @@ const ReadinessAssessmentDetailPage = () => {
                 emptyMessage="This assessment recorded no answers - no checklist applied to the space."
                 dense
               />
-            </SectionCard>
+            </TitledSection>
           </div>
         </>
       )}

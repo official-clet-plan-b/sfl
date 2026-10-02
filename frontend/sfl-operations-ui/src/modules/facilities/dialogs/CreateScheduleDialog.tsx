@@ -1,7 +1,4 @@
 import { useState } from 'react';
-import FormDialog from 'shared/components/FormDialog';
-import { DateField } from 'shared/components/DateField';
-import { NumberInput, SelectInput, TextAreaInput, TextInput } from 'shared/components/fields';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import type { CreateScheduleRequest } from '../api/dto';
@@ -9,6 +6,7 @@ import type { FaultPriority, WorkOrderType } from '../api/enums';
 import { faultPriorities } from '../api/enums';
 import { searchAssets } from '../api/facilitiesApi';
 import { humaniseCode } from '../components/facilitiesFormat';
+import { DateField, FormDialog, NumberInput, SelectInput, TextAreaInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface CreateScheduleDialogProps {
   siteCode: string;

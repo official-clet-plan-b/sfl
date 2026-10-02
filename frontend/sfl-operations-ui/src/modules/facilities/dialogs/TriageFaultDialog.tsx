@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
-import StatusChip from 'shared/components/StatusChip';
-import { SelectInput, TextAreaInput } from 'shared/components/fields';
+import { Notice } from '@rfdtech/components';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import type { FacilityFault, TriageFaultRequest } from '../api/dto';
 import type { FaultPriority } from '../api/enums';
 import { faultPriorities } from '../api/enums';
 import { faultBlockerSeverity } from '../api/workflow';
 import { humaniseCode, severityTone } from '../components/facilitiesFormat';
+import { FormDialog, SelectInput, TextAreaInput } from 'modules/facilities/dialogs/dialogKit';
+import StatusBadge from 'modules/facilities/components/StatusBadge';
 
 interface TriageFaultDialogProps {
   fault: FacilityFault;
@@ -93,34 +92,34 @@ const TriageFaultDialog = ({ fault, onClose, onSubmit }: TriageFaultDialogProps)
           helperText="Recorded on the fault and in the audit trail."
         />
 
-        <Alert variant="info" title="What happens next">
-          <p className="text-theme-sm">
+        <Notice variant="info" title="What happens next">
+          <p className="text-sm">
             The deadline is worked out by the service from this site&rsquo;s configured SLA for a{' '}
             {humaniseCode(priority).toLowerCase()} fault, halved if the site is in examination mode.
             Once it passes, the scheduled sweep escalates the fault on its own.
           </p>
-        </Alert>
+        </Notice>
 
         {severity && !wasBlocking && (
-          <Alert
+          <Notice
             variant={severity === 'CRITICAL' ? 'error' : 'warning'}
             title="This will block the space"
           >
-            <p className="text-theme-sm">
+            <p className="text-sm">
               At {humaniseCode(priority).toLowerCase()} priority this fault raises a{' '}
-              <StatusChip value={severity} tone={severityTone(severity)} /> blocker on the space it
+              <StatusBadge value={severity} tone={severityTone(severity)} /> blocker on the space it
               was reported in.
             </p>
-          </Alert>
+          </Notice>
         )}
 
         {!severity && wasBlocking && (
-          <Alert variant="success" title="This will unblock the space">
-            <p className="text-theme-sm">
+          <Notice variant="success" title="This will unblock the space">
+            <p className="text-sm">
               Lowering the priority takes this fault below the site&rsquo;s blocking threshold, so the
               readiness blocker it currently holds will be resolved.
             </p>
-          </Alert>
+          </Notice>
         )}
       </div>
     </FormDialog>

@@ -1,13 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatCard from 'shared/components/StatCard';
-import StatusChip from 'shared/components/StatusChip';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
@@ -26,6 +20,10 @@ import {
   orDash,
   relativeTime,
 } from '../components/facilitiesFormat';
+import { Banner, Button, MetricCard } from '@rfdtech/components';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import TitledSection from '../components/TitledSection';
+import StatusBadge from '../components/StatusBadge';
 
 /**
  * One fault, and everything that decides what happens to it.
@@ -68,7 +66,7 @@ const FaultDetailPage = () => {
       >
         {fault.data && (
           <>
-            <PageHeader
+            <PageHeading
               title={fault.data.title}
               subtitle={`${fault.data.faultNumber} · ${orDash(fault.data.locationCode)} · ${fault.data.siteCode}`}
               crumbs={[
@@ -125,85 +123,73 @@ const FaultDetailPage = () => {
 
             <div className="space-y-5">
               {fault.data.blockerRaised && (
-                <Alert variant="error" title="This fault is blocking its space">
-                  It holds a readiness blocker open on the space it was reported in, so the space
-                  cannot be booked or used for an examination. Resolving the fault clears it.
-                </Alert>
+                <Banner variant="danger" heading="This fault is blocking its space" subtext="It holds a readiness blocker open on the space it was reported in, so the space cannot be booked or used for an examination. Resolving the fault clears it." />
               )}
 
               {fault.data.overdue && (
-                <Alert variant="warning" title="Past its SLA">
-                  The deadline was {formatDateTime(fault.data.slaDueAt)}.
-                  {fault.data.escalationLevel > 0
-                    ? ` It has been escalated to level ${fault.data.escalationLevel}.`
-                    : ' The next scheduled sweep will escalate it.'}
-                </Alert>
+                <Banner variant="warning" heading="Past its SLA" subtext={<>The deadline was {formatDateTime(fault.data.slaDueAt)}.{fault.data.escalationLevel > 0 ? ` It has been escalated to level ${fault.data.escalationLevel}.` : ' The next scheduled sweep will escalate it.'}</>} />
               )}
 
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <StatCard
+                <MetricCard
                   label="Status"
                   value={humaniseCode(fault.data.status)}
-                  caption={`Reported ${relativeTime(fault.data.reportedAt)} by ${fault.data.reportedBy}`}
-                  tone={fault.data.status === 'RESOLVED' ? 'good' : fault.data.open ? 'caution' : 'neutral'}
-                  icon="flag"
+                  description={`Reported ${relativeTime(fault.data.reportedAt)} by ${fault.data.reportedBy}`}
+                  variant="soft"
                 />
-                <StatCard
+                <MetricCard
                   label="Priority"
                   value={humaniseCode(fault.data.priority)}
-                  caption={
+                  description={
                     fault.data.triagedAt
                       ? `Confirmed at triage by ${orDash(fault.data.triagedBy)}`
                       : 'Not yet confirmed - triage sets the SLA'
                   }
-                  tone={fault.data.priority === 'CRITICAL' ? 'critical' : fault.data.priority === 'HIGH' ? 'caution' : 'neutral'}
-                  icon="gauge"
+                  variant="soft"
                 />
-                <StatCard
+                <MetricCard
                   label="SLA"
                   value={fault.data.slaDueAt ? (fault.data.overdue ? 'Overdue' : 'On time') : '-'}
-                  caption={
+                  description={
                     fault.data.slaDueAt
                       ? `Due ${formatDateTime(fault.data.slaDueAt)}`
                       : 'No deadline until the fault is triaged'
                   }
-                  tone={!fault.data.slaDueAt ? 'neutral' : fault.data.overdue ? 'critical' : 'good'}
-                  icon="clock"
+                  variant="soft"
                 />
-                <StatCard
+                <MetricCard
                   label="Escalation"
                   value={fault.data.escalationLevel > 0 ? `Level ${fault.data.escalationLevel}` : 'None'}
-                  caption={
+                  description={
                     fault.data.escalatedAt
                       ? `Last raised ${relativeTime(fault.data.escalatedAt)}`
                       : 'Raised automatically once the SLA passes'
                   }
-                  tone={fault.data.escalationLevel > 0 ? 'caution' : 'neutral'}
-                  icon="megaphone"
+                  variant="soft"
                 />
               </div>
 
-              <SectionCard title="What was reported">
+              <TitledSection title="What was reported">
                 <p className="whitespace-pre-line text-theme-sm text-gray-800">
                   {fault.data.description}
                 </p>
-              </SectionCard>
+              </TitledSection>
 
               {fault.data.triageNotes && (
-                <SectionCard
+                <TitledSection
                   title="Triage"
-                  subtitle={`${orDash(fault.data.triagedBy)} · ${formatDateTime(fault.data.triagedAt)}`}
+                  description={`${orDash(fault.data.triagedBy)} · ${formatDateTime(fault.data.triagedAt)}`}
                 >
                   <p className="whitespace-pre-line text-theme-sm text-gray-800">
                     {fault.data.triageNotes}
                   </p>
-                </SectionCard>
+                </TitledSection>
               )}
 
               {fault.data.resolutionNotes && (
-                <SectionCard
+                <TitledSection
                   title={fault.data.status === 'RESOLVED' ? 'Resolution' : 'Why it was dismissed'}
-                  subtitle={formatDateTime(fault.data.resolvedAt)}
+                  description={formatDateTime(fault.data.resolvedAt)}
                 >
                   <p className="whitespace-pre-line text-theme-sm text-gray-800">
                     {fault.data.resolutionNotes}
@@ -219,10 +205,10 @@ const FaultDetailPage = () => {
                       Open the fault it duplicates
                     </Button>
                   )}
-                </SectionCard>
+                </TitledSection>
               )}
 
-              <SectionCard title="Fault record">
+              <TitledSection title="Fault record">
                 <KeyValueGrid
                   items={[
                     { label: 'Number', value: fault.data.faultNumber },
@@ -262,7 +248,7 @@ const FaultDetailPage = () => {
                     {
                       label: 'Lifecycle',
                       value: (
-                        <StatusChip
+                        <StatusBadge
                           value={humaniseCode(fault.data.lifecycleStatus)}
                           tone="neutral"
                         />
@@ -271,7 +257,7 @@ const FaultDetailPage = () => {
                     { label: 'Version', value: String(fault.data.metadata.version) },
                   ]}
                 />
-              </SectionCard>
+              </TitledSection>
             </div>
           </>
         )}

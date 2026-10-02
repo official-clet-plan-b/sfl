@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
-import { TextAreaInput, TextInput } from 'shared/components/fields';
+import { Notice } from '@rfdtech/components';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import type { ExportEvidenceRequest, MaintenanceEvidence } from '../api/dto';
 import { humaniseCode } from '../components/facilitiesFormat';
+import { FormDialog, TextAreaInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface ExportEvidenceDialogProps {
   evidence: MaintenanceEvidence;
@@ -96,14 +95,14 @@ const ExportEvidenceDialog = ({ evidence, onClose, onSubmit }: ExportEvidenceDia
           }
         />
 
-        <Alert variant="warning" title="This is recorded before anything is handed over">
-          <p className="text-theme-sm">
+        <Notice variant="warning" title="This is recorded before anything is handed over">
+          <p className="text-sm">
             Approving writes an audit entry naming you, the recipient and the reason, and then
             returns the storage reference to fetch. The entry is written first on purpose: a reason
             recorded after a successful export is a reason that is missing exactly when the export
             went wrong.
           </p>
-        </Alert>
+        </Notice>
       </div>
     </FormDialog>
   );

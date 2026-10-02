@@ -1,25 +1,29 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
+import {
+  Button,
+  PageSection,
+  SectionActions,
+  SectionHeader,
+  SectionTitle,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  type TableColumn,
+} from '@rfdtech/components';
+import { Download, Plus } from 'lucide-react';
 import { FuelTransaction } from 'modules/fuel/api/dto';
 import { FUEL_TRANSACTION_STATUSES, FuelTransactionStatus } from 'modules/fuel/api/enums';
 import { fuelTransactionsApi } from 'modules/fuel/api/fuelApi';
 import { CaptureTransactionDialog } from 'modules/fuel/dialogs/transactionDialogs';
 import { DriverSelect, VehicleSelect } from 'modules/fleet/components/FleetReferenceSelect';
 import { humanise } from 'modules/fleet/api/enums';
-import { useClampPage, useServerPage } from 'modules/fuel/components/useServerPage';
+import { useClampPage, useRegisterPaging } from 'modules/fuel/components/useRegisterPaging';
 import { formatMoney, formatQuantity, shortId } from 'modules/fuel/components/fuelFormat';
-import Button from 'shared/components/Button';
-import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar from 'shared/components/FilterBar';
+import { CellStack, ErrorBanner, FuelBadge, Panel, RegisterTable } from 'modules/fuel/components/fuelUi';
+import { DateTimeField, SelectField } from 'modules/fuel/components/fuelFields';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
-import { DateTimeField } from 'shared/components/DateField';
-import { TextInput } from 'shared/components/fields';
 import { formatDateTime, formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fuelPaths } from 'shared/layout/navigation';
@@ -54,12 +58,11 @@ const FuelTransactionsPage = () => {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [source, setSource] = useState('');
-  const [vendor, setVendor] = useState('');
   const [capturing, setCapturing] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  const filterKey = `${siteCode}|${status}|${vehicleId}|${driverId}|${from}|${to}|${source}|${vendor}`;
-  const paging = useServerPage(filterKey);
+  const filterKey = `${siteCode}|${status}|${vehicleId}|${driverId}|${from}|${to}|${source}`;
+  const paging = useRegisterPaging('fuel-transactions', filterKey);
 
   const query = useApiQuery(
     (signal) =>
@@ -70,7 +73,7 @@ const FuelTransactionsPage = () => {
           vehicleId: vehicleId || undefined,
           driverId: driverId || undefined,
           sourceSystem: source || undefined,
-          vendorReference: vendor.trim() || undefined,
+          vendorReference: paging.search || undefined,
           from: from ? new Date(from).toISOString() : undefined,
           to: to ? new Date(to).toISOString() : undefined,
           page: paging.page,
@@ -78,7 +81,7 @@ const FuelTransactionsPage = () => {
         },
         signal,
       ),
-    [filterKey, paging.page, paging.size],
+    [filterKey, paging.search, paging.page, paging.size],
   );
 
   useClampPage(paging.page, query.data?.totalPages, paging.setPage);
@@ -104,13 +107,13 @@ const FuelTransactionsPage = () => {
     }
   };
 
-  const columns = useMemo<Column<FuelTransaction>[]>(
+  const columns = useMemo<TableColumn<FuelTransaction>[]>(
     () => [
       {
-        key: 'transaction',
+        id: 'transaction',
         header: 'Transaction',
-        width: 280,
-        cell: (row) => (
+        minWidth: 240,
+        cell: ({ row }) => (
           <CellStack
             primary={`${row.vendorReference}${row.stationReference ? ` · ${row.stationReference}` : ''}`}
             secondary={`${formatDateTime(row.occurredAt)} · ${row.fuelProduct}`}
@@ -118,33 +121,31 @@ const FuelTransactionsPage = () => {
         ),
       },
       {
-        key: 'quantity',
+        id: 'quantity',
         header: 'Quantity',
         width: 120,
         align: 'right',
-        cell: (row) => formatQuantity(row.quantity, row.quantityUnit),
+        cell: ({ row }) => formatQuantity(row.quantity, row.quantityUnit),
       },
       {
-        key: 'cost',
+        id: 'cost',
         header: 'Total cost',
         width: 140,
         align: 'right',
-        cell: (row) => formatMoney(row.totalCost, row.currency),
+        cell: ({ row }) => formatMoney(row.totalCost, row.currency),
       },
       {
-        key: 'odometer',
+        id: 'odometer',
         header: 'Odometer',
         width: 120,
         align: 'right',
-        hideBelowLg: true,
-        cell: (row) => `${formatNumber(row.odometerReading)} km`,
+        cell: ({ row }) => `${formatNumber(row.odometerReading)} km`,
       },
       {
-        key: 'source',
+        id: 'source',
         header: 'Source',
         width: 150,
-        hideBelowLg: true,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack
             primary={row.sourceSystem}
             secondary={
@@ -154,45 +155,31 @@ const FuelTransactionsPage = () => {
         ),
       },
       {
-        key: 'receipt',
+        id: 'receipt',
         header: 'Receipt',
         width: 100,
         align: 'center',
-        hideBelowLg: true,
-        cell: (row) =>
+        cell: ({ row }) =>
           row.receiptEvidenceId ? (
-            <StatusChip value="ACTIVE" label="Held" tone="ready" />
+            <FuelBadge value="ACTIVE" label="Held" tone="ready" />
           ) : (
-            <StatusChip value="MISSING" label="None" tone="caution" />
+            <FuelBadge value="MISSING" label="None" tone="caution" />
           ),
       },
       {
-        key: 'status',
+        id: 'status',
         header: 'Status',
         width: 130,
         align: 'right',
-        cell: (row) => <StatusChip value={row.status} />,
+        cell: ({ row }) => <FuelBadge value={row.status} />,
       },
     ],
     [],
   );
 
   const filtersApplied = Boolean(
-    status || vehicleId || driverId || from || to || source || vendor,
+    status || vehicleId || driverId || from || to || source || paging.search,
   );
-
-  /**
-   * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
-   * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
-   * option already active clears it, same as the dropdown it replaces; toggling a different one while
-   * one is active swaps to the new choice instead of appearing to hold both.
-   */
-  const pickSingle = <T extends string>(current: T | '', next: string[]): T | '' => {
-    if (next.length === 0) {
-      return '';
-    }
-    return (next.find((value) => value !== current) ?? next[0]) as T;
-  };
 
   const resetFilters = () => {
     setStatus('');
@@ -201,106 +188,110 @@ const FuelTransactionsPage = () => {
     setFrom('');
     setTo('');
     setSource('');
-    setVendor('');
   };
 
+  const totalPages = query.data?.totalPages ?? 0;
+  const totalItems = query.data?.totalElements ?? 0;
+
   return (
-    <div>
-      <PageHeader
-        title="Fuel transactions"
-        subtitle="Every captured, imported and provider-ingested transaction at this site."
-        crumbs={[{ label: 'Fuel', to: fuelPaths.dashboard }, { label: 'Transactions' }]}
-        actions={
-          <>
+    <>
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Fuel transactions</SectionTitle>
+          <SectionActions>
+            <SiteSelect value={siteCode} onChange={setSiteCode} required />
             {/*
               Both controls are gated, and on different permissions, because they are different
               questions. A reporting viewer holds FUEL_TRANSACTION_READ and may open this register;
               they hold neither the export nor the capture grant, and were being offered both.
             */}
             {canExportFuelReports() && (
-              <Button
-                variant="outline"
-                startIcon="download"
-                loading={exporting}
-                onClick={exportReport}
-              >
+              <Button variant="outline" loading={exporting} onClick={exportReport}>
+                <Download size={14} strokeWidth={1.5} aria-hidden />
                 Export CSV
               </Button>
             )}
             {canCaptureFuel() && (
-              <Button variant="primary" startIcon="plus" onClick={() => setCapturing(true)}>
+              <Button variant="primary" onClick={() => setCapturing(true)}>
+                <Plus size={14} strokeWidth={1.5} aria-hidden />
                 Capture transaction
               </Button>
             )}
-          </>
-        }
-      />
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      <SectionCard flush>
-        <FilterBar onReset={resetFilters} resetDisabled={!filtersApplied}>
-          <SiteSelect value={siteCode} onChange={setSiteCode} required />
-          <FacetFilter
-            label="Status"
-            selected={status ? [status] : []}
-            onChange={(next) => setStatus(pickSingle(status, next))}
-            options={FUEL_TRANSACTION_STATUSES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <VehicleSelect
-            siteCode={siteCode}
-            value={vehicleId}
-            onChange={setVehicleId}
-            allowEmpty
-            emptyLabel="Any vehicle"
-          />
-          <DriverSelect
-            siteCode={siteCode}
-            value={driverId}
-            onChange={setDriverId}
-            allowEmpty
-            emptyLabel="Any driver"
-          />
-          <DateTimeField label="From" value={from} onChange={setFrom} />
-          <DateTimeField label="To" value={to} onChange={setTo} />
-          <FacetFilter
-            label="Source"
-            selected={source ? [source] : []}
-            onChange={(next) => setSource(pickSingle(source, next))}
-            options={SOURCE_FILTERS}
-          />
-          <TextInput
-            label="Vendor"
-            value={vendor}
-            onChange={setVendor}
-            placeholder="Part of the vendor name"
-          />
-        </FilterBar>
-      </SectionCard>
-
-      <div className="mt-5">
-        <SectionCard flush>
-          <DataState
-            loading={query.initialising}
-            error={query.error}
-            onRetry={query.refetch}
-            minHeight={300}
+      <PageSection>
+        <Panel
+          title="Transactions"
+          description="Every captured, imported and provider-ingested transaction at this site."
+        >
+          <Tabs
+            variant="pill"
+            value={status || 'all'}
+            onValueChange={(value) => setStatus(value === 'all' ? '' : (value as FuelTransactionStatus))}
           >
-            <DataTable
-              rows={query.data?.content ?? []}
-              columns={columns}
-              getRowId={(row) => row.id}
-              loading={query.loading}
-              onRowClick={(row) => navigate(fuelPaths.transactionDetail(row.id))}
-              caption="Fuel transactions matching the current filters, with quantity, cost, odometer reading, source, receipt standing and status."
-              emptyMessage="No transaction matches these filters."
-              page={query.data?.page ?? paging.page}
-              pageSize={query.data?.size ?? paging.size}
-              totalElements={query.data?.totalElements ?? 0}
-              onPageChange={paging.setPage}
-              onPageSizeChange={paging.setSize}
-            />
-          </DataState>
-        </SectionCard>
-      </div>
+            <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
+              {FUEL_TRANSACTION_STATUSES.map((value) => (
+                <TabsTrigger key={value} value={value}>
+                  {humanise(value)}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
+          {query.error && <ErrorBanner error={query.error} onRetry={query.refetch} className="mt-4" />}
+
+          <RegisterTable
+            paramPrefix="fuel-transactions"
+            columns={columns}
+            rows={query.data?.content ?? []}
+            rowKey={(row) => row.id}
+            loading={query.loading}
+            onRowClick={(row) => navigate(fuelPaths.transactionDetail(row.id))}
+            empty={{
+              title: 'No transactions yet',
+              description: 'Captured, imported and provider-ingested transactions at this site appear here.',
+              filteredTitle: 'No transaction matches these filters',
+            }}
+            filtersApplied={filtersApplied}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={paging.size}
+            searchPlaceholder="Search vendor or station"
+            onResetFilters={resetFilters}
+            filters={
+              <>
+                <VehicleSelect
+                  siteCode={siteCode}
+                  value={vehicleId}
+                  onChange={setVehicleId}
+                  allowEmpty
+                  emptyLabel="Any vehicle"
+                />
+                <DriverSelect
+                  siteCode={siteCode}
+                  value={driverId}
+                  onChange={setDriverId}
+                  allowEmpty
+                  emptyLabel="Any driver"
+                />
+                <DateTimeField label="From" value={from} onChange={setFrom} />
+                <DateTimeField label="To" value={to} onChange={setTo} />
+                <SelectField
+                  label="Source"
+                  value={source}
+                  onChange={setSource}
+                  options={SOURCE_FILTERS}
+                  allowEmpty
+                  emptyLabel="Any source"
+                />
+              </>
+            }
+          />
+        </Panel>
+      </PageSection>
 
       {capturing && (
         <CaptureTransactionDialog
@@ -316,7 +307,7 @@ const FuelTransactionsPage = () => {
           }}
         />
       )}
-    </div>
+    </>
   );
 };
 

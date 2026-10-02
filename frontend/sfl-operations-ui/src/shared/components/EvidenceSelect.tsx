@@ -1,7 +1,17 @@
-import { useMemo, useState } from 'react';
-import Button from 'shared/components/Button';
-import { SelectInput, TextInput, type SelectOption } from 'shared/components/fields';
+import { FocusEvent, ReactNode, useMemo, useState } from 'react';
+import {
+  Button,
+  Dropdown,
+  Field,
+  FieldControl,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  Input,
+  type DropdownOption,
+} from '@rfdtech/components';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
+import { cn } from './cn';
 
 /**
  * Picks evidence already filed against a record.
@@ -66,6 +76,21 @@ interface EvidenceSelectProps {
   className?: string;
 }
 
+/** Label with the required marker the shared fields have always carried, for assistive tech too. */
+const RequiredLabel = ({ label, required }: { label: string; required?: boolean }): ReactNode => (
+  <>
+    {label}
+    {required && (
+      <>
+        <span className="ml-0.5 text-error" aria-hidden="true">
+          *
+        </span>
+        <span className="sr-only"> (required)</span>
+      </>
+    )}
+  </>
+);
+
 export const EvidenceSelect = ({
   relatedRecordType,
   relatedRecordId,
@@ -90,7 +115,7 @@ export const EvidenceSelect = ({
     [relatedRecordType, relatedRecordId],
   );
 
-  const options = useMemo<SelectOption[]>(
+  const options = useMemo<DropdownOption[]>(
     () =>
       (evidence.data ?? []).map((reference) => ({
         value: reference.id,
@@ -104,28 +129,37 @@ export const EvidenceSelect = ({
   /** No record to query, nothing filed against it, or the operator asked for the text field. */
   const typing = manual || !relatedRecordType || !relatedRecordId || options.length === 0;
 
+  const typingHint =
+    helperText ??
+    (evidence.loading
+      ? 'Looking for evidence filed against this record…'
+      : options.length === 0 && relatedRecordType && relatedRecordId
+        ? `Nothing is filed against ${relatedRecordType} ${relatedRecordId.slice(0, 8)} yet - register it under Evidence and audit, then paste the reference here.`
+        : 'Paste the reference id from Evidence and audit.');
+
+  // The dropdown has no blur callback of its own, so the field reports leaving it - but not the
+  // focus moving into its own open list, which would mark the field visited before a choice is made.
+  const leave = (event: FocusEvent<HTMLDivElement>) => {
+    if (event.relatedTarget instanceof Element && event.relatedTarget.closest('[role="listbox"]')) {
+      return;
+    }
+    onBlur?.();
+  };
+
   if (typing) {
     return (
-      <div className={className}>
-        <TextInput
-          label={label}
-          required={required}
-          value={value}
-          onChange={onChange}
-          error={error}
-          onBlur={onBlur}
-          disabled={disabled}
-          helperText={
-            helperText ??
-            (evidence.loading
-              ? 'Looking for evidence filed against this record…'
-              : options.length === 0 && relatedRecordType && relatedRecordId
-                ? `Nothing is filed against ${relatedRecordType} ${relatedRecordId.slice(0, 8)} yet - register it under Evidence and audit, then paste the reference here.`
-                : 'Paste the reference id from Evidence and audit.')
-          }
-        />
+      <div className={cn('flex flex-col items-start gap-1.5', className)}>
+        <Field invalid={error} className="w-full" onBlur={onBlur}>
+          <FieldLabel>
+            <RequiredLabel label={label} required={required} />
+          </FieldLabel>
+          <FieldControl>
+            <Input value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} />
+          </FieldControl>
+          {error ? <FieldError>{typingHint}</FieldError> : <FieldDescription>{typingHint}</FieldDescription>}
+        </Field>
         {options.length > 0 && (
-          <Button size="sm" variant="ghost" onClick={() => setManual(false)} className="mt-1.5">
+          <Button size="sm" variant="ghost" onClick={() => setManual(false)}>
             Choose from this record instead
           </Button>
         )}
@@ -133,21 +167,25 @@ export const EvidenceSelect = ({
     );
   }
 
+  const chosenHint =
+    helperText ?? `${options.length} filed against this ${relatedRecordType.toLowerCase()}.`;
+
   return (
-    <div className={className}>
-      <SelectInput
-        label={label}
-        required={required}
-        value={value}
-        onChange={onChange}
-        options={options}
-        error={error}
-        onBlur={onBlur}
-        disabled={disabled}
-        helperText={
-          helperText ?? `${options.length} filed against this ${relatedRecordType.toLowerCase()}.`
-        }
-      />
+    <div className={cn('flex flex-col items-start gap-1.5', className)}>
+      <Field invalid={error} className="w-full" onBlur={leave}>
+        <FieldLabel htmlFor={undefined}>
+          <RequiredLabel label={label} required={required} />
+        </FieldLabel>
+        <Dropdown
+          aria-label={required ? `${label} (required)` : label}
+          value={value || null}
+          onValueChange={(next) => onChange(next ?? '')}
+          options={options}
+          disabled={disabled}
+          invalid={error}
+        />
+        {error ? <FieldError>{chosenHint}</FieldError> : <FieldDescription>{chosenHint}</FieldDescription>}
+      </Field>
       <Button
         size="sm"
         variant="ghost"
@@ -157,7 +195,6 @@ export const EvidenceSelect = ({
           // like something they chose.
           onChange('');
         }}
-        className="mt-1.5"
       >
         Use a reference from elsewhere
       </Button>

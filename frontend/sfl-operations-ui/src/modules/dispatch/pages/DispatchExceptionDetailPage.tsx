@@ -1,65 +1,92 @@
-import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
-import { EXCEPTION_TYPE_DESCRIPTIONS, ExceptionType } from 'modules/dispatch/api/enums';
-import { ExceptionAction, dispatchExceptionsApi } from 'modules/dispatch/api/dispatchApi';
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router";
+import { Button, PageSection } from "@rfdtech/components";
+import {
+  AlertCircle,
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  ChevronRight,
+  ClipboardList,
+  Lock,
+  Package,
+  Pencil,
+  Play,
+  RefreshCw,
+  Square,
+  UserPlus,
+  X,
+  type LucideIcon,
+} from "lucide-react";
+import {
+  EXCEPTION_TYPE_DESCRIPTIONS,
+  ExceptionType,
+} from "modules/dispatch/api/enums";
+import {
+  ExceptionAction,
+  dispatchExceptionsApi,
+} from "modules/dispatch/api/dispatchApi";
 import {
   EXCEPTION_RULES,
   exceptionActionAllowed,
   exceptionClosureBlockers,
   exceptionOpen,
   exceptionSlaBreached,
-} from 'modules/dispatch/api/workflow';
-import { ExceptionActionDialog } from 'modules/dispatch/dialogs/exceptionDialogs';
-import { formatDueIn, siteOf } from 'modules/fuel/components/fuelFormat';
-import { humanise } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
-import DataState from 'shared/components/DataState';
-import Icon from 'shared/components/Icon';
-import KeyValueGrid from 'shared/components/KeyValueGrid';
-import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatusChip from 'shared/components/StatusChip';
-import { formatDateTime } from 'shared/components/format';
-import { useApiQuery } from 'shared/hooks/useApiQuery';
-import { dispatchPaths } from 'shared/layout/navigation';
+} from "modules/dispatch/api/workflow";
+import { ExceptionActionDialog } from "modules/dispatch/dialogs/exceptionDialogs";
+import { formatDueIn, siteOf } from "modules/fuel/components/fuelFormat";
+import { humanise } from "modules/fleet/api/enums";
+import { Callout } from "modules/dispatch/components/formKit";
+import PageHeading from "modules/dispatch/components/PageHeading";
+import Panel from "modules/dispatch/components/Panel";
+import StatusBadge from "modules/dispatch/components/StatusBadge";
+import DataState from "shared/components/DataState";
+import KeyValueGrid from "shared/components/KeyValueGrid";
+import { useNotifier } from "shared/components/Notifier";
+import { formatDateTime } from "shared/components/format";
+import { useApiQuery } from "shared/hooks/useApiQuery";
+import { dispatchPaths } from "shared/layout/navigation";
 
 /** One sentence per action, naming what landed. */
 const CONFIRMATIONS: Record<ExceptionAction, string> = {
-  assign: 'Case assigned. The assignee has been notified.',
-  reassign: 'Case reassigned. The new assignee has been notified.',
-  review: 'Review started.',
-  'request-explanation': 'Explanation requested. The case is now awaiting a response.',
-  explain: 'Explanation recorded.',
-  approve: 'Approved. The case still has to be closed.',
-  reject: 'Rejected. The case still has to be closed.',
-  escalate: 'Case escalated.',
-  hold: 'Case placed on hold.',
-  resume: 'Case resumed.',
-  cancel: 'Case cancelled.',
-  close: 'Case closed. The manifest it was blocking can now close.',
-  reopen: 'Case reopened. It blocks its manifest again.',
+  assign: "Case assigned. The assignee has been notified.",
+  reassign: "Case reassigned. The new assignee has been notified.",
+  review: "Review started.",
+  "request-explanation":
+    "Explanation requested. The case is now awaiting a response.",
+  explain: "Explanation recorded.",
+  approve: "Approved. The case still has to be closed.",
+  reject: "Rejected. The case still has to be closed.",
+  escalate: "Case escalated.",
+  hold: "Case placed on hold.",
+  resume: "Case resumed.",
+  cancel: "Case cancelled.",
+  close: "Case closed. The manifest it was blocking can now close.",
+  reopen: "Case reopened. It blocks its manifest again.",
 };
 
 const ACTION_ORDER: ExceptionAction[] = [
-  'assign',
-  'reassign',
-  'review',
-  'request-explanation',
-  'explain',
-  'approve',
-  'reject',
-  'close',
-  'hold',
-  'resume',
-  'escalate',
-  'reopen',
-  'cancel',
+  "assign",
+  "reassign",
+  "review",
+  "request-explanation",
+  "explain",
+  "approve",
+  "reject",
+  "close",
+  "hold",
+  "resume",
+  "escalate",
+  "reopen",
+  "cancel",
 ];
 
 /** Actions the service takes no input for, so they run from the button rather than a dialog. */
-const NO_INPUT_ACTIONS: ExceptionAction[] = ['review', 'request-explanation', 'resume'];
+const NO_INPUT_ACTIONS: ExceptionAction[] = [
+  "review",
+  "request-explanation",
+  "resume",
+];
 
 /**
  * A dispatch exception case, and every action legal from where it stands.
@@ -69,7 +96,7 @@ const NO_INPUT_ACTIONS: ExceptionAction[] = ['review', 'request-explanation', 'r
  * and closure - the action that releases it - is the one the layout points at.
  */
 const DispatchExceptionDetailPage = () => {
-  const { caseId = '' } = useParams();
+  const { caseId = "" } = useParams();
   const navigate = useNavigate();
   const { notifySuccess, notifyError } = useNotifier();
   const [dialog, setDialog] = useState<ExceptionAction | null>(null);
@@ -83,7 +110,10 @@ const DispatchExceptionDetailPage = () => {
   const runDirect = async (action: ExceptionAction) => {
     setWorking(action);
     try {
-      await dispatchExceptionsApi.transition(caseId, action, { value: null, evidenceId: null });
+      await dispatchExceptionsApi.transition(caseId, action, {
+        value: null,
+        evidenceId: null,
+      });
       notifySuccess(CONFIRMATIONS[action]);
       exceptionCase.refetch();
     } catch (error) {
@@ -98,40 +128,44 @@ const DispatchExceptionDetailPage = () => {
   const breached = record ? exceptionSlaBreached(record) : false;
 
   return (
-    <div>
-      <PageHeader
-        title={record?.exceptionNumber ?? 'Exception case'}
+    <>
+      <PageHeading
+        title={record?.exceptionNumber ?? "Exception case"}
         subtitle={record ? humanise(record.type) : undefined}
         crumbs={[
-          { label: 'Dispatch', to: dispatchPaths.dashboard },
-          { label: 'Exception cases', to: dispatchPaths.exceptions },
-          { label: record?.exceptionNumber ?? '…' },
+          { label: "Dispatch", to: dispatchPaths.dashboard },
+          { label: "Exception cases", to: dispatchPaths.exceptions },
+          { label: record?.exceptionNumber ?? "…" },
         ]}
         actions={
           <Button
             variant="outline"
-            startIcon="arrow-left"
             onClick={() => navigate(dispatchPaths.exceptions)}
           >
+            <ArrowLeft size={14} strokeWidth={1.5} aria-hidden="true" />
             Queue
           </Button>
         }
         meta={
           record && (
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusChip value={record.status} />
-              <StatusChip value={record.severity} />
+            <>
+              <StatusBadge value={record.status} />
+              <StatusBadge value={record.severity} />
               {record.securityRelevant && (
-                <StatusChip value="SECRET" label="Security relevant" tone="blocked" />
+                <StatusBadge
+                  value="SECRET"
+                  label="Security relevant"
+                  tone="blocked"
+                />
               )}
               {record.escalationLevel > 0 && (
-                <StatusChip
+                <StatusBadge
                   value="ESCALATED"
                   label={`Escalation level ${record.escalationLevel}`}
                   tone="blocked"
                 />
               )}
-            </div>
+            </>
           )
         }
       />
@@ -143,156 +177,238 @@ const DispatchExceptionDetailPage = () => {
         minHeight={300}
       >
         {record && (
-          <div className="space-y-5">
-            {record.dispatchId && exceptionOpen(record) && (
-              <Alert variant="warning" title="This case is blocking a consignment">
-                The manifest it belongs to cannot be closed while this case is open. Closing the case
-                is what releases it.
-                <div className="mt-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    endIcon="chevron-right"
-                    onClick={() =>
-                      navigate(dispatchPaths.manifestDetail(record.dispatchId as string))
-                    }
-                  >
-                    Open the manifest
-                  </Button>
-                </div>
-              </Alert>
-            )}
-            {breached && (
-              <Alert variant="error" title="This case has breached its SLA">
-                It was due {formatDateTime(record.slaDueAt)} - {formatDueIn(record.slaDueAt)}.
-              </Alert>
-            )}
-            {record.securityRelevant && exceptionOpen(record) && (
-              <Alert variant="warning" title="This case is security relevant">
-                Escalating it surfaces the case to the security function as well as to the dispatch
-                manager.
-              </Alert>
-            )}
-            {record.status === 'CLOSED' && (
-              <Alert variant="success" title="This case is closed">
-                {record.closureReason ?? 'No closure reason was recorded.'}
-              </Alert>
-            )}
-            {record.status === 'CANCELLED' && (
-              <Alert variant="info" title="This case is cancelled">
-                {record.closureReason ?? 'No reason was recorded.'}
-              </Alert>
-            )}
+          <>
+            <PageSection className="space-y-3 empty:hidden">
+              {record.dispatchId && exceptionOpen(record) && (
+                <Callout
+                  tone="warning"
+                  title="This case is blocking a consignment"
+                  action={
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        navigate(
+                          dispatchPaths.manifestDetail(
+                            record.dispatchId as string,
+                          ),
+                        )
+                      }
+                    >
+                      Open the manifest
+                      <ChevronRight
+                        size={14}
+                        strokeWidth={1.5}
+                        aria-hidden="true"
+                      />
+                    </Button>
+                  }
+                >
+                  The manifest it belongs to cannot be closed while this case is
+                  open. Closing the case is what releases it.
+                </Callout>
+              )}
+              {breached && (
+                <Callout tone="danger" title="This case has breached its SLA">
+                  It was due {formatDateTime(record.slaDueAt)} -{" "}
+                  {formatDueIn(record.slaDueAt)}.
+                </Callout>
+              )}
+              {record.securityRelevant && exceptionOpen(record) && (
+                <Callout tone="warning" title="This case is security relevant">
+                  Escalating it surfaces the case to the security function as
+                  well as to the dispatch manager.
+                </Callout>
+              )}
+              {record.status === "CLOSED" && (
+                <Callout tone="success" title="This case is closed">
+                  {record.closureReason ?? "No closure reason was recorded."}
+                </Callout>
+              )}
+              {record.status === "CANCELLED" && (
+                <Callout tone="info" title="This case is cancelled">
+                  {record.closureReason ?? "No reason was recorded."}
+                </Callout>
+              )}
+            </PageSection>
 
-            <SectionCard title="Actions">
+            <Panel title="Actions">
               <div className="flex flex-wrap items-center gap-2">
-                {ACTION_ORDER.filter((action) => exceptionActionAllowed(record, action)).map(
-                  (action) =>
-                    NO_INPUT_ACTIONS.includes(action) ? (
-                      <Button
-                        key={action}
-                        variant="outline"
-                        startIcon="play"
-                        loading={working === action}
-                        onClick={() => runDirect(action)}
-                      >
-                        {EXCEPTION_RULES[action].label}
-                      </Button>
-                    ) : (
-                      <Button
-                        key={action}
-                        variant={buttonVariant(action)}
-                        startIcon={buttonIcon(action)}
-                        onClick={() => setDialog(action)}
-                      >
-                        {EXCEPTION_RULES[action].label}
-                      </Button>
-                    ),
-                )}
+                {ACTION_ORDER.filter((action) =>
+                  exceptionActionAllowed(record, action),
+                ).map((action) => {
+                  const ActionIcon = NO_INPUT_ACTIONS.includes(action)
+                    ? Play
+                    : buttonIcon(action);
+                  return (
+                    <Button
+                      key={action}
+                      variant={
+                        NO_INPUT_ACTIONS.includes(action)
+                          ? "outline"
+                          : buttonVariant(action)
+                      }
+                      loading={
+                        NO_INPUT_ACTIONS.includes(action)
+                          ? working === action
+                          : undefined
+                      }
+                      onClick={() =>
+                        NO_INPUT_ACTIONS.includes(action)
+                          ? runDirect(action)
+                          : setDialog(action)
+                      }
+                    >
+                      <ActionIcon
+                        size={14}
+                        strokeWidth={1.5}
+                        aria-hidden="true"
+                      />
+                      {EXCEPTION_RULES[action].label}
+                    </Button>
+                  );
+                })}
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 {record.dispatchId && (
                   <Button
                     variant="ghost"
-                    startIcon="clipboard-list"
-                    endIcon="chevron-right"
                     onClick={() =>
-                      navigate(dispatchPaths.manifestDetail(record.dispatchId as string))
+                      navigate(
+                        dispatchPaths.manifestDetail(
+                          record.dispatchId as string,
+                        ),
+                      )
                     }
                   >
+                    <ClipboardList
+                      size={14}
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                    />
                     Manifest
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                    />
                   </Button>
                 )}
                 {record.courierItemId && (
                   <Button
                     variant="ghost"
-                    startIcon="package"
-                    endIcon="chevron-right"
-                    onClick={() => navigate(dispatchPaths.itemDetail(record.courierItemId as string))}
+                    onClick={() =>
+                      navigate(
+                        dispatchPaths.itemDetail(
+                          record.courierItemId as string,
+                        ),
+                      )
+                    }
                   >
+                    <Package size={14} strokeWidth={1.5} aria-hidden="true" />
                     Courier item
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                    />
                   </Button>
                 )}
               </div>
-            </SectionCard>
+            </Panel>
 
-            <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
-              <div className="space-y-5">
-                <SectionCard title="Case">
+            <div className="mt-6 grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+              <div className="space-y-6">
+                <Panel title="Case">
                   <KeyValueGrid
                     items={[
-                      { label: 'Case number', value: record.exceptionNumber },
-                      { label: 'Site', value: siteOf(record.siteCode) },
-                      { label: 'Type', value: humanise(record.type) },
-                      { label: 'Severity', value: humanise(record.severity) },
+                      { label: "Case number", value: record.exceptionNumber },
+                      { label: "Site", value: siteOf(record.siteCode) },
+                      { label: "Type", value: humanise(record.type) },
+                      { label: "Severity", value: humanise(record.severity) },
                       {
-                        label: 'Security relevant',
-                        value: record.securityRelevant ? 'Yes' : 'No',
+                        label: "Security relevant",
+                        value: record.securityRelevant ? "Yes" : "No",
                       },
-                      { label: 'Assignee', value: record.assignee ?? 'Unassigned' },
-                      { label: 'SLA due', value: formatDateTime(record.slaDueAt) },
-                      { label: 'SLA standing', value: formatDueIn(record.slaDueAt) },
-                      { label: 'Escalation level', value: record.escalationLevel },
-                      { label: 'Occurrence key', value: record.occurrenceKey, span: 2 },
-                      { label: 'Explanation', value: record.explanation ?? '-', span: 2 },
                       {
-                        label: 'Decision',
-                        value: record.decision ? humanise(record.decision) : '-',
+                        label: "Assignee",
+                        value: record.assignee ?? "Unassigned",
                       },
-                      { label: 'Evidence reference', value: record.evidenceId ?? '-' },
-                      { label: 'Closure reason', value: record.closureReason ?? '-', span: 2 },
+                      {
+                        label: "SLA due",
+                        value: formatDateTime(record.slaDueAt),
+                      },
+                      {
+                        label: "SLA standing",
+                        value: formatDueIn(record.slaDueAt),
+                      },
+                      {
+                        label: "Escalation level",
+                        value: record.escalationLevel,
+                      },
+                      {
+                        label: "Occurrence key",
+                        value: record.occurrenceKey,
+                        span: 2,
+                      },
+                      {
+                        label: "Explanation",
+                        value: record.explanation ?? "-",
+                        span: 2,
+                      },
+                      {
+                        label: "Decision",
+                        value: record.decision
+                          ? humanise(record.decision)
+                          : "-",
+                      },
+                      {
+                        label: "Evidence reference",
+                        value: record.evidenceId ?? "-",
+                      },
+                      {
+                        label: "Closure reason",
+                        value: record.closureReason ?? "-",
+                        span: 2,
+                      },
                     ]}
                   />
-                </SectionCard>
+                </Panel>
 
-                <SectionCard title="Why this case exists">
-                  <p className="text-theme-sm text-gray-700">
-                    {EXCEPTION_TYPE_DESCRIPTIONS[record.type as ExceptionType] ??
-                      'This type is recorded by the service but is not described here.'}
+                <Panel title="Why this case exists">
+                  <p className="text-sm text-foreground">
+                    {EXCEPTION_TYPE_DESCRIPTIONS[
+                      record.type as ExceptionType
+                    ] ??
+                      "This type is recorded by the service but is not described here."}
                   </p>
                   {record.detectedRules.length > 0 && (
                     <ul className="mt-3 space-y-2.5">
                       {record.detectedRules.map((rule) => (
-                        <li key={rule} className="rounded-md border border-gray-200 px-3.5 py-2.5">
-                          <p className="text-theme-sm font-semibold text-gray-900">
+                        <li
+                          key={rule}
+                          className="rounded-md border border-border px-3.5 py-2.5"
+                        >
+                          <p className="text-sm font-semibold text-foreground">
                             {humanise(rule)}
                           </p>
                         </li>
                       ))}
                     </ul>
                   )}
-                  <p className="mt-3 text-theme-xs text-gray-600">
-                    The occurrence key is stable per detection, so a repeated detection updates this
-                    case rather than raising a second one.
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    The occurrence key is stable per detection, so a repeated
+                    detection updates this case rather than raising a second
+                    one.
                   </p>
-                </SectionCard>
+                </Panel>
               </div>
 
-              <div className="space-y-5">
-                <SectionCard
+              <div className="space-y-6">
+                <Panel
                   title="Path to closure"
-                  subtitle="All three are required before the case can be closed"
+                  description="All three are required before the case can be closed"
                 >
                   <ul className="space-y-3">
                     <ClosureStep
@@ -307,88 +423,105 @@ const DispatchExceptionDetailPage = () => {
                     />
                     <ClosureStep
                       label="Closure evidence"
-                      satisfied={record.status === 'CLOSED'}
+                      satisfied={record.status === "CLOSED"}
                       hint="Supplied with the closure itself."
                     />
                   </ul>
                   {exceptionOpen(record) && closureBlockers.length === 0 && (
-                    <Alert variant="success" className="mt-4">
-                      Everything the service needs is recorded. Closure needs an evidence reference.
-                    </Alert>
+                    <Callout tone="success" className="mt-4">
+                      Everything the service needs is recorded. Closure needs an
+                      evidence reference.
+                    </Callout>
                   )}
-                </SectionCard>
+                </Panel>
 
-                <SectionCard title="Provenance">
+                <Panel title="Provenance">
                   <KeyValueGrid
                     columns={2}
                     items={[
-                      { label: 'Raised by', value: record.metadata.createdBy ?? '-' },
-                      { label: 'Raised at', value: formatDateTime(record.metadata.createdAt) },
-                      { label: 'Last change by', value: record.metadata.lastModifiedBy ?? '-' },
                       {
-                        label: 'Last change at',
+                        label: "Raised by",
+                        value: record.metadata.createdBy ?? "-",
+                      },
+                      {
+                        label: "Raised at",
+                        value: formatDateTime(record.metadata.createdAt),
+                      },
+                      {
+                        label: "Last change by",
+                        value: record.metadata.lastModifiedBy ?? "-",
+                      },
+                      {
+                        label: "Last change at",
                         value: formatDateTime(record.metadata.lastModifiedAt),
                       },
-                      { label: 'Record version', value: record.metadata.version },
                       {
-                        label: 'Correlation ID',
-                        value: record.metadata.auditCorrelationId ?? '-',
+                        label: "Record version",
+                        value: record.metadata.version,
+                      },
+                      {
+                        label: "Correlation ID",
+                        value: record.metadata.auditCorrelationId ?? "-",
                         span: 2,
                       },
                     ]}
                   />
-                  <p className="mt-3 text-theme-xs text-gray-600">
-                    The dispatch module exposes no per-record transition history, so this is the
-                    case’s own provenance rather than its audit trail.
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    The dispatch module exposes no per-record transition
+                    history, so this is the case’s own provenance rather than
+                    its audit trail.
                   </p>
-                </SectionCard>
+                </Panel>
 
-                <SectionCard title="Where this can go next">
+                <Panel title="Where this can go next">
                   <ul className="space-y-2.5">
                     {ACTION_ORDER.map((action) => {
                       const allowed = exceptionActionAllowed(record, action);
                       const rule = EXCEPTION_RULES[action];
+                      const MarkIcon = allowed ? CheckCircle2 : X;
                       return (
                         <li key={action} className="flex items-start gap-2.5">
-                          <Icon
-                            name={allowed ? 'check-circle' : 'close'}
+                          <MarkIcon
                             size={15}
                             className={
                               allowed
-                                ? 'mt-0.5 shrink-0 text-success-700'
-                                : 'mt-0.5 shrink-0 text-gray-400'
+                                ? "mt-0.5 shrink-0 text-success"
+                                : "mt-0.5 shrink-0 text-muted-foreground"
                             }
+                            aria-hidden="true"
                           />
                           <div className="min-w-0">
                             <p
                               className={
                                 allowed
-                                  ? 'text-theme-sm font-medium text-gray-900'
-                                  : 'text-theme-sm text-gray-500'
+                                  ? "text-sm font-medium text-foreground"
+                                  : "text-sm text-muted-foreground"
                               }
                             >
                               {rule.label}
                               {rule.privileged && (
-                                <span className="ml-1.5 text-theme-xs font-semibold text-gold-900">
+                                <span className="ml-1.5 text-xs font-semibold text-warning-text">
                                   privileged
                                 </span>
                               )}
                             </p>
-                            <p className="text-theme-xs text-gray-600">
+                            <p className="text-xs text-muted-foreground">
                               {allowed
                                 ? `Needs ${rule.permission}.`
                                 : rule.from.length === 0
-                                  ? 'Available from any state.'
+                                  ? "Available from any state."
                                   : `From ${rule.from
-                                      .map((state) => humanise(state).toLowerCase())
-                                      .join(', ')}.`}
+                                      .map((state) =>
+                                        humanise(state).toLowerCase(),
+                                      )
+                                      .join(", ")}.`}
                             </p>
                           </div>
                         </li>
                       );
                     })}
                   </ul>
-                </SectionCard>
+                </Panel>
               </div>
             </div>
 
@@ -404,10 +537,10 @@ const DispatchExceptionDetailPage = () => {
                 }}
               />
             )}
-          </div>
+          </>
         )}
       </DataState>
-    </div>
+    </>
   );
 };
 
@@ -419,57 +552,64 @@ const ClosureStep = ({
   label: string;
   satisfied: boolean;
   hint: string;
-}) => (
-  <li className="flex items-start gap-2.5">
-    <Icon
-      name={satisfied ? 'check-circle' : 'alert-circle'}
-      size={16}
-      className={satisfied ? 'mt-0.5 shrink-0 text-success-700' : 'mt-0.5 shrink-0 text-warning-700'}
-    />
-    <div className="min-w-0">
-      <p className="text-theme-sm font-medium text-gray-900">{label}</p>
-      {!satisfied && <p className="text-theme-xs text-gray-600">{hint}</p>}
-    </div>
-  </li>
-);
+}) => {
+  const StepIcon = satisfied ? CheckCircle2 : AlertCircle;
+  return (
+    <li className="flex items-start gap-2.5">
+      <StepIcon
+        size={16}
+        className={
+          satisfied
+            ? "mt-0.5 shrink-0 text-success"
+            : "mt-0.5 shrink-0 text-warning"
+        }
+        aria-hidden="true"
+      />
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        {!satisfied && <p className="text-xs text-muted-foreground">{hint}</p>}
+      </div>
+    </li>
+  );
+};
 
 const buttonVariant = (action: ExceptionAction) => {
   switch (action) {
-    case 'assign':
-      return 'primary' as const;
-    case 'close':
-      return 'accent' as const;
-    case 'cancel':
-    case 'reject':
-      return 'danger' as const;
+    case "assign":
+      return "primary" as const;
+    case "close":
+      return "secondary" as const;
+    case "cancel":
+    case "reject":
+      return "destructive" as const;
     default:
-      return 'outline' as const;
+      return "outline" as const;
   }
 };
 
-const buttonIcon = (action: ExceptionAction) => {
+const buttonIcon = (action: ExceptionAction): LucideIcon => {
   switch (action) {
-    case 'assign':
-    case 'reassign':
-      return 'user-plus' as const;
-    case 'explain':
-      return 'edit' as const;
-    case 'approve':
-      return 'check-circle' as const;
-    case 'reject':
-      return 'close' as const;
-    case 'escalate':
-      return 'alert-triangle' as const;
-    case 'hold':
-      return 'stop' as const;
-    case 'close':
-      return 'lock' as const;
-    case 'reopen':
-      return 'refresh' as const;
-    case 'cancel':
-      return 'close' as const;
+    case "assign":
+    case "reassign":
+      return UserPlus;
+    case "explain":
+      return Pencil;
+    case "approve":
+      return CheckCircle2;
+    case "reject":
+      return X;
+    case "escalate":
+      return AlertTriangle;
+    case "hold":
+      return Square;
+    case "close":
+      return Lock;
+    case "reopen":
+      return RefreshCw;
+    case "cancel":
+      return X;
     default:
-      return 'play' as const;
+      return Play;
   }
 };
 

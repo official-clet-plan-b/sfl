@@ -1,5 +1,19 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate } from 'react-router';
+import {
+  Badge,
+  Button,
+  Input,
+  MetricCard,
+  MetricCards,
+  PageSection,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  type TableColumn,
+} from '@rfdtech/components';
+import { Clock, Download, ShieldAlert } from 'lucide-react';
 import { DispatchExceptionCase } from 'modules/dispatch/api/dto';
 import {
   EXCEPTION_SEVERITIES,
@@ -11,45 +25,33 @@ import {
 } from 'modules/dispatch/api/enums';
 import { dispatchExceptionsApi, dispatchReportsApi } from 'modules/dispatch/api/dispatchApi';
 import { exceptionOpen, exceptionSlaBreached } from 'modules/dispatch/api/workflow';
+import CellStack from 'modules/dispatch/components/CellStack';
+import PageHeading from 'modules/dispatch/components/PageHeading';
+import Panel from 'modules/dispatch/components/Panel';
+import {
+  FilterDropdown,
+  RegisterTable,
+  useClampRegisterPage,
+  useRegisterQuery,
+} from 'modules/dispatch/components/registerTable';
+import StatusBadge from 'modules/dispatch/components/StatusBadge';
 import { formatDueIn } from 'modules/fuel/components/fuelFormat';
 import { humanise } from 'modules/fleet/api/enums';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar from 'shared/components/FilterBar';
-import Icon from 'shared/components/Icon';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatCard from 'shared/components/StatCard';
-import StatusChip from 'shared/components/StatusChip';
-import { SelectInput, TextInput } from 'shared/components/fields';
-import { formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
-import { useClampPage, useServerPage } from 'shared/hooks/useServerPage';
 import { dispatchPaths } from 'shared/layout/navigation';
 
+const PREFIX = 'exceptions';
+
 const QUEUE_VIEWS = [
-  { value: 'OPEN', label: 'Open cases' },
+  { value: 'OPEN', label: 'Open' },
   { value: 'BREACHED', label: 'Breaching SLA' },
   { value: 'SECURITY', label: 'Security relevant' },
   { value: 'UNASSIGNED', label: 'Unassigned' },
+  { value: 'ALL', label: 'All' },
 ];
-
-/**
- * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
- * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
- * option already active clears it, same as the dropdown it replaces; toggling a different one while
- * one is active swaps to the new choice instead of appearing to hold both.
- */
-const pickSingle = <T extends string>(current: T | '', next: string[]): T | '' => {
-  if (next.length === 0) {
-    return '';
-  }
-  return (next.find((value) => value !== current) ?? next[0]) as T;
-};
 
 /**
  * The dispatch exception queue.
@@ -65,19 +67,13 @@ const pickSingle = <T extends string>(current: T | '', next: string[]): T | '' =
 const DispatchExceptionsPage = () => {
   const navigate = useNavigate();
   const { notifySuccess, notifyError } = useNotifier();
-  const [searchParams] = useSearchParams();
 
   const [siteCode, setSiteCode] = useState(defaultSite);
-  const [type, setType] = useState<ExceptionType | ''>(
-    (searchParams.get('type') as ExceptionType | null) ?? '',
-  );
-  const [status, setStatus] = useState<ExceptionStatus | ''>(
-    (searchParams.get('status') as ExceptionStatus | null) ?? '',
-  );
   const [view, setView] = useState('OPEN');
-  const [severity, setSeverity] = useState<ExceptionSeverity | ''>('');
-  const [assignee, setAssignee] = useState('');
   const [exporting, setExporting] = useState(false);
+
+  const table = useRegisterQuery(PREFIX);
+  const { filters } = table;
 
   /**
    * Each view is a set of server-side predicates, not a pass over whatever came back.
@@ -97,28 +93,34 @@ const DispatchExceptionsPage = () => {
             ? { openOnly: true, unassigned: true }
             : {};
 
-  const filterKey = `${siteCode}|${type}|${status}|${view}|${severity}|${assignee}`;
-  const paging = useServerPage(filterKey);
-
   const query = useApiQuery(
     (signal) =>
       dispatchExceptionsApi.search(
         {
           siteCode,
-          type: type || undefined,
-          status: status || undefined,
-          severity: severity || undefined,
-          assignee: assignee.trim() || undefined,
+          type: (filters.type as ExceptionType) || undefined,
+          status: (filters.status as ExceptionStatus) || undefined,
+          severity: (filters.severity as ExceptionSeverity) || undefined,
+          assignee: filters.assignee?.trim() || undefined,
           ...viewParams,
-          page: paging.page,
-          size: paging.size,
+          page: table.page,
+          size: table.size,
         },
         signal,
       ),
-    [siteCode, type, status, severity, assignee, view, paging.page, paging.size],
+    [
+      siteCode,
+      filters.type,
+      filters.status,
+      filters.severity,
+      filters.assignee,
+      view,
+      table.page,
+      table.size,
+    ],
   );
 
-  useClampPage(paging.page, query.data?.totalPages, paging.setPage);
+  useClampRegisterPage(table, query.data?.totalPages);
 
   /**
    * The four queue counts, each its own site-wide query.
@@ -146,6 +148,13 @@ const DispatchExceptionsPage = () => {
     [siteCode],
   );
 
+  const viewCount: Record<string, number | undefined> = {
+    OPEN: counts.data?.open,
+    BREACHED: counts.data?.breached,
+    SECURITY: counts.data?.security,
+    UNASSIGNED: counts.data?.unassigned,
+  };
+
   const exportReport = async () => {
     setExporting(true);
     try {
@@ -161,55 +170,42 @@ const DispatchExceptionsPage = () => {
     }
   };
 
-  const columns = useMemo<Column<DispatchExceptionCase>[]>(
+  const columns = useMemo<TableColumn<DispatchExceptionCase>[]>(
     () => [
       {
-        key: 'case',
+        id: 'case',
         header: 'Case',
-        width: 260,
-        cell: (row) => (
+        minWidth: 240,
+        cell: ({ row }) => (
           <CellStack
-            primary={`${row.exceptionNumber} · ${humanise(row.type)}`}
-            secondary={
+            primary={row.exceptionNumber}
+            secondary={`${humanise(row.type)} · ${
               row.detectedRules.map((rule) => humanise(rule)).join(', ') || 'no rule recorded'
-            }
+            }`}
           />
         ),
       },
       {
-        key: 'sla',
-        header: 'SLA',
-        width: 150,
-        cell: (row) => (
-          <span
-            className={exceptionSlaBreached(row) ? 'font-semibold text-error-800' : 'text-gray-700'}
-          >
-            {exceptionSlaBreached(row) && (
-              <Icon name="clock" size={13} className="mr-1 inline align-[-2px]" />
-            )}
-            {formatDueIn(row.slaDueAt)}
-          </span>
-        ),
+        id: 'blocks',
+        header: 'Manifest blocked',
+        cell: ({ row }) =>
+          row.dispatchId && exceptionOpen(row) ? (
+            <StatusBadge value="BLOCKED" label="Manifest" tone="blocked" />
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          ),
       },
       {
-        key: 'assignee',
-        header: 'Assignee',
-        width: 150,
-        hideBelowLg: true,
-        cell: (row) => row.assignee ?? <span className="text-gray-500">Unassigned</span>,
-      },
-      {
-        key: 'severity',
+        id: 'severity',
         header: 'Severity',
-        width: 140,
-        cell: (row) => (
+        cell: ({ row }) => (
           <div className="flex items-center gap-1.5">
-            <StatusChip value={row.severity} />
+            <StatusBadge value={row.severity} />
             {row.securityRelevant && (
-              <Icon
-                name="shield-lock"
+              <ShieldAlert
                 size={14}
-                className="shrink-0 text-error-800"
+                strokeWidth={1.75}
+                className="shrink-0 text-error"
                 aria-label="Security relevant"
               />
             )}
@@ -217,162 +213,149 @@ const DispatchExceptionsPage = () => {
         ),
       },
       {
-        key: 'blocks',
-        header: 'Blocks',
-        width: 110,
-        align: 'center',
-        hideBelowLg: true,
-        cell: (row) =>
-          row.dispatchId && exceptionOpen(row) ? (
-            <StatusChip value="BLOCKED" label="Manifest" tone="blocked" />
-          ) : (
-            <span className="text-gray-500">-</span>
-          ),
+        id: 'assignee',
+        header: 'Assignee',
+        cell: ({ row }) =>
+          row.assignee ?? <span className="text-muted-foreground">Unassigned</span>,
       },
       {
-        key: 'status',
+        id: 'sla',
+        header: 'SLA',
+        cell: ({ row }) => (
+          <span className={exceptionSlaBreached(row) ? 'font-semibold text-error' : undefined}>
+            {exceptionSlaBreached(row) && (
+              <Clock size={13} strokeWidth={1.75} className="mr-1 inline align-[-2px]" aria-hidden="true" />
+            )}
+            {formatDueIn(row.slaDueAt)}
+          </span>
+        ),
+      },
+      {
+        id: 'status',
         header: 'Status',
-        width: 160,
-        align: 'right',
-        cell: (row) => <StatusChip value={row.status} />,
+        cell: ({ row }) => <StatusBadge value={row.status} />,
       },
     ],
     [],
   );
 
-  const filtersApplied = Boolean(type || status || severity || assignee || view !== 'OPEN');
-
   return (
-    <div>
-      <PageHeader
+    <>
+      <PageHeading
         title="Dispatch exception cases"
         subtitle="Custody gaps, receipt variances, scan mismatches and return discrepancies."
         crumbs={[{ label: 'Dispatch', to: dispatchPaths.dashboard }, { label: 'Exception cases' }]}
         actions={
           <>
-            <Button
-              variant="outline"
-              startIcon="download"
-              loading={exporting}
-              onClick={exportReport}
-            >
+            <SiteSelect value={siteCode} onChange={setSiteCode} required />
+            <Button variant="outline" loading={exporting} onClick={exportReport}>
+              <Download size={14} strokeWidth={1.5} aria-hidden="true" />
               Export CSV
-            </Button>
-            <Button variant="outline" startIcon="refresh" onClick={query.refetch}>
-              Refresh
             </Button>
           </>
         }
       />
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Open cases"
-          value={formatNumber(counts.data?.open ?? 0)}
-          icon="alert-triangle"
-          tone={(counts.data?.open ?? 0) > 0 ? 'caution' : 'neutral'}
-          caption="Each blocks its manifest from closing"
-          onClick={() => setView('OPEN')}
-        />
-        <StatCard
-          label="Breaching SLA"
-          value={formatNumber(counts.data?.breached ?? 0)}
-          icon="clock"
-          tone={(counts.data?.breached ?? 0) > 0 ? 'critical' : 'neutral'}
-          caption="Past the resolution target"
-          onClick={() => setView('BREACHED')}
-        />
-        <StatCard
-          label="Security relevant"
-          value={formatNumber(counts.data?.security ?? 0)}
-          icon="shield-lock"
-          tone={(counts.data?.security ?? 0) > 0 ? 'critical' : 'neutral'}
-          caption="Surfaced to the security function"
-          onClick={() => setView('SECURITY')}
-        />
-        <StatCard
-          label="Unassigned"
-          value={formatNumber(counts.data?.unassigned ?? 0)}
-          icon="user-plus"
-          tone={(counts.data?.unassigned ?? 0) > 0 ? 'caution' : 'neutral'}
-          caption="Nobody is accountable yet"
-          onClick={() => setView('UNASSIGNED')}
-        />
-      </div>
+      <PageSection>
+        <MetricCards>
+          <MetricCard
+            variant="soft"
+            loading={counts.initialising}
+            label="Open cases"
+            value={counts.data?.open ?? 0}
+            description="Each blocks its manifest from closing"
+          />
+          <MetricCard
+            variant="soft"
+            loading={counts.initialising}
+            label="Breaching SLA"
+            value={counts.data?.breached ?? 0}
+            description="Past the resolution target"
+          />
+          <MetricCard
+            variant="soft"
+            loading={counts.initialising}
+            label="Security relevant"
+            value={counts.data?.security ?? 0}
+            description="Surfaced to the security function"
+          />
+          <MetricCard
+            variant="soft"
+            loading={counts.initialising}
+            label="Unassigned"
+            value={counts.data?.unassigned ?? 0}
+            description="Nobody is accountable yet"
+          />
+        </MetricCards>
+      </PageSection>
 
-      <SectionCard flush>
-        <FilterBar
-          onReset={() => {
-            setType('');
-            setStatus('');
-            setView('OPEN');
-            setSeverity('');
-            setAssignee('');
-          }}
-          resetDisabled={!filtersApplied}
-        >
-          <SiteSelect value={siteCode} onChange={setSiteCode} required />
-          <FacetFilter
-            label="Type"
-            selected={type ? [type] : []}
-            onChange={(next) => setType(pickSingle(type, next))}
-            options={EXCEPTION_TYPES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <FacetFilter
-            label="Status"
-            selected={status ? [status] : []}
-            onChange={(next) => setStatus(pickSingle(status, next))}
-            options={EXCEPTION_STATUSES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <SelectInput
-            label="View"
-            value={view}
-            onChange={setView}
-            options={QUEUE_VIEWS}
-            allowEmpty
-            emptyLabel="Everything returned"
-          />
-          <FacetFilter
-            label="Severity"
-            selected={severity ? [severity] : []}
-            onChange={(next) => setSeverity(pickSingle(severity, next))}
-            options={EXCEPTION_SEVERITIES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <TextInput
-            label="Assignee"
-            value={assignee}
-            onChange={setAssignee}
-            placeholder="Part of a name"
-          />
-        </FilterBar>
-      </SectionCard>
+      <Panel
+        title="Exception cases"
+        description="Custody gaps, receipt variances, scan mismatches and return discrepancies, oldest SLA first"
+      >
+        <Tabs variant="pill" value={view} onValueChange={setView}>
+          <TabsList>
+            {QUEUE_VIEWS.map((entry) => (
+              <TabsTrigger key={entry.value} value={entry.value}>
+                {entry.label}
+                {viewCount[entry.value] !== undefined && (
+                  <Badge size="sm" className="ml-1.5">
+                    {viewCount[entry.value]}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-      <div className="mt-5">
-        <SectionCard flush>
-          <DataState
-            loading={query.initialising}
-            error={query.error}
-            onRetry={query.refetch}
-            minHeight={300}
-          >
-            <DataTable
-              rows={query.data?.content ?? []}
-              columns={columns}
-              getRowId={(row) => row.id}
-              loading={query.loading}
-              onRowClick={(row) => navigate(dispatchPaths.exceptionDetail(row.id))}
-              caption="Dispatch exception cases matching the current filters, ordered by SLA due time, with assignee, severity, security relevance, whether they block a manifest, and status."
-              emptyMessage="No case matches these filters."
-              page={query.data?.page ?? paging.page}
-              pageSize={query.data?.size ?? paging.size}
-              totalElements={query.data?.totalElements ?? 0}
-              onPageChange={paging.setPage}
-              onPageSizeChange={paging.setSize}
-            />
-          </DataState>
-        </SectionCard>
-      </div>
-    </div>
+          <TabsContent value={view}>
+            <DataState loading={false} error={query.error} onRetry={query.refetch}>
+              <RegisterTable
+                paramPrefix={PREFIX}
+                caption="Dispatch exception cases matching the current filters, ordered by SLA due time, with the manifest each blocks, severity, security relevance, assignee, SLA and status."
+                columns={columns}
+                rows={query.data?.content ?? []}
+                rowKey={(row) => row.id}
+                loading={query.loading}
+                totalPages={query.data?.totalPages ?? 1}
+                totalItems={query.data?.totalElements ?? 0}
+                onRowClick={(row) => navigate(dispatchPaths.exceptionDetail(row.id))}
+                searchable={false}
+                filters={
+                  <>
+                    <FilterDropdown
+                      paramPrefix={PREFIX}
+                      name="type"
+                      label="Type"
+                      options={EXCEPTION_TYPES.map((value) => ({ value, label: humanise(value) }))}
+                    />
+                    <FilterDropdown
+                      paramPrefix={PREFIX}
+                      name="status"
+                      label="Status"
+                      options={EXCEPTION_STATUSES.map((value) => ({ value, label: humanise(value) }))}
+                    />
+                    <FilterDropdown
+                      paramPrefix={PREFIX}
+                      name="severity"
+                      label="Severity"
+                      options={EXCEPTION_SEVERITIES.map((value) => ({ value, label: humanise(value) }))}
+                    />
+                    <Input
+                      name="assignee"
+                      aria-label="Assignee"
+                      placeholder="Assignee: part of a name"
+                      defaultValue={filters.assignee ?? ''}
+                    />
+                  </>
+                }
+                emptyTitle="None open"
+                emptyDescription="No case matches these filters."
+              />
+            </DataState>
+          </TabsContent>
+        </Tabs>
+      </Panel>
+    </>
   );
 };
 

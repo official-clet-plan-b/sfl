@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Banner, Button } from '@rfdtech/components';
 import { VehicleResponse } from 'modules/fleet/api/dto';
 import {
   COMPLIANCE_DOCUMENT_TYPES,
@@ -18,11 +19,15 @@ import {
   humanise,
 } from 'modules/fleet/api/enums';
 import { vehiclesApi } from 'modules/fleet/api/fleetApi';
-import Alert from 'shared/components/Alert';
-import { DateField } from 'shared/components/DateField';
-import FormDialog from 'shared/components/FormDialog';
+import FleetFormDialog from 'modules/fleet/components/FleetFormDialog';
 import SiteSelect from 'shared/components/SiteSelect';
-import { EnumSelect, NumberInput, TextAreaInput, TextInput } from 'shared/components/fields';
+import {
+  DateField,
+  EnumSelect,
+  NumberInput,
+  TextAreaInput,
+  TextInput,
+} from 'modules/fleet/components/formFields';
 import { todayIsoDate } from 'shared/components/format';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import {
@@ -36,7 +41,6 @@ import {
 import { EvidenceSelect } from 'shared/components/EvidenceSelect';
 import { searchEvidenceChoices } from 'modules/fleet/api/fleetApi';
 import FormSummary from 'shared/components/FormSummary';
-import Button from 'shared/components/Button';
 import EvidenceFileField from 'shared/components/EvidenceFileField';
 import { ACCEPTED_FILE_DESCRIPTION, evidenceFilesApi } from 'shared/evidence/evidenceFilesApi';
 import { FleetApiError } from 'shared/errors/FleetApiError';
@@ -49,8 +53,7 @@ interface BaseDialogProps {
 
 /** Two columns from `sm` up: these forms are field-dense and read badly as one long stack. */
 const twoColumn = 'grid gap-4 sm:grid-cols-2';
-const sectionHeading =
-  'border-t border-gray-200 pt-4 text-theme-sm font-semibold text-brand-900';
+const sectionHeading = 'border-t border-gray-200 pt-4 text-theme-sm font-semibold text-brand-900';
 
 /* ---------------------------------------------------------------------------------------------
  * Register a vehicle - POST /api/v1/fleet/vehicles
@@ -133,7 +136,7 @@ export const RegisterVehicleDialog = ({
   ).some((field) => Boolean(form.errors[field]));
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title="Register a vehicle"
       description="Adds a vehicle to the register for this site. Registration number must be unique for the site."
@@ -147,9 +150,10 @@ export const RegisterVehicleDialog = ({
             { label: 'Vehicle', value: form.values.registrationNumber },
             {
               label: 'Model',
-              value: [form.values.make, form.values.model, form.values.manufactureYear]
-                .filter(Boolean)
-                .join(' ') || null,
+              value:
+                [form.values.make, form.values.model, form.values.manufactureYear]
+                  .filter(Boolean)
+                  .join(' ') || null,
             },
             { label: 'Site', value: form.values.siteCode },
             { label: 'Owner', value: form.values.operationalOwner },
@@ -223,14 +227,20 @@ export const RegisterVehicleDialog = ({
           required
           value={form.values.responsibleUnit}
           onChange={(value) => form.setValue('responsibleUnit', value)}
-          {...form.fieldProps('responsibleUnit', 'The unit the vehicle belongs to - Transport, Estates.')}
+          {...form.fieldProps(
+            'responsibleUnit',
+            'The unit the vehicle belongs to - Transport, Estates.',
+          )}
         />
         <TextInput
           label="Operational owner"
           required
           value={form.values.operationalOwner}
           onChange={(value) => form.setValue('operationalOwner', value)}
-          {...form.fieldProps('operationalOwner', 'The named person accountable for it day to day.')}
+          {...form.fieldProps(
+            'operationalOwner',
+            'The named person accountable for it day to day.',
+          )}
         />
       </div>
 
@@ -239,10 +249,7 @@ export const RegisterVehicleDialog = ({
         hidden is the one failure mode progressive disclosure introduces: the operator sees "fix the
         errors" and no error anywhere on screen.
       */}
-      <details
-        className="rounded-lg border border-gray-200 px-4 py-3"
-        open={moreDetailsHasError}
-      >
+      <details className="rounded-lg border border-gray-200 px-4 py-3" open={moreDetailsHasError}>
         <summary className="cursor-pointer text-theme-sm font-medium text-gray-800 select-none">
           More details
           <span className="ml-1 font-normal text-gray-500">
@@ -262,7 +269,10 @@ export const RegisterVehicleDialog = ({
             label="Chassis number"
             value={form.values.vin}
             onChange={(value) => form.setValue('vin', value)}
-            {...form.fieldProps('vin', 'The VIN or chassis number stamped on the vehicle. Optional.')}
+            {...form.fieldProps(
+              'vin',
+              'The VIN or chassis number stamped on the vehicle. Optional.',
+            )}
           />
           <NumberInput
             label="Capacity"
@@ -295,7 +305,7 @@ export const RegisterVehicleDialog = ({
           />
         </div>
       </details>
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 
@@ -314,7 +324,10 @@ export const ChangeVehicleLifecycleDialog = ({
   vehicle,
 }: LifecycleDialogProps) => {
   const form = useFleetForm({
-    initialValues: { targetStatus: '' as VehicleLifecycleStatus | '', reason: '' },
+    initialValues: {
+      targetStatus: '' as VehicleLifecycleStatus | '',
+      reason: '',
+    },
     schema: {
       targetStatus: required('Target status'),
       reason: compose(required('Reason'), maxLength('Reason', 1000)),
@@ -332,7 +345,7 @@ export const ChangeVehicleLifecycleDialog = ({
   });
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title="Change vehicle lifecycle status"
       description={`${vehicle.registrationNumber} is currently ${humanise(vehicle.lifecycleStatus)}. The service rejects transitions that are not permitted from this status.`}
@@ -359,7 +372,7 @@ export const ChangeVehicleLifecycleDialog = ({
         onChange={(value) => form.setValue('reason', value)}
         {...form.fieldProps('reason')}
       />
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 
@@ -474,7 +487,7 @@ export const RegisterComplianceDocumentDialog = ({
     MANDATORY_COMPLIANCE_DOCUMENT_TYPES.includes(form.values.documentType);
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title="Register a compliance document"
       description="A retention class is mandatory on every fleet compliance record."
@@ -580,12 +593,17 @@ export const RegisterComplianceDocumentDialog = ({
       )}
 
       {isMandatory && (
-        <Alert variant="info">
-          {humanise(form.values.documentType)} is a mandatory document - while it is missing or
-          expired the vehicle carries a blocking readiness blocker.
-        </Alert>
+        <Banner
+          variant="info"
+          heading={
+            <>
+              {humanise(form.values.documentType)} is a mandatory document - while it is missing or
+              expired the vehicle carries a blocking readiness blocker.
+            </>
+          }
+        />
       )}
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 
@@ -664,7 +682,7 @@ export const RecordServiceDialog = ({
   const regression = odometerNotBelow(form.values.odometerAtService, currentOdometer);
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title="Record a service event"
       description="Service history drives the vehicle's service status and its readiness blockers."
@@ -745,12 +763,17 @@ export const RecordServiceDialog = ({
         {...form.fieldProps('workSummary')}
       />
       {regression && (
-        <Alert variant="warning">
-          {regression} The service will reject this with FLEET_ODOMETER_REGRESSION. Use an
-          authorised odometer correction instead.
-        </Alert>
+        <Banner
+          variant="warning"
+          heading={
+            <>
+              {regression} The service will reject this with FLEET_ODOMETER_REGRESSION. Use an
+              authorised odometer correction instead.
+            </>
+          }
+        />
       )}
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 
@@ -791,7 +814,7 @@ export const CorrectOdometerDialog = ({ open, onClose, onSaved, vehicle }: Odome
   });
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title="Correct the odometer"
       description="The one operation allowed to move a reading backwards. Reason and evidence are both mandatory."
@@ -833,9 +856,12 @@ export const CorrectOdometerDialog = ({ open, onClose, onSaved, vehicle }: Odome
         relatedRecordId={vehicle.id}
         value={form.values.evidenceId}
         onChange={(value) => form.setValue('evidenceId', value)}
-        {...form.fieldProps('evidenceId', 'What shows the true reading - a photograph of the dial, or the service record that corrected it.')}
+        {...form.fieldProps(
+          'evidenceId',
+          'What shows the true reading - a photograph of the dial, or the service record that corrected it.',
+        )}
       />
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 
@@ -895,7 +921,7 @@ export const EditVehicleDialog = ({ open, onClose, onSaved, vehicle }: EditVehic
   });
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title={`Edit ${vehicle.registrationNumber}`}
       description="Submitting sends the version you loaded, so a concurrent edit is refused rather than silently overwritten."
@@ -907,10 +933,15 @@ export const EditVehicleDialog = ({ open, onClose, onSaved, vehicle }: EditVehic
       onSubmit={form.submit}
     >
       {vehicle.vinMasked && (
-        <Alert variant="warning">
-          The VIN is masked for your role. Leaving this field blank clears the stored VIN - only
-          fill it in if you hold the real value.
-        </Alert>
+        <Banner
+          variant="warning"
+          heading={
+            <>
+              The VIN is masked for your role. Leaving this field blank clears the stored VIN - only
+              fill it in if you hold the real value.
+            </>
+          }
+        />
       )}
       <div className={twoColumn}>
         <TextInput
@@ -989,6 +1020,6 @@ export const EditVehicleDialog = ({ open, onClose, onSaved, vehicle }: EditVehic
         Allowed operating modes are managed by the service; the current set is{' '}
         {(vehicle.allowedOperatingModes ?? OPERATING_MODES).map(humanise).join(', ')}.
       </p>
-    </FormDialog>
+    </FleetFormDialog>
   );
 };

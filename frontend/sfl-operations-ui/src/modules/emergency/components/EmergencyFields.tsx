@@ -2,15 +2,15 @@ import { ReactNode, useId } from 'react';
 import { activationTone } from 'modules/emergency/api/workflow';
 import type { ActivationStatus } from 'modules/emergency/api/enums';
 import { humanise } from 'modules/fleet/api/enums';
-import StatusChip from 'shared/components/StatusChip';
-import { Checkbox } from 'shared/components/fields';
 import { cn } from 'shared/components/cn';
+import { CheckboxField } from './FormFields';
+import StatusBadge from './StatusBadge';
 
 /**
  * An activation's status, in the tone this module reads it in.
  *
- * Always this rather than a bare `StatusChip`, because `ACTIVE` means a live emergency here and the
- * shared table reads it as "fine". See `activationTone`.
+ * Always this rather than a bare `StatusBadge`, because `ACTIVE` means a live emergency here and the
+ * default table reads it as "fine". See `activationTone`.
  */
 export const ActivationStatusChip = ({
   status,
@@ -18,7 +18,9 @@ export const ActivationStatusChip = ({
 }: {
   status: ActivationStatus;
   size?: 'sm' | 'md';
-}) => <StatusChip value={status} tone={activationTone(status)} size={size} />;
+}) => <StatusBadge value={status} tone={activationTone(status)} size={size} />;
+
+export const ActivationStatusBadge = ActivationStatusChip;
 
 export interface CheckboxOption {
   value: string;
@@ -48,8 +50,8 @@ interface CheckboxGroupProps {
  * to check at a glance before pressing send. So every option stays visible, with its consequence
  * beside it.
  *
- * Built from the shared `Checkbox` and the shared label/helper rhythm, so it sits in a form
- * alongside `TextInput` and `EnumSelect` without looking like a different application.
+ * Built from the library `Checkbox` in the same label/helper rhythm as the other form fields, so it
+ * sits in a dialog beside them without looking like a different control family.
  */
 export const CheckboxGroup = ({
   label,
@@ -68,11 +70,11 @@ export const CheckboxGroup = ({
 
   return (
     <fieldset className="min-w-0">
-      <legend className="mb-2 block text-theme-sm font-medium text-gray-800">
+      <legend className="mb-2 block text-theme-sm font-medium text-[var(--clet-text)]">
         {label}
         {required && (
           <>
-            <span className="ml-0.5 text-error-800" aria-hidden="true">
+            <span className="ml-0.5 text-[var(--clet-error-text)]" aria-hidden="true">
               *
             </span>
             <span className="sr-only"> (required)</span>
@@ -80,19 +82,19 @@ export const CheckboxGroup = ({
         )}
       </legend>
       {options.length === 0 ? (
-        <p className="rounded-md border border-dashed border-gray-300 px-3 py-3 text-theme-sm text-gray-600">
+        <p className="rounded-md border border-dashed border-[var(--clet-border)] px-3 py-3 text-theme-sm text-[var(--clet-text-secondary)]">
           {emptyMessage}
         </p>
       ) : (
         <div
           className={cn(
             'rounded-md border px-3 py-3',
-            error ? 'border-error-800' : 'border-gray-300',
+            error ? 'border-[var(--clet-error)]' : 'border-[var(--clet-border)]',
             columns === 2 ? 'grid gap-2.5 sm:grid-cols-2' : 'space-y-2.5',
           )}
         >
           {options.map((option) => (
-            <Checkbox
+            <CheckboxField
               key={option.value}
               checked={values.includes(option.value)}
               disabled={option.disabled}
@@ -106,7 +108,7 @@ export const CheckboxGroup = ({
       {helperText && (
         <p
           id={`${id}-help`}
-          className={cn('mt-1.5 text-theme-xs', error ? 'text-error-800' : 'text-gray-600')}
+          className={cn('mt-1.5 text-theme-xs', error ? 'text-[var(--clet-error-text)]' : 'text-[var(--clet-text-secondary)]')}
         >
           {helperText}
         </p>
@@ -135,26 +137,26 @@ export const ConsequencePanel = ({
   <div
     className={cn(
       'rounded-md border px-4 py-3',
-      tone === 'warning' ? 'border-error-200 bg-error-50' : 'border-gray-200 bg-gray-50',
+      tone === 'warning' ? 'border-[var(--clet-error)] bg-[var(--clet-error-bg)]' : 'border-[var(--clet-border)] bg-[var(--clet-surface-subtle)]',
     )}
   >
     <p
       className={cn(
         'text-theme-sm font-semibold',
-        tone === 'warning' ? 'text-error-800' : 'text-gray-800',
+        tone === 'warning' ? 'text-[var(--clet-error-text)]' : 'text-[var(--clet-text)]',
       )}
     >
       {title}
     </p>
-    <div className="mt-1.5 space-y-1 text-theme-sm text-gray-700">{children}</div>
+    <div className="mt-1.5 space-y-1 text-theme-sm text-[var(--clet-text)]">{children}</div>
   </div>
 );
 
 /** A label and a figure, for the dense summary rows inside a `ConsequencePanel`. */
 export const ConsequenceLine = ({ label, value }: { label: string; value: ReactNode }) => (
   <div className="flex items-baseline justify-between gap-4">
-    <span className="text-gray-600">{label}</span>
-    <span className="font-medium text-gray-900">{value}</span>
+    <span className="text-[var(--clet-text-secondary)]">{label}</span>
+    <span className="font-medium text-[var(--clet-text)]">{value}</span>
   </div>
 );
 

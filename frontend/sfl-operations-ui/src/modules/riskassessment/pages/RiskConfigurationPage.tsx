@@ -1,9 +1,5 @@
 import { useState } from 'react';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatusChip from 'shared/components/StatusChip';
 import { formatDateTime } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { permits } from 'shared/layout/actorPermissions';
@@ -12,6 +8,11 @@ import type { AssessmentTemplate } from '../api/dto';
 import { riskAssessmentApi } from '../api/riskAssessmentApi';
 import { RiskLevelChip } from '../components/riskChips';
 import { ReviewIntervalsDialog, TemplateDialog } from '../dialogs/configurationDialogs';
+import { Button } from '@rfdtech/components';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import Panel from 'modules/emergency/components/Panel';
+import StatusBadge from 'modules/emergency/components/StatusBadge';
+import Icon from 'shared/components/Icon';
 
 /**
  * S165's configuration, global rather than per site: the review cycle per risk level (S165-02) and the
@@ -27,12 +28,12 @@ const RiskConfigurationPage = () => {
 
   return (
     <div>
-      <PageHeader title="Templates and review cycle" subtitle="How often assessments are reviewed, and the starting points they are written from." crumbs={[{ label: 'Risk assessments', to: riskAssessmentPaths.dashboard }, { label: 'Configuration' }]} />
+      <PageHeading title="Templates and review cycle" subtitle="How often assessments are reviewed, and the starting points they are written from." crumbs={[{ label: 'Risk assessments', to: riskAssessmentPaths.dashboard }, { label: 'Configuration' }]} />
       <div className="space-y-5">
-        <SectionCard
+        <Panel
           title="Review cycle"
           subtitle="Higher risk is reviewed at least as often as lower. Changes apply from the next publish or sign-off."
-          actions={canConfigure && intervals.data ? <Button variant="outline" startIcon="edit" onClick={() => setEditingIntervals(true)}>Change</Button> : undefined}
+          actions={canConfigure && intervals.data ? <Button variant="outline" onClick={() => setEditingIntervals(true)}><Icon name="edit" size={14} aria-hidden="true" />Change</Button> : undefined}
         >
           <DataState loading={intervals.initialising} error={intervals.error} onRetry={intervals.refetch}>
             <div className="divide-y divide-gray-100">
@@ -45,11 +46,11 @@ const RiskConfigurationPage = () => {
               ))}
             </div>
           </DataState>
-        </SectionCard>
-        <SectionCard
+        </Panel>
+        <Panel
           title="Template library"
           subtitle="Copied into an assessment when it is created. Editing a template never changes an existing assessment."
-          actions={canConfigure ? <Button variant="primary" startIcon="plus" onClick={() => setEditingTemplate('new')}>New template</Button> : undefined}
+          actions={canConfigure ? <Button variant="primary" onClick={() => setEditingTemplate('new')}><Icon name="plus" size={14} aria-hidden="true" />New template</Button> : undefined}
         >
           <DataState loading={templates.initialising} error={templates.error} onRetry={templates.refetch} empty={!templates.data?.length} emptyTitle="No templates yet" emptyHint="Assessments can still be written from a blank draft.">
             <div className="space-y-3">
@@ -63,14 +64,14 @@ const RiskConfigurationPage = () => {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <StatusChip value={template.active ? 'ACTIVE' : 'INACTIVE'} label={template.active ? 'Offered' : 'Retired'} />
+                    <StatusBadge value={template.active ? 'ACTIVE' : 'INACTIVE'} label={template.active ? 'Offered' : 'Retired'} />
                     {canConfigure && <Button size="sm" variant="outline" onClick={() => setEditingTemplate(template)}>Edit</Button>}
                   </div>
                 </div>
               ))}
             </div>
           </DataState>
-        </SectionCard>
+        </Panel>
       </div>
       {editingIntervals && intervals.data && <ReviewIntervalsDialog intervals={intervals.data} onClose={() => setEditingIntervals(false)} onSaved={() => { setEditingIntervals(false); intervals.refetch(); }} />}
       {editingTemplate && <TemplateDialog template={editingTemplate === 'new' ? undefined : editingTemplate} onClose={() => setEditingTemplate(null)} onSaved={() => { setEditingTemplate(null); templates.refetch(); }} />}

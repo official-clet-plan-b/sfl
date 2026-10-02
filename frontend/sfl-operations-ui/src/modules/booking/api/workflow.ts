@@ -1,6 +1,6 @@
 import { sflActor } from 'shared/api/config';
-import { allowed, disabled, hidden } from 'shared/components/ControlButton';
-import type { ControlState } from 'shared/components/ControlButton';
+import { allowed, disabled, hidden } from 'shared/layout/controlState';
+import type { ControlState } from 'shared/layout/controlState';
 import { permits } from 'shared/layout/actorPermissions';
 import type { Booking, SetupTask } from './dto';
 import type { BookingStatus } from './enums';
@@ -40,11 +40,11 @@ import { TERMINAL_STATUSES } from './enums';
  */
 
 /*
-  The three-state model moved to `shared/components/ControlButton` when facilities became its second
+  The three-state model is shared by the facilities controls.
   caller. Re-exported here rather than re-declared, so `ControlState` remains one type across the
   application and this module's imports did not have to change.
 */
-export type { ControlState } from 'shared/components/ControlButton';
+export type { ControlState } from 'shared/layout/controlState';
 export { allowed, hidden };
 
 export const isTerminal = (status: BookingStatus): boolean => TERMINAL_STATUSES.includes(status);

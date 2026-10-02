@@ -1,8 +1,5 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
-import StatusChip from 'shared/components/StatusChip';
-import { SelectInput, TextAreaInput, TextInput } from 'shared/components/fields';
+import { Notice } from '@rfdtech/components';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import type { ReportFaultRequest } from '../api/dto';
@@ -11,6 +8,8 @@ import { faultPriorities } from '../api/enums';
 import { searchSpaces } from '../api/facilitiesApi';
 import { faultBlockerSeverity } from '../api/workflow';
 import { humaniseCode, severityTone } from '../components/facilitiesFormat';
+import { FormDialog, SelectInput, TextAreaInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
+import StatusBadge from 'modules/facilities/components/StatusBadge';
 
 interface ReportFaultDialogProps {
   siteCode: string;
@@ -172,18 +171,18 @@ const ReportFaultDialog = ({ siteCode, roomId, onClose, onSubmit }: ReportFaultD
         </div>
 
         {severity && (
-          <Alert
+          <Notice
             variant={severity === 'CRITICAL' ? 'error' : 'warning'}
             title="What this does to the space"
           >
-            <p className="text-theme-sm">
+            <p className="text-sm">
               A {humaniseCode(priority).toLowerCase()} fault raises a{' '}
-              <StatusChip value={severity} tone={severityTone(severity)} /> blocker on the space.
+              <StatusBadge value={severity} tone={severityTone(severity)} /> blocker on the space.
               {severity === 'CRITICAL'
                 ? ' It will be marked BLOCKED and cannot be booked or used for an examination until this is resolved.'
                 : ' Its readiness will be degraded.'}
             </p>
-          </Alert>
+          </Notice>
         )}
       </div>
     </FormDialog>

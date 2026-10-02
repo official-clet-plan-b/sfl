@@ -1,10 +1,8 @@
 import { FuelPolicy } from 'modules/fuel/api/dto';
 import { fuelPoliciesApi } from 'modules/fuel/api/fuelApi';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
+import { Alert, FormDialog } from 'modules/fuel/components/fuelMigration';
 import SiteSelect from 'shared/components/SiteSelect';
-import { DateTimeField } from 'shared/components/DateField';
-import { Checkbox, NumberInput, TextAreaInput, TextInput } from 'shared/components/fields';
+import { DateTimeField, Checkbox, NumberInput, TextAreaInput, TextInput } from 'modules/fuel/components/fuelMigration';
 import { useFleetForm, type FleetForm } from 'shared/validation/useFleetForm';
 import {
   compose,

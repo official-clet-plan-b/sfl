@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { SelectInput } from 'shared/components/fields';
+import { Dropdown, Field, FieldControl, FieldDescription, FieldError, FieldLabel } from '@rfdtech/components';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { listBuildings, listFloors, listSpaces } from '../api/facilitiesApi';
 import { floorLabel } from './facilitiesFormat';
@@ -80,21 +80,19 @@ export const FloorPicker = ({
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <SelectInput
+      <PickerField
         label="Building"
         value={buildingId}
         onChange={onBuildingChange}
-        required
         error={buildingError}
         disabled={!siteCode || buildings.loading || buildingOptions.length === 0}
         options={buildingOptions}
         helperText={emptyHint(siteCode, buildings.loading, buildingOptions.length, 'buildings')}
       />
-      <SelectInput
+      <PickerField
         label="Floor"
         value={floorId}
         onChange={onFloorChange}
-        required
         error={floorError}
         onBlur={onFloorBlur}
         disabled={!buildingId || floors.loading || floorOptions.length === 0}
@@ -137,7 +135,6 @@ export const SpacePicker = ({
   value,
   onChange,
   label = 'Space',
-  required,
   error,
   helperText,
   onBlur,
@@ -160,21 +157,68 @@ export const SpacePicker = ({
   }));
 
   return (
-    <SelectInput
+    <PickerField
       label={label}
       value={value}
       onChange={onChange}
-      required={required}
       error={error}
       onBlur={onBlur}
-      allowEmpty={allowEmpty}
-      emptyLabel={emptyLabel}
+      emptyLabel={allowEmpty ? emptyLabel : undefined}
       disabled={!siteCode || spaces.loading}
       options={options}
       helperText={helperText ?? emptyHint(siteCode, spaces.loading, options.length, 'spaces')}
     />
   );
 };
+
+interface PickerFieldProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  error?: boolean;
+  disabled?: boolean;
+  onBlur?: () => void;
+  helperText?: string;
+  /** Present when the field may be left unchosen; it is the placeholder a cleared field shows. */
+  emptyLabel?: string;
+}
+
+/**
+ * One labelled choice out of a loaded list.
+ *
+ * `required` is deliberately not a prop: the dialogs state it once for the whole form and validate
+ * it themselves, so a marker on each label would only repeat it.
+ */
+const PickerField = ({
+  label,
+  value,
+  onChange,
+  options,
+  error,
+  disabled,
+  onBlur,
+  helperText,
+  emptyLabel,
+}: PickerFieldProps) => (
+  // Focus leaves the field as a whole rather than the trigger alone: `Dropdown` takes no `onBlur`.
+  <Field invalid={error} onBlur={onBlur}>
+    <FieldLabel>{label}</FieldLabel>
+    <FieldControl>
+      <Dropdown
+        aria-label={label}
+        value={value || null}
+        onValueChange={(next) => onChange(next ?? '')}
+        options={options}
+        placeholder={emptyLabel ?? `Select ${label.toLowerCase()}`}
+        clearable={emptyLabel !== undefined}
+        disabled={disabled}
+        invalid={error}
+      />
+    </FieldControl>
+    {error ? <FieldError>{helperText}</FieldError> : <FieldDescription>{helperText}</FieldDescription>}
+  </Field>
+);
 
 /**
  * Why a dependent select is empty, in the operator's terms.

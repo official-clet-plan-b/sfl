@@ -1,21 +1,20 @@
 import { useState } from 'react';
 import { useParams } from 'react-router';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
-import FormDialog from 'shared/components/FormDialog';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatusChip from 'shared/components/StatusChip';
-import { TextAreaInput, TextInput } from 'shared/components/fields';
 import { formatDateTime } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { permits } from 'shared/layout/actorPermissions';
 import { visitorPaths } from 'shared/layout/navigation';
 import { visitorApi } from '../api/visitorApi';
 import { visitorWorkflow } from '../api/workflow';
+import { Banner, Button, PageSection } from '@rfdtech/components';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import Panel from 'modules/emergency/components/Panel';
+import StatusBadge from 'modules/emergency/components/StatusBadge';
+import ActionDialog from 'modules/emergency/components/ActionDialog';
+import { TextField, TextAreaField } from 'modules/emergency/components/FormFields';
 
 type Action = 'approve' | 'reject' | 'badge' | 'cancel' | null;
 
@@ -51,37 +50,38 @@ const VisitorVisitDetailPage = () => {
     if (action === 'cancel') void run(() => visitorApi.cancel(visit.id, { reason, expectedVersion: version }), 'Visit cancelled');
   };
 
-  return <div>
-    <PageHeader title={visit?.visitorName ?? 'Visitor visit'} subtitle="Approval, access and attendance details for this visit." crumbs={[{ label: 'Visitors', to: visitorPaths.visits }, { label: visit?.visitorName ?? 'Visit' }]} actions={visit ? <>
+  return <>
+    <PageHeading title={visit?.visitorName ?? 'Visitor visit'} subtitle="Approval, access and attendance details for this visit." crumbs={[{ label: 'Visitors', to: visitorPaths.visits }, { label: visit?.visitorName ?? 'Visit' }]} actions={visit ? <>
       {visitorWorkflow.canDecide(visit) && permits('VISITOR_VISIT_APPROVE') && <><Button variant="primary" onClick={() => setAction('approve')}>Approve</Button><Button variant="outline" onClick={() => setAction('reject')}>Reject</Button></>}
       {visitorWorkflow.canAssignBadge(visit) && permits('VISITOR_BADGE_ASSIGN') && <Button variant="primary" onClick={() => setAction('badge')}>{visit.badgeNumber ? 'Change badge' : 'Assign badge'}</Button>}
-      {visitorWorkflow.canCheckIn(visit) && permits('VISITOR_CHECKIN') && <Button variant="accent" loading={submitting} onClick={() => void run(() => visitorApi.checkIn(visit.id, visit.metadata.version), 'Visitor checked in')}>Check in</Button>}
+      {visitorWorkflow.canCheckIn(visit) && permits('VISITOR_CHECKIN') && <Button variant="primary" loading={submitting} onClick={() => void run(() => visitorApi.checkIn(visit.id, visit.metadata.version), 'Visitor checked in')}>Check in</Button>}
       {visitorWorkflow.canCheckOut(visit) && permits('VISITOR_CHECKOUT') && <Button variant="primary" loading={submitting} onClick={() => void run(() => visitorApi.checkOut(visit.id, visit.metadata.version), 'Visitor checked out')}>Check out</Button>}
-      {visitorWorkflow.canCancel(visit) && permits('VISITOR_CANCEL') && <Button variant="danger" onClick={() => setAction('cancel')}>Cancel visit</Button>}
+      {visitorWorkflow.canCancel(visit) && permits('VISITOR_CANCEL') && <Button variant="primary-destructive" onClick={() => setAction('cancel')}>Cancel visit</Button>}
     </> : undefined} />
     <DataState loading={query.initialising} error={query.error} onRetry={query.refetch}>
-      {visit && <div className="space-y-5">
-        {visit.watchlistFlagged && <Alert variant="warning" title="Watchlist or restriction match">Approval requires a recorded override reason. Verify the match through the approved security process before proceeding.</Alert>}
-        <SectionCard title="Visit standing" actions={<StatusChip value={visit.status} size="md" />}>
+      {visit && <>
+        {visit.watchlistFlagged && <PageSection><Banner variant="warning" heading="Watchlist or restriction match"
+  subtext={<>Approval requires a recorded override reason. Verify the match through the approved security process before proceeding.</>} /></PageSection>}
+        <PageSection><Panel title="Visit standing" actions={<StatusBadge value={visit.status} size="md" />}>
           <KeyValueGrid columns={3} items={[
-            { label: 'Site', value: visit.siteCode }, { label: 'Purpose', value: <StatusChip value={visit.purpose} /> }, { label: 'Approval required', value: visit.approvalRequired ? 'Yes' : 'No' },
+            { label: 'Site', value: visit.siteCode }, { label: 'Purpose', value: <StatusBadge value={visit.purpose} /> }, { label: 'Approval required', value: visit.approvalRequired ? 'Yes' : 'No' },
             { label: 'Expected arrival', value: formatDateTime(visit.expectedArrival) }, { label: 'Expected departure', value: formatDateTime(visit.expectedDeparture) }, { label: 'Badge', value: visit.badgeNumber },
             { label: 'Checked in', value: formatDateTime(visit.checkedInAt) }, { label: 'Checked out', value: formatDateTime(visit.checkedOutAt) }, { label: 'Access zones', value: visit.accessZones.join(', ') || '-' },
           ]} />
-        </SectionCard>
-        <div className="grid gap-5 lg:grid-cols-2">
-          <SectionCard title="Visitor and host"><KeyValueGrid columns={2} items={[{ label: 'Visitor', value: visit.visitorName }, { label: 'Organisation', value: visit.visitorOrganization }, { label: 'Contact', value: visit.visitorContact }, { label: 'Host', value: visit.hostName ?? visit.hostId }, { label: 'Host ID', value: visit.hostId }, { label: 'Closure reason', value: visit.closureReason }]} /></SectionCard>
-          <SectionCard title="Record history"><KeyValueGrid columns={2} items={[{ label: 'Created by', value: visit.metadata.createdBy }, { label: 'Created', value: formatDateTime(visit.metadata.createdAt) }, { label: 'Last changed by', value: visit.metadata.lastModifiedBy }, { label: 'Last changed', value: formatDateTime(visit.metadata.lastModifiedAt) }, { label: 'Version', value: visit.metadata.version }, { label: 'Correlation ID', value: visit.metadata.correlationId }]} /></SectionCard>
-        </div>
-      </div>}
+        </Panel></PageSection>
+        <PageSection><div className="grid gap-5 lg:grid-cols-2">
+          <Panel title="Visitor and host"><KeyValueGrid columns={2} items={[{ label: 'Visitor', value: visit.visitorName }, { label: 'Organisation', value: visit.visitorOrganization }, { label: 'Contact', value: visit.visitorContact }, { label: 'Host', value: visit.hostName ?? visit.hostId }, { label: 'Host ID', value: visit.hostId }, { label: 'Closure reason', value: visit.closureReason }]} /></Panel>
+          <Panel title="Record history"><KeyValueGrid columns={2} items={[{ label: 'Created by', value: visit.metadata.createdBy }, { label: 'Created', value: formatDateTime(visit.metadata.createdAt) }, { label: 'Last changed by', value: visit.metadata.lastModifiedBy }, { label: 'Last changed', value: formatDateTime(visit.metadata.lastModifiedAt) }, { label: 'Version', value: visit.metadata.version }, { label: 'Correlation ID', value: visit.metadata.correlationId }]} /></Panel>
+        </div></PageSection>
+      </>}
     </DataState>
 
-    <FormDialog open={action !== null} title={action === 'approve' ? 'Approve visit' : action === 'reject' ? 'Reject visit' : action === 'badge' ? 'Assign badge and access' : 'Cancel visit'} submitLabel={action === 'approve' ? 'Approve' : action === 'badge' ? 'Assign badge' : action === 'reject' ? 'Reject' : 'Cancel visit'} submitting={submitting} destructive={action === 'reject' || action === 'cancel'} submitDisabled={(action === 'reject' || action === 'cancel') ? !reason.trim() : action === 'badge' ? !badge.trim() : Boolean(visit?.watchlistFlagged && !override.trim())} onClose={() => setAction(null)} onSubmit={submitDialog}>
-      {action === 'approve' && visit?.watchlistFlagged && <TextAreaInput label="Watchlist override reason" value={override} onChange={setOverride} required />}
-      {(action === 'reject' || action === 'cancel') && <TextAreaInput label="Reason" value={reason} onChange={setReason} required />}
-      {action === 'badge' && <div className="space-y-4"><TextInput label="Badge number" value={badge} onChange={setBadge} required /><TextInput label="Access zones" value={zones} onChange={setZones} helperText="Comma-separated zone codes. Keep access to the minimum needed for this visit." /></div>}
-    </FormDialog>
-  </div>;
+    <ActionDialog open={action !== null} title={action === 'approve' ? 'Approve visit' : action === 'reject' ? 'Reject visit' : action === 'badge' ? 'Assign badge and access' : 'Cancel visit'} submitLabel={action === 'approve' ? 'Approve' : action === 'badge' ? 'Assign badge' : action === 'reject' ? 'Reject' : 'Cancel visit'} submitting={submitting} destructive={action === 'reject' || action === 'cancel'} submitDisabled={(action === 'reject' || action === 'cancel') ? !reason.trim() : action === 'badge' ? !badge.trim() : Boolean(visit?.watchlistFlagged && !override.trim())} onClose={() => setAction(null)} onSubmit={submitDialog}>
+      {action === 'approve' && visit?.watchlistFlagged && <TextAreaField label="Watchlist override reason" value={override} onChange={setOverride} required />}
+      {(action === 'reject' || action === 'cancel') && <TextAreaField label="Reason" value={reason} onChange={setReason} required />}
+      {action === 'badge' && <div className="space-y-4"><TextField label="Badge number" value={badge} onChange={setBadge} required /><TextField label="Access zones" value={zones} onChange={setZones} helperText="Comma-separated zone codes. Keep access to the minimum needed for this visit." /></div>}
+    </ActionDialog>
+  </>;
 };
 
 export default VisitorVisitDetailPage;

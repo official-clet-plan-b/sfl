@@ -1,13 +1,11 @@
 import { useNavigate, useParams } from 'react-router';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
+import { Banner, Button, MetricCard } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
+import DataTable, { FacilitiesColumn as Column } from '../components/FacilitiesDataTable';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatCard from 'shared/components/StatCard';
-import StatusChip from 'shared/components/StatusChip';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import TitledSection from '../components/TitledSection';
+import StatusBadge from '../components/StatusBadge';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
 import type { FacilitiesPage, WorkOrder } from '../api/dto';
@@ -78,7 +76,7 @@ const ScheduleDetailPage = () => {
       header: 'Status',
       width: 150,
       cell: (order) => (
-        <StatusChip value={humaniseCode(order.status)} tone={workOrderStatusTone(order.status)} />
+        <StatusBadge value={humaniseCode(order.status)} tone={workOrderStatusTone(order.status)} />
       ),
     },
     {
@@ -100,7 +98,7 @@ const ScheduleDetailPage = () => {
     >
       {schedule.data && (
         <>
-          <PageHeader
+          <PageHeading
             title={schedule.data.name}
             subtitle={`${schedule.data.scheduleCode} · every ${schedule.data.intervalDays} days · ${schedule.data.siteCode}`}
             crumbs={[
@@ -120,63 +118,49 @@ const ScheduleDetailPage = () => {
 
           <div className="space-y-5">
             {schedule.data.dueForGeneration && (
-              <Alert variant="info" title="Due to raise work">
-                This schedule is inside its lead-time window and has not yet generated for
-                {` ${formatDate(schedule.data.nextDueOn)}`}. The hourly job will raise it, or you can
-                generate from the schedule register.
-              </Alert>
+              <Banner variant="info" heading="Due to raise work" subtext={`This schedule is inside its lead-time window and has not yet generated for ${formatDate(schedule.data.nextDueOn)}. The hourly job will raise it, or you can generate from the schedule register.`} />
             )}
 
             {schedule.data.lifecycleStatus !== 'ACTIVE' && (
-              <Alert variant="warning" title={`This schedule is ${humaniseCode(schedule.data.lifecycleStatus).toLowerCase()}`}>
-                It will not generate work while it is in this state.
-              </Alert>
+              <Banner variant="warning" heading={`This schedule is ${humaniseCode(schedule.data.lifecycleStatus).toLowerCase()}`} subtext="It will not generate work while it is in this state." />
             )}
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard
+              <MetricCard
                 label="Next due"
                 value={formatDate(schedule.data.nextDueOn)}
-                caption={`Raises on ${formatDate(schedule.data.generateOn)}`}
-                tone={schedule.data.dueForGeneration ? 'caution' : 'neutral'}
-                icon="calendar"
+                description={`Raises on ${formatDate(schedule.data.generateOn)}`}
               />
-              <StatCard
+              <MetricCard
                 label="Interval"
                 value={`${schedule.data.intervalDays} days`}
-                caption={`${schedule.data.leadTimeDays} days notice`}
-                tone="neutral"
-                icon="clock"
+                description={`${schedule.data.leadTimeDays} days notice`}
               />
-              <StatCard
+              <MetricCard
                 label="Last generated"
                 value={
                   schedule.data.lastGeneratedFor
                     ? formatDate(schedule.data.lastGeneratedFor)
                     : 'Never'
                 }
-                caption={
+                description={
                   schedule.data.lastGeneratedAt
                     ? formatDateTime(schedule.data.lastGeneratedAt)
                     : 'No work raised yet'
                 }
-                tone="neutral"
-                icon="refresh"
               />
-              <StatCard
+              <MetricCard
                 label="Asset serviced"
                 value={asset.data?.lastServicedOn ? formatDate(asset.data.lastServicedOn) : 'Never'}
-                caption={
+                description={
                   asset.data?.serviceDueOn
                     ? `Next due ${formatDate(asset.data.serviceDueOn)}`
                     : 'Set when a preventive order closes'
                 }
-                tone="neutral"
-                icon="wrench"
               />
             </div>
 
-            <SectionCard title="Schedule">
+            <TitledSection title="Schedule">
               <KeyValueGrid
                 items={[
                   { label: 'Code', value: schedule.data.scheduleCode },
@@ -186,7 +170,7 @@ const ScheduleDetailPage = () => {
                   {
                     label: 'Lifecycle',
                     value: (
-                      <StatusChip
+                      <StatusBadge
                         value={humaniseCode(schedule.data.lifecycleStatus)}
                         tone="neutral"
                       />
@@ -200,9 +184,9 @@ const ScheduleDetailPage = () => {
                   {schedule.data.description}
                 </p>
               )}
-            </SectionCard>
+            </TitledSection>
 
-            <SectionCard
+            <TitledSection
               title="What it has raised"
               subtitle="Every work order generated from this schedule"
               flush
@@ -223,7 +207,7 @@ const ScheduleDetailPage = () => {
                   onRowClick={(order) => navigate(facilitiesPaths.workOrderDetail(order.id))}
                 />
               </DataState>
-            </SectionCard>
+            </TitledSection>
           </div>
         </>
       )}

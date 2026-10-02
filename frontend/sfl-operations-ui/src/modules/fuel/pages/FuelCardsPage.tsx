@@ -1,36 +1,45 @@
 import { useMemo, useState } from 'react';
+import {
+  Banner,
+  Button,
+  Dropdown,
+  PageSection,
+  SectionActions,
+  SectionHeader,
+  SectionTitle,
+  useTableState,
+  type TableColumn,
+} from '@rfdtech/components';
+import { Plus, RefreshCw } from 'lucide-react';
 import type { FuelCard } from 'modules/fuel/api/dto';
 import { FUEL_CARD_STATUSES, type FuelCardStatus } from 'modules/fuel/api/enums';
 import { fuelCardsApi } from 'modules/fuel/api/fuelApi';
-import { useClampPage, useServerPage } from 'modules/fuel/components/useServerPage';
+import { useClampPage, useRegisterPaging } from 'modules/fuel/components/useRegisterPaging';
 import { DriverSelect, VehicleSelect } from 'modules/fleet/components/FleetReferenceSelect';
 import { shortId, siteOf } from 'modules/fuel/components/fuelFormat';
+import {
+  CellStack,
+  ErrorBanner,
+  FuelBadge,
+  FuelFormSheet,
+  Panel,
+  RegisterTable,
+} from 'modules/fuel/components/fuelUi';
+import {
+  DateField,
+  NumberField,
+  SelectField,
+  TextAreaField,
+  TextField,
+  type SelectOption,
+} from 'modules/fuel/components/fuelFields';
 import { canManageFuelCards } from 'modules/fleet/api/access';
 import { humanise } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
-import { DateField } from 'shared/components/DateField';
-import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, type Column } from 'shared/components/DataTable';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar from 'shared/components/FilterBar';
-import FormDialog from 'shared/components/FormDialog';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
-import {
-  NumberInput,
-  SelectInput,
-  TextAreaInput,
-  TextInput,
-  type SelectOption,
-} from 'shared/components/fields';
 import { formatDate, formatDateTime, formatNumber, todayIsoDate } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
-import { fuelPaths } from 'shared/layout/navigation';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { compose, maxLength, positiveNumber, required } from 'shared/validation/validators';
 
@@ -76,28 +85,17 @@ const demoMaskedReference = (): string => `****${String(Date.now()).slice(-4)}`;
 const FuelCardsPage = () => {
   const { notifySuccess, notifyError } = useNotifier();
   const [siteCode, setSiteCode] = useState(defaultSite);
-  const [status, setStatus] = useState<FuelCardStatus | ''>('');
-  const [maskedReference, setMaskedReference] = useState('');
+  // Seeded from the URL so a reload or a shared link restores the filter the table's own state says
+  // is applied.
+  const { filters } = useTableState({ paramPrefix: 'fuel-cards' });
+  const [status, setStatus] = useState<FuelCardStatus | ''>((filters.status as FuelCardStatus) ?? '');
   const [selected, setSelected] = useState<FuelCard | null>(null);
   const [issuing, setIssuing] = useState(false);
   const [action, setAction] = useState<{ card: FuelCard; action: CardAction } | null>(null);
 
-  /**
-   * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
-   * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
-   * option already active clears it, same as the dropdown it replaces; toggling a different one while
-   * one is active swaps to the new choice instead of appearing to hold both.
-   */
-  const pickSingle = <T extends string>(current: T | '', next: string[]): T | '' => {
-    if (next.length === 0) {
-      return '';
-    }
-    return (next.find((value) => value !== current) ?? next[0]) as T;
-  };
-
   const mayManage = canManageFuelCards();
-  const filterKey = `${siteCode}|${status}|${maskedReference}`;
-  const paging = useServerPage(filterKey);
+  const filterKey = `${siteCode}|${status}`;
+  const paging = useRegisterPaging('fuel-cards', filterKey);
 
   const query = useApiQuery(
     (signal) =>
@@ -105,13 +103,13 @@ const FuelCardsPage = () => {
         {
           siteCode,
           status,
-          maskedReference: maskedReference.trim() || undefined,
+          maskedReference: paging.search || undefined,
           page: paging.page,
           size: paging.size,
         },
         signal,
       ),
-    [filterKey, paging.page, paging.size],
+    [filterKey, paging.search, paging.page, paging.size],
   );
 
   useClampPage(paging.page, query.data?.totalPages, paging.setPage);
@@ -119,13 +117,13 @@ const FuelCardsPage = () => {
   const cards = useMemo(() => query.data?.content ?? [], [query.data]);
   const activeCards = cards.filter((card) => card.status === 'ACTIVE').length;
 
-  const columns = useMemo<Column<FuelCard>[]>(
+  const columns = useMemo<TableColumn<FuelCard>[]>(
     () => [
       {
-        key: 'card',
+        id: 'card',
         header: 'Card',
-        width: 240,
-        cell: (row) => (
+        minWidth: 200,
+        cell: ({ row }) => (
           <CellStack
             primary={row.maskedReference}
             secondary={`${row.provider} · ${siteOf(row.siteCode)}`}
@@ -133,10 +131,10 @@ const FuelCardsPage = () => {
         ),
       },
       {
-        key: 'assignment',
+        id: 'assignment',
         header: 'Assigned to',
-        width: 230,
-        cell: (row) => (
+        minWidth: 160,
+        cell: ({ row }) => (
           <CellStack
             primary={row.vehicleId ? `Vehicle ${shortId(row.vehicleId)}` : 'No vehicle'}
             secondary={row.driverId ? `Driver ${shortId(row.driverId)}` : 'No driver'}
@@ -144,11 +142,10 @@ const FuelCardsPage = () => {
         ),
       },
       {
-        key: 'limits',
+        id: 'limits',
         header: 'Limits',
-        width: 240,
-        hideBelowLg: true,
-        cell: (row) => (
+        minWidth: 200,
+        cell: ({ row }) => (
           <CellStack
             primary={`Txn ${row.perTransactionLimit === null ? 'policy' : formatNumber(row.perTransactionLimit)}`}
             secondary={`Daily ${row.dailyLimit === null ? 'policy' : formatNumber(row.dailyLimit)} · Monthly ${
@@ -158,11 +155,10 @@ const FuelCardsPage = () => {
         ),
       },
       {
-        key: 'expiry',
+        id: 'expiry',
         header: 'Validity',
-        width: 170,
-        hideBelowLg: true,
-        cell: (row) => (
+        minWidth: 150,
+        cell: ({ row }) => (
           <CellStack
             primary={`Issued ${formatDate(row.issuedOn)}`}
             secondary={row.expiresOn ? `Expires ${formatDate(row.expiresOn)}` : 'No expiry'}
@@ -170,202 +166,185 @@ const FuelCardsPage = () => {
         ),
       },
       {
-        key: 'status',
+        id: 'status',
         header: 'Status',
-        width: 140,
+        width: 130,
         align: 'right',
-        cell: (row) => <StatusChip value={row.status} />,
+        cell: ({ row }) => <FuelBadge value={row.status} />,
       },
     ],
     [],
   );
 
   return (
-    <div>
-      <PageHeader
-        title="Fuel cards"
-        subtitle="Masked card register, assignment and spending limits used by reconciliation."
-        crumbs={[{ label: 'Fuel', to: fuelPaths.dashboard }, { label: 'Fuel cards' }]}
-        actions={
-          <>
+    <>
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Fuel cards</SectionTitle>
+          <SectionActions>
+            <SiteSelect value={siteCode} onChange={setSiteCode} required />
+            <Button variant="outline" onClick={query.refetch}>
+              <RefreshCw size={14} strokeWidth={1.5} aria-hidden />
+              Refresh
+            </Button>
             {mayManage && (
-              <Button variant="primary" startIcon="plus" onClick={() => setIssuing(true)}>
+              <Button variant="primary" onClick={() => setIssuing(true)}>
+                <Plus size={14} strokeWidth={1.5} aria-hidden />
                 Issue card
               </Button>
             )}
-            <Button variant="outline" startIcon="refresh" onClick={query.refetch}>
-              Refresh
-            </Button>
-          </>
-        }
-      />
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      <SectionCard flush>
-        <FilterBar
-          onReset={() => {
-            setStatus('');
-            setMaskedReference('');
-          }}
-          resetDisabled={!status && !maskedReference}
-        >
-          <SiteSelect value={siteCode} onChange={setSiteCode} required />
-          <FacetFilter
-            label="Status"
-            selected={status ? [status] : []}
-            onChange={(next) => setStatus(pickSingle(status, next))}
-            options={FUEL_CARD_STATUSES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <TextInput
-            label="Masked reference"
-            value={maskedReference}
-            onChange={setMaskedReference}
-            placeholder="****1234"
-            helperText="Contains-match on the provider-masked reference."
-          />
-        </FilterBar>
-      </SectionCard>
-
-      <div className="mt-5 grid gap-5 xl:grid-cols-[1.4fr_0.9fr]">
-        <SectionCard
-          title="Card register"
-          subtitle={`${formatNumber(query.data?.totalElements ?? 0)} cards · ${formatNumber(activeCards)} active on this page`}
-          flush
-        >
-          <DataState
-            loading={query.initialising}
-            error={query.error}
-            empty={cards.length === 0}
-            emptyTitle="No fuel cards match the filter"
-            emptyHint="Issue a card or clear the filters. Only masked references are stored."
-            onRetry={query.refetch}
-            minHeight={320}
+      <PageSection>
+        <div className="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
+          <Panel
+            title="Card register"
+            description={`${formatNumber(query.data?.totalElements ?? 0)} cards · ${formatNumber(activeCards)} active on this page`}
           >
-            <DataTable
-              rows={cards}
+            {query.error && <ErrorBanner error={query.error} onRetry={query.refetch} className="mb-4" />}
+            <RegisterTable
+              paramPrefix="fuel-cards"
               columns={columns}
-              getRowId={(row) => row.id}
+              rows={cards}
+              rowKey={(row) => row.id}
               loading={query.loading}
               onRowClick={setSelected}
-              caption="Fuel cards at this site, including assignment, card limits, expiry and status."
-              page={query.data?.page ?? paging.page}
-              pageSize={query.data?.size ?? paging.size}
-              totalElements={query.data?.totalElements ?? 0}
-              onPageChange={paging.setPage}
-              onPageSizeChange={paging.setSize}
+              empty={{
+                title: 'None issued',
+                description: 'Issue a card or clear the filters. Only masked references are stored.',
+                filteredTitle: 'No fuel cards match the filter',
+              }}
+              filtersApplied={Boolean(status || paging.search)}
+              totalPages={query.data?.totalPages ?? 0}
+              totalItems={query.data?.totalElements ?? 0}
+              pageSize={paging.size}
+              searchPlaceholder="Search masked reference"
+              spreadFilters
+              onResetFilters={() => setStatus('')}
+              filters={
+                <Dropdown
+                  name="status"
+                  aria-label="Filter by status"
+                  value={status || null}
+                  onValueChange={(next) => setStatus((next ?? '') as FuelCardStatus | '')}
+                  options={FUEL_CARD_STATUSES.map((value) => ({ value, label: humanise(value) }))}
+                  placeholder="Status: All"
+                  clearable
+                />
+              }
             />
-          </DataState>
-        </SectionCard>
+          </Panel>
 
-        <SectionCard
-          title={selected ? selected.maskedReference : 'Card detail'}
-          subtitle={
-            selected
-              ? 'The assignment and ceilings reconciliation reads.'
-              : 'Select a card to inspect or manage it.'
-          }
-        >
-          {selected ? (
-            <div className="space-y-4">
-              <KeyValueGrid
-                columns={2}
-                items={[
-                  { label: 'Provider', value: selected.provider },
-                  { label: 'Status', value: humanise(selected.status) },
-                  { label: 'Site', value: siteOf(selected.siteCode) },
-                  { label: 'Issued on', value: formatDate(selected.issuedOn) },
-                  { label: 'Expires on', value: selected.expiresOn ? formatDate(selected.expiresOn) : 'No expiry' },
-                  { label: 'Vehicle', value: selected.vehicleId ? shortId(selected.vehicleId) : 'Not assigned' },
-                  { label: 'Driver', value: selected.driverId ? shortId(selected.driverId) : 'Not assigned' },
-                  {
-                    label: 'Transaction limit',
-                    value:
-                      selected.perTransactionLimit === null
-                        ? 'Policy fallback'
-                        : formatNumber(selected.perTransactionLimit),
-                  },
-                  {
-                    label: 'Daily limit',
-                    value: selected.dailyLimit === null ? 'Policy fallback' : formatNumber(selected.dailyLimit),
-                  },
-                  {
-                    label: 'Monthly limit',
-                    value:
-                      selected.monthlyLimit === null ? 'Policy fallback' : formatNumber(selected.monthlyLimit),
-                  },
-                  { label: 'Last changed', value: formatDateTime(selected.metadata.lastModifiedAt) },
-                  { label: 'Version', value: selected.metadata.version },
-                ]}
-              />
+          <Panel
+            title={selected ? selected.maskedReference : 'Card detail'}
+            description={
+              selected
+                ? 'The assignment and ceilings reconciliation reads.'
+                : 'Select a card to inspect or manage it.'
+            }
+            actions={selected ? <FuelBadge value={selected.status} /> : undefined}
+          >
+            {selected ? (
+              <div className="space-y-4">
+                <KeyValueGrid
+                  columns={2}
+                  items={[
+                    { label: 'Provider', value: selected.provider },
+                    { label: 'Status', value: humanise(selected.status) },
+                    { label: 'Site', value: siteOf(selected.siteCode) },
+                    { label: 'Issued on', value: formatDate(selected.issuedOn) },
+                    { label: 'Expires on', value: selected.expiresOn ? formatDate(selected.expiresOn) : 'No expiry' },
+                    { label: 'Vehicle', value: selected.vehicleId ? shortId(selected.vehicleId) : 'Not assigned' },
+                    { label: 'Driver', value: selected.driverId ? shortId(selected.driverId) : 'Not assigned' },
+                    {
+                      label: 'Transaction limit',
+                      value:
+                        selected.perTransactionLimit === null
+                          ? 'Policy fallback'
+                          : formatNumber(selected.perTransactionLimit),
+                    },
+                    {
+                      label: 'Daily limit',
+                      value: selected.dailyLimit === null ? 'Policy fallback' : formatNumber(selected.dailyLimit),
+                    },
+                    {
+                      label: 'Monthly limit',
+                      value:
+                        selected.monthlyLimit === null ? 'Policy fallback' : formatNumber(selected.monthlyLimit),
+                    },
+                    { label: 'Last changed', value: formatDateTime(selected.metadata.lastModifiedAt) },
+                    { label: 'Version', value: selected.metadata.version },
+                  ]}
+                />
 
-              {selected.suspensionReason && (
-                <Alert variant="warning" title="Lifecycle reason">
-                  {selected.suspensionReason}
-                </Alert>
-              )}
+                {selected.suspensionReason && (
+                  <Banner variant="warning" heading="Lifecycle reason" subtext={selected.suspensionReason} />
+                )}
 
-              {selected.notes && (
-                <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-theme-sm text-gray-700">
-                  {selected.notes}
-                </div>
-              )}
+                {selected.notes && (
+                  <div className="rounded-lg bg-(--clet-surface-subtle) px-4 py-3 text-sm">
+                    {selected.notes}
+                  </div>
+                )}
 
-              {mayManage ? (
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    startIcon="driver"
-                    disabled={selected.status === 'CANCELLED'}
-                    onClick={() => setAction({ card: selected, action: 'assign' })}
-                  >
-                    Assign
-                  </Button>
-                  {selected.status !== 'SUSPENDED' && (
+                {mayManage ? (
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
                       variant="outline"
-                      startIcon="stop"
                       disabled={selected.status === 'CANCELLED'}
-                      onClick={() => setAction({ card: selected, action: 'suspend' })}
+                      onClick={() => setAction({ card: selected, action: 'assign' })}
                     >
-                      Suspend
+                      Assign
                     </Button>
-                  )}
-                  {selected.status === 'SUSPENDED' && (
+                    {selected.status !== 'SUSPENDED' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={selected.status === 'CANCELLED'}
+                        onClick={() => setAction({ card: selected, action: 'suspend' })}
+                      >
+                        Suspend
+                      </Button>
+                    )}
+                    {selected.status === 'SUSPENDED' && (
+                      <Button
+                        size="sm"
+                        variant="success"
+                        onClick={() => setAction({ card: selected, action: 'reinstate' })}
+                      >
+                        Reinstate
+                      </Button>
+                    )}
                     <Button
                       size="sm"
-                      variant="accent"
-                      startIcon="check-circle"
-                      onClick={() => setAction({ card: selected, action: 'reinstate' })}
+                      variant="destructive"
+                      disabled={selected.status === 'CANCELLED'}
+                      onClick={() => setAction({ card: selected, action: 'cancel' })}
                     >
-                      Reinstate
+                      Cancel
                     </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    startIcon="close"
-                    disabled={selected.status === 'CANCELLED'}
-                    onClick={() => setAction({ card: selected, action: 'cancel' })}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              ) : (
-                <Alert variant="info" title="Read-only">
-                  You can inspect the card register, but issuing and lifecycle changes require
-                  FUEL_CARD_MANAGE.
-                </Alert>
-              )}
-            </div>
-          ) : (
-            <Alert variant="info" title="No full card numbers">
-              SFL stores and displays only the provider-masked reference, such as ****1234. The card
-              platform remains outside SFL.
-            </Alert>
-          )}
-        </SectionCard>
-      </div>
+                  </div>
+                ) : (
+                  <Banner
+                    variant="info"
+                    heading="Read-only"
+                    subtext="You can inspect the card register, but issuing and lifecycle changes require FUEL_CARD_MANAGE."
+                  />
+                )}
+              </div>
+            ) : (
+              <Banner
+                variant="info"
+                heading="No full card numbers"
+                subtext="SFL stores and displays only the provider-masked reference, such as ****1234. The card platform remains outside SFL."
+              />
+            )}
+          </Panel>
+        </div>
+      </PageSection>
 
       {issuing && (
         <IssueCardDialog
@@ -394,7 +373,7 @@ const FuelCardsPage = () => {
           onError={notifyError}
         />
       )}
-    </div>
+    </>
   );
 };
 
@@ -453,57 +432,66 @@ const IssueCardDialog = ({ open, defaultSiteCode, onClose, onSaved }: IssueCardD
   });
 
   return (
-    <FormDialog
+    <FuelFormSheet
       open={open}
       title="Issue a fuel card"
-      description="Creates a card register row from a safe masked reference. Never type a full card number here."
+      description="Records a card the provider has issued, from a safe masked reference. Never type a full card number here."
       submitLabel="Issue card"
       submitting={form.submitting}
       formError={form.formError}
-      maxWidth="lg"
+      maxWidth="md"
       onClose={onClose}
       onSubmit={form.submit}
     >
-      <Alert variant="info" title="Masked references only">
-        Live card references come from the fuel-card provider feed, already masked. For this demo,
-        use the generated value below, for example ****1234. Full card numbers are refused before
-        they leave the browser.
-      </Alert>
-
       <div className="grid gap-4 sm:grid-cols-2">
-        <SiteSelect
-          required
-          value={form.values.siteCode}
-          onChange={(value) => form.setValues({ siteCode: value, vehicleId: '', driverId: '' })}
-          {...form.fieldProps('siteCode')}
-        />
-        <div>
-          <TextInput
-            label="Masked reference"
-            required
-            placeholder="****1234"
-            value={form.values.maskedReference}
-            onChange={(value) => form.setValue('maskedReference', value)}
-            {...form.fieldProps('maskedReference')}
-          />
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="mt-1"
-            startIcon="refresh"
-            onClick={() => form.setValue('maskedReference', demoMaskedReference())}
-          >
-            Generate demo reference
-          </Button>
-        </div>
-        <SelectInput
+        <SelectField
           label="Provider"
           required
           value={form.values.provider}
           onChange={(value) => form.setValue('provider', value)}
           options={GHANA_FUEL_CARD_PROVIDERS}
           {...form.fieldProps('provider')}
+        />
+        <div>
+          <TextField
+            label="Masked reference"
+            required
+            placeholder="****1234"
+            value={form.values.maskedReference}
+            onChange={(value) => form.setValue('maskedReference', value)}
+            {...form.fieldProps('maskedReference', 'Never enter the full card number')}
+          />
+          <Button
+            size="sm"
+            variant="ghost"
+            className="mt-1"
+            onClick={() => form.setValue('maskedReference', demoMaskedReference())}
+          >
+            <RefreshCw size={14} strokeWidth={1.5} aria-hidden />
+            Generate demo reference
+          </Button>
+        </div>
+        <VehicleSelect
+          siteCode={form.values.siteCode}
+          value={form.values.vehicleId}
+          onChange={(value) => form.setValue('vehicleId', value)}
+          allowEmpty
+          emptyLabel="No vehicle"
+          {...form.fieldProps('vehicleId', 'Optional at issue. Assign later if needed.')}
+        />
+        <SiteSelect
+          required
+          value={form.values.siteCode}
+          onChange={(value) => form.setValues({ siteCode: value, vehicleId: '', driverId: '' })}
+          {...form.fieldProps('siteCode')}
+        />
+        <DriverSelect
+          siteCode={form.values.siteCode}
+          value={form.values.driverId}
+          onChange={(value) => form.setValue('driverId', value)}
+          allowEmpty
+          emptyLabel="No driver"
+          {...form.fieldProps('driverId', 'Optional at issue.')}
         />
         <DateField
           label="Issued on"
@@ -515,43 +503,28 @@ const IssueCardDialog = ({ open, defaultSiteCode, onClose, onSaved }: IssueCardD
           label="Expires on"
           value={form.values.expiresOn}
           onChange={(value) => form.setValue('expiresOn', value)}
-          {...form.fieldProps('expiresOn', 'Optional. An expired card is not usable.')}
-        />
-        <VehicleSelect
-          siteCode={form.values.siteCode}
-          value={form.values.vehicleId}
-          onChange={(value) => form.setValue('vehicleId', value)}
-          allowEmpty
-          emptyLabel="No vehicle"
-          {...form.fieldProps('vehicleId', 'Optional at issue. Assign later if needed.')}
-        />
-        <DriverSelect
-          siteCode={form.values.siteCode}
-          value={form.values.driverId}
-          onChange={(value) => form.setValue('driverId', value)}
-          allowEmpty
-          emptyLabel="No driver"
-          {...form.fieldProps('driverId', 'Optional at issue.')}
+          {...form.fieldProps('expiresOn', 'An expired card is not usable.')}
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <NumberInput
-          label="Transaction limit"
+      <p className="-mb-2 text-sm font-semibold">Limits</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <NumberField
+          label="Per transaction"
           step={0.01}
           value={form.values.perTransactionLimit}
           onChange={(value) => form.setValue('perTransactionLimit', value)}
           {...form.fieldProps('perTransactionLimit', 'Blank means the site policy applies.')}
         />
-        <NumberInput
-          label="Daily limit"
+        <NumberField
+          label="Daily"
           step={0.01}
           value={form.values.dailyLimit}
           onChange={(value) => form.setValue('dailyLimit', value)}
           {...form.fieldProps('dailyLimit', 'Blank means the site policy applies.')}
         />
-        <NumberInput
-          label="Monthly limit"
+        <NumberField
+          label="Monthly"
           step={0.01}
           value={form.values.monthlyLimit}
           onChange={(value) => form.setValue('monthlyLimit', value)}
@@ -559,14 +532,20 @@ const IssueCardDialog = ({ open, defaultSiteCode, onClose, onSaved }: IssueCardD
         />
       </div>
 
-      <TextAreaInput
+      <TextAreaField
         label="Notes"
         rows={3}
         value={form.values.notes}
         onChange={(value) => form.setValue('notes', value)}
         {...form.fieldProps('notes')}
       />
-    </FormDialog>
+
+      <Banner
+        variant="info"
+        heading="SFL only holds the masked reference. The card platform stays with the provider."
+        subtext="Live card references come from the fuel-card provider feed, already masked. Full card numbers are refused before they leave the browser."
+      />
+    </FuelFormSheet>
   );
 };
 
@@ -611,7 +590,7 @@ const CardActionDialog = ({ open, card, action, onClose, onSaved, onError }: Car
   const destructive = action === 'cancel' || action === 'suspend';
 
   return (
-    <FormDialog
+    <FuelFormSheet
       open={open}
       title={`${humanise(action)} ${card.maskedReference}`}
       description={actionDescription(action)}
@@ -619,12 +598,12 @@ const CardActionDialog = ({ open, card, action, onClose, onSaved, onError }: Car
       submitting={form.submitting}
       formError={form.formError}
       destructive={destructive}
-      maxWidth="md"
+      maxWidth="sm"
       onClose={onClose}
       onSubmit={form.submit}
     >
       {action === 'assign' ? (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4">
           <VehicleSelect
             siteCode={siteOf(card.siteCode)}
             value={form.values.vehicleId}
@@ -643,12 +622,13 @@ const CardActionDialog = ({ open, card, action, onClose, onSaved, onError }: Car
           />
         </div>
       ) : action === 'reinstate' ? (
-        <Alert variant="info" title="The card will become active again">
-          Reinstatement clears the suspension reason. Historic transactions remain tied to this same
-          masked card row.
-        </Alert>
+        <Banner
+          variant="info"
+          heading="The card will become active again"
+          subtext="Reinstatement clears the suspension reason. Historic transactions remain tied to this same masked card row."
+        />
       ) : (
-        <TextAreaInput
+        <TextAreaField
           label="Reason"
           required
           rows={4}
@@ -658,7 +638,7 @@ const CardActionDialog = ({ open, card, action, onClose, onSaved, onError }: Car
           {...form.fieldProps('reason')}
         />
       )}
-    </FormDialog>
+    </FuelFormSheet>
   );
 };
 

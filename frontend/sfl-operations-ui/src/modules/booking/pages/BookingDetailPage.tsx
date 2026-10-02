@@ -1,14 +1,25 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
+import { CalendarClock, CalendarDays, CheckCircle2, Lock } from 'lucide-react';
+import {
+  Button,
+  Card,
+  EmptyState,
+  MetricCard,
+  MetricCards,
+  Notice,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  useBreadcrumbs,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatCard from 'shared/components/StatCard';
-import StatusChip from 'shared/components/StatusChip';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { bookingPaths, facilitiesPaths } from 'shared/layout/navigation';
@@ -40,6 +51,7 @@ import CancelBookingDialog from '../dialogs/CancelBookingDialog';
 import CompleteBookingDialog from '../dialogs/CompleteBookingDialog';
 import DecideBookingDialog from '../dialogs/DecideBookingDialog';
 import RescheduleBookingDialog from '../dialogs/RescheduleBookingDialog';
+import StatusBadge from 'modules/facilities/components/StatusBadge';
 
 type OpenDialog = 'decide' | 'reschedule' | 'cancel' | 'complete' | null;
 
@@ -99,57 +111,60 @@ const BookingDetailPage = () => {
     }
   };
 
-  const allocationColumns: Column<BookingAllocation>[] = [
-    { key: 'resource', header: 'Resource', cell: (row) => orDash(row.resourceCode) },
-    { key: 'quantity', header: 'Quantity', align: 'right', width: 100, cell: (row) => row.quantity },
+  const allocationColumns: TableColumn<BookingAllocation>[] = [
+    { id: 'resource', header: 'Resource', cell: ({ row }) => orDash(row.resourceCode) },
+    { id: 'quantity', header: 'Quantity', align: 'right', width: 100, accessorKey: 'quantity' },
     {
-      key: 'exclusive',
+      id: 'exclusive',
       header: 'Exclusive',
       width: 120,
-      hideBelowLg: true,
       // Worth its own column: an exclusive resource is refused by the database rather than by
       // arithmetic, which is a materially stronger guarantee than "there are three of them".
-      cell: (row) => (row.exclusive ? <StatusChip value="EXCLUSIVE" tone="accent" /> : '-'),
+      cell: ({ row }) => (row.exclusive ? <StatusBadge value="EXCLUSIVE" tone="accent" /> : '-'),
     },
     {
-      key: 'released',
+      id: 'released',
       header: 'Standing',
       width: 130,
-      cell: (row) =>
+      cell: ({ row }) =>
         row.released ? (
-          <StatusChip value="RELEASED" tone="neutral" />
+          <StatusBadge value="RELEASED" tone="neutral" />
         ) : (
-          <StatusChip value="HELD" tone="active" />
+          <StatusBadge value="HELD" tone="active" />
         ),
     },
     {
-      key: 'allocatedAt',
+      id: 'allocatedAt',
       header: 'Allocated',
-      hideBelowLg: true,
-      cell: (row) => `${relativeTime(row.allocatedAt)} by ${row.allocatedBy}`,
+      cell: ({ row }) => `${relativeTime(row.allocatedAt)} by ${row.allocatedBy}`,
     },
   ];
 
-  const setupColumns: Column<SetupTask>[] = [
-    { key: 'description', header: 'Task', cell: (row) => row.description },
+  const setupColumns: TableColumn<SetupTask>[] = [
+    { id: 'description', header: 'Task', accessorKey: 'description' },
     {
-      key: 'dueBy',
+      id: 'dueBy',
       header: 'Needed by',
       width: 180,
-      cell: (row) => (
-        <span className={row.overdue ? 'font-medium text-error-800' : undefined}>
+      cell: ({ row }) => (
+        <span className={row.overdue ? 'font-medium text-error' : undefined}>
           {row.dueBy ? formatDateTime(row.dueBy) : '-'}
         </span>
       ),
     },
-    { key: 'assignedTo', header: 'Assigned', hideBelowLg: true, cell: (row) => orDash(row.assignedTo) },
+    { id: 'assignedTo', header: 'Assigned', cell: ({ row }) => orDash(row.assignedTo) },
     {
-      key: 'status',
+      id: 'status',
       header: 'Status',
       width: 120,
-      cell: (row) => <StatusChip value={row.status} tone={setupTaskTone(row.status)} />,
+      cell: ({ row }) => <StatusBadge value={row.status} tone={setupTaskTone(row.status)} />,
     },
   ];
+
+  useBreadcrumbs([
+    { label: 'Bookings', href: bookingPaths.diary },
+    { label: record?.bookingReference ?? 'Booking' },
+  ]);
 
   return (
     <>
@@ -161,32 +176,14 @@ const BookingDetailPage = () => {
       >
         {record && (
           <>
-            <PageHeader
-              title={record.title}
-              subtitle={`${record.bookingReference} · ${orDash(record.roomCode)} · ${record.siteCode}`}
-              crumbs={[
-                { label: 'Bookings', to: bookingPaths.diary },
-                { label: record.bookingReference },
-              ]}
-              meta={
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusChip
-                    value={record.status}
-                    tone={bookingStatusTone(record.status)}
-                    size="md"
-                  />
-                  {/* Beside the status, never instead of it - the two say different things. */}
-                  {record.readinessHoldReason && (
-                    <StatusChip value="ON_HOLD" label="Readiness hold" tone="blocked" size="md" />
-                  )}
-                  {record.overridden && (
-                    <StatusChip value="OVERRIDDEN" label="Overridden" tone="accent" size="md" />
-                  )}
-                </div>
-              }
-              actions={
-                <div className="flex flex-wrap gap-2">
-                  <ControlButton state={canDecide(record)} onClick={() => setDialog('decide')}>
+            <PageSection>
+              <SectionHeader>
+                <SectionTitle>{record.title}</SectionTitle>
+                <SectionDescription>
+                  {`${record.bookingReference} · ${orDash(record.roomCode)} · ${record.siteCode}`}
+                </SectionDescription>
+                <SectionActions>
+                  <ControlButton state={canDecide(record)} variant="primary" onClick={() => setDialog('decide')}>
                     Decide
                   </ControlButton>
                   <ControlButton state={canStart(record)} variant="outline" onClick={start}>
@@ -213,75 +210,99 @@ const BookingDetailPage = () => {
                   >
                     {isOwnBooking(record) ? 'Withdraw' : 'Cancel'}
                   </ControlButton>
-                </div>
-              }
-            />
+                </SectionActions>
+              </SectionHeader>
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusBadge value={record.status} tone={bookingStatusTone(record.status)} size="md" />
+                {/* Beside the status, never instead of it - the two say different things. */}
+                {record.readinessHoldReason && (
+                  <StatusBadge value="ON_HOLD" label="Readiness hold" tone="blocked" size="md" />
+                )}
+                {record.overridden && (
+                  <StatusBadge value="OVERRIDDEN" label="Overridden" tone="accent" size="md" />
+                )}
+              </div>
+            </PageSection>
 
-            <div className="space-y-5">
-              {record.readinessHoldReason && (
-                <Alert variant="warning" title="The estate has a problem with this space">
-                  <p className="text-theme-sm">
+            {record.readinessHoldReason && (
+              <PageSection>
+                <Notice variant="warning" title="The estate has a problem with this space">
+                  <p className="text-sm">
                     {HOLD_REASON_DESCRIPTIONS[record.readinessHoldReason]} Held since{' '}
                     {formatDateTime(record.readinessHeldAt)}.
                   </p>
-                  <p className="mt-2 text-theme-sm">
+                  <p className="mt-2 text-sm">
                     The booking is still {humaniseCode(record.status).toLowerCase()} and still in
                     everybody&rsquo;s diary - the hold marks it rather than cancelling it, because
                     whether the space is fixed by then is a judgement for a person. Move it or cancel
                     it if it cannot go ahead.
                   </p>
-                </Alert>
-              )}
+                </Notice>
+              </PageSection>
+            )}
 
-              {record.overridden && (
-                <Alert variant="warning" title="Booked into a space readiness refused">
-                  <p className="text-theme-sm">{record.overrideReason}</p>
-                </Alert>
-              )}
+            {record.overridden && (
+              <PageSection>
+                <Notice variant="warning" title="Booked into a space readiness refused">
+                  <p className="text-sm">{record.overrideReason}</p>
+                </Notice>
+              </PageSection>
+            )}
 
-              {record.status === 'NO_SHOW' && (
-                <Alert variant="error" title="Nobody turned up">
-                  <p className="text-theme-sm">
+            {record.status === 'NO_SHOW' && (
+              <PageSection>
+                <Notice variant="error" title="Nobody turned up">
+                  <p className="text-sm">
                     The window closed with no attendance recorded, so the sweep released the space and
                     everything it was holding. Marking a booking in use when it starts is what
                     prevents this.
                   </p>
-                </Alert>
-              )}
+                </Notice>
+              </PageSection>
+            )}
 
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <StatCard
+            <PageSection>
+              <MetricCards>
+                <MetricCard
+                  variant="soft"
                   label="Status"
                   value={humaniseCode(record.status)}
-                  caption={
-                    record.holdsTheSpace
-                      ? 'Currently holding the space'
-                      : 'Not holding the space'
+                  description={
+                    record.holdsTheSpace ? 'Currently holding the space' : 'Not holding the space'
                   }
-                  tone={
-                    record.status === 'NO_SHOW'
-                      ? 'critical'
-                      : record.holdsTheSpace
-                        ? 'good'
-                        : 'neutral'
+                  descriptionAdornment={
+                    <CalendarDays
+                      size={16}
+                      strokeWidth={2}
+                      className={
+                        record.status === 'NO_SHOW'
+                          ? 'text-error'
+                          : record.holdsTheSpace
+                            ? 'text-success-text'
+                            : undefined
+                      }
+                      aria-hidden
+                    />
                   }
-                  icon="calendar"
                 />
-                <StatCard
+                <MetricCard
+                  variant="soft"
                   label="Booked window"
                   value={formatWindow(record.startsAt, record.endsAt)}
-                  caption={bufferSummary(record) ?? 'No setup or teardown buffer'}
-                  icon="clock"
+                  description={bufferSummary(record) ?? 'No setup or teardown buffer'}
+                  descriptionAdornment={<CalendarClock size={16} strokeWidth={2} aria-hidden />}
                 />
-                <StatCard
+                <MetricCard
+                  variant="soft"
                   label="Occupied window"
                   value={formatWindow(record.occupiedFrom, record.occupiedTo)}
                   // The one figure that surprises people. This, not the booked window, is what the
                   // exclusion constraint tests and what the next requester is refused on.
-                  caption="What the next requester is refused on"
-                  icon="lock"
+                  description="What the next requester is refused on"
+                  descriptionAdornment={<Lock size={16} strokeWidth={2} aria-hidden />}
                 />
-                <StatCard
+                <MetricCard
+                  variant="soft"
                   label="Approval"
                   value={
                     record.approvalRequired
@@ -290,48 +311,67 @@ const BookingDetailPage = () => {
                         : 'Awaiting a decision'
                       : 'Not needed'
                   }
-                  caption={
+                  description={
                     record.approvalRequired
                       ? record.confirmedAt
                         ? `Confirmed ${relativeTime(record.confirmedAt)}`
                         : 'The space is held until it is decided'
                       : 'Confirmed on request by this site’s configuration'
                   }
-                  tone={
-                    record.approvalRequired && !record.approvalId && record.status === 'REQUESTED'
-                      ? 'caution'
-                      : 'neutral'
+                  descriptionAdornment={
+                    <CheckCircle2
+                      size={16}
+                      strokeWidth={2}
+                      className={
+                        record.approvalRequired &&
+                        !record.approvalId &&
+                        record.status === 'REQUESTED'
+                          ? 'text-warning-text'
+                          : undefined
+                      }
+                      aria-hidden
+                    />
                   }
-                  icon="check-circle"
                 />
-              </div>
+              </MetricCards>
+            </PageSection>
 
-              {record.description && (
-                <SectionCard title="Notes">
-                  <p className="whitespace-pre-line text-theme-sm text-gray-800">
-                    {record.description}
-                  </p>
-                </SectionCard>
-              )}
+            {record.description && (
+              <PageSection>
+                <SectionHeader>
+                  <SectionTitle>Notes</SectionTitle>
+                </SectionHeader>
+                <Card bordered>
+                  <p className="whitespace-pre-line text-sm text-foreground">{record.description}</p>
+                </Card>
+              </PageSection>
+            )}
 
-              {record.closureReason && (
-                <SectionCard
-                  title={
-                    record.status === 'COMPLETED'
+            {record.closureReason && (
+              <PageSection>
+                <SectionHeader>
+                  <SectionTitle>
+                    {record.status === 'COMPLETED'
                       ? 'How it finished'
                       : record.status === 'REJECTED'
                         ? 'Why it was refused'
-                        : 'Why it was withdrawn'
-                  }
-                  subtitle={formatDateTime(record.completedAt ?? record.metadata.lastModifiedAt)}
-                >
-                  <p className="whitespace-pre-line text-theme-sm text-gray-800">
-                    {record.closureReason}
-                  </p>
-                </SectionCard>
-              )}
+                        : 'Why it was withdrawn'}
+                  </SectionTitle>
+                  <SectionDescription>
+                    {formatDateTime(record.completedAt ?? record.metadata.lastModifiedAt)}
+                  </SectionDescription>
+                </SectionHeader>
+                <Card bordered>
+                  <p className="whitespace-pre-line text-sm text-foreground">{record.closureReason}</p>
+                </Card>
+              </PageSection>
+            )}
 
-              <SectionCard title="The booking">
+            <PageSection>
+              <SectionHeader>
+                <SectionTitle>The booking</SectionTitle>
+              </SectionHeader>
+              <Card bordered>
                 <KeyValueGrid
                   items={[
                     { label: 'Reference', value: record.bookingReference },
@@ -361,24 +401,24 @@ const BookingDetailPage = () => {
                     { label: 'Version', value: String(record.metadata.version) },
                   ]}
                 />
-              </SectionCard>
+              </Card>
+            </PageSection>
 
-              <SectionCard
-                title="Approval"
-                subtitle={
-                  record.approvalRequired
+            <PageSection>
+              <SectionHeader>
+                <SectionTitle>Approval</SectionTitle>
+                <SectionDescription>
+                  {record.approvalRequired
                     ? 'Decisions taken on this request'
-                    : 'This booking needed no approval, so there is nothing to show'
-                }
-                flush
-              >
+                    : 'This booking needed no approval, so there is nothing to show'}
+                </SectionDescription>
+              </SectionHeader>
+              <Card bordered>
                 <DataState
                   loading={approvals.loading}
                   error={approvals.error}
                   empty={(approvals.data ?? []).length === 0}
-                  emptyTitle={
-                    record.approvalRequired ? 'Not yet decided' : 'No approval was needed'
-                  }
+                  emptyTitle={record.approvalRequired ? 'Not yet decided' : 'No approval was needed'}
                   /*
                     The absence of an approval record is itself the statement that none was needed -
                     there is no separate flag that could fall out of step with it.
@@ -391,72 +431,83 @@ const BookingDetailPage = () => {
                   minHeight={140}
                   onRetry={approvals.refetch}
                 >
-                  <ul className="divide-y divide-gray-100">
+                  <ul className="divide-y divide-border">
                     {(approvals.data ?? []).map((approval) => (
-                      <li key={approval.id} className="px-5 py-4">
+                      <li key={approval.id} className="py-3 first:pt-0 last:pb-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <StatusChip
+                          <StatusBadge
                             value={approval.decision}
                             tone={approval.decision === 'APPROVED' ? 'ready' : 'blocked'}
                           />
-                          <span className="text-theme-sm text-gray-700">
+                          <span className="text-sm text-foreground">
                             {approval.decidedBy} · {formatDateTime(approval.decidedAt)}
                           </span>
                         </div>
                         {approval.reason && (
-                          <p className="mt-2 text-theme-sm text-gray-800">{approval.reason}</p>
+                          <p className="mt-2 text-sm text-foreground">{approval.reason}</p>
                         )}
                       </li>
                     ))}
                   </ul>
                 </DataState>
-              </SectionCard>
+              </Card>
+            </PageSection>
 
-              <SectionCard title="Resources it holds" flush>
-                <DataState
-                  loading={allocations.loading}
-                  error={allocations.error}
-                  empty={(allocations.data ?? []).length === 0}
-                  emptyTitle="No resources allocated"
-                  emptyHint="This booking takes the room and nothing else."
-                  minHeight={140}
-                  onRetry={allocations.refetch}
-                >
-                  <DataTable
-                    rows={allocations.data ?? []}
-                    columns={allocationColumns}
-                    getRowId={(row) => row.id}
-                    dense
-                    caption="Resources allocated to this booking"
-                  />
-                </DataState>
-              </SectionCard>
+            <PageSection>
+              <SectionHeader>
+                <SectionTitle>Resources it holds</SectionTitle>
+              </SectionHeader>
+              <DataState loading={false} error={allocations.error} onRetry={allocations.refetch}>
+                <Table paramPrefix="allocations" variant="soft">
+                  <Card bordered>
+                    <TableContent
+                      variant="soft"
+                      columns={allocationColumns}
+                      data={allocations.data ?? []}
+                      rowKey={(row) => row.id}
+                      loading={allocations.loading}
+                      aria-label="Resources allocated to this booking"
+                      emptyContent={
+                        <EmptyState
+                          title="No resources allocated"
+                          description="This booking takes the room and nothing else."
+                        />
+                      }
+                    />
+                  </Card>
+                </Table>
+              </DataState>
+            </PageSection>
 
-              <SectionCard
-                title="Room turnaround"
-                subtitle="Raised automatically for every resource that needs setting up"
-                flush
-              >
-                <DataState
-                  loading={setupTasks.loading}
-                  error={setupTasks.error}
-                  empty={(setupTasks.data ?? []).length === 0}
-                  emptyTitle="Nothing to set up"
-                  emptyHint="No resource on this booking declares that it needs setting up."
-                  minHeight={140}
-                  onRetry={setupTasks.refetch}
-                >
-                  <DataTable
-                    rows={setupTasks.data ?? []}
-                    columns={setupColumns}
-                    getRowId={(row) => row.id}
-                    dense
-                    onRowClick={() => navigate(bookingPaths.setupTasks)}
-                    caption="Setup tasks for this booking"
-                  />
-                </DataState>
-              </SectionCard>
-            </div>
+            <PageSection>
+              <SectionHeader>
+                <SectionTitle>Room turnaround</SectionTitle>
+                <SectionDescription>
+                  Raised automatically for every resource that needs setting up
+                </SectionDescription>
+              </SectionHeader>
+              <DataState loading={false} error={setupTasks.error} onRetry={setupTasks.refetch}>
+                <Table paramPrefix="setup-tasks" variant="soft">
+                  <Card bordered>
+                    <TableContent
+                      variant="soft"
+                      columns={setupColumns}
+                      data={setupTasks.data ?? []}
+                      rowKey={(row) => row.id}
+                      loading={setupTasks.loading}
+                      onRowClick={() => navigate(bookingPaths.setupTasks)}
+                      aria-label="Setup tasks for this booking"
+                      emptyContent={
+                        <EmptyState
+                          title="Nothing to set up"
+                          description="No resource on this booking declares that it needs setting up."
+                        />
+                      }
+                    />
+                  </Card>
+                </Table>
+              </DataState>
+            </PageSection>
           </>
         )}
       </DataState>

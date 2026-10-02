@@ -1,10 +1,11 @@
-import Button from 'shared/components/Button';
-import { EnumSelect, TextInput } from 'shared/components/fields';
 import type { HazardInput } from '../api/dto';
 import { controlTypes, hazardTypeLabel, hazardTypes, likelihoods, severities } from '../api/enums';
 import { previewLevel, previewScore } from '../api/workflow';
 import { RiskLevelChip } from './riskChips';
 import { emptyHazard } from './hazardForm';
+import { Button } from '@rfdtech/components';
+import { TextField, EnumField } from 'modules/emergency/components/FormFields';
+import Icon from 'shared/components/Icon';
 
 interface HazardEditorProps {
   hazards: HazardInput[];
@@ -38,7 +39,7 @@ const HazardEditor = ({ hazards, onChange }: HazardEditorProps) => {
           <fieldset key={index} className="rounded-md border border-gray-200 p-4">
             <legend className="px-1 text-theme-sm font-semibold text-gray-900">Hazard #{index + 1}</legend>
             <div className="grid gap-4 sm:grid-cols-2">
-              <EnumSelect
+              <EnumField
                 label="Hazard type"
                 value={hazard.hazardType}
                 options={hazardTypes}
@@ -46,8 +47,8 @@ const HazardEditor = ({ hazards, onChange }: HazardEditorProps) => {
                 required
                 onChange={(value) => value && update(index, { hazardType: value })}
               />
-              <TextInput label="Who could be harmed" value={hazard.whoAtRisk ?? ''} maxLength={300} onChange={(value) => update(index, { whoAtRisk: value })} />
-              <TextInput
+              <TextField label="Who could be harmed" value={hazard.whoAtRisk ?? ''} maxLength={300} onChange={(value) => update(index, { whoAtRisk: value })} />
+              <TextField
                 label="Hazard"
                 className="sm:col-span-2"
                 value={hazard.description}
@@ -57,10 +58,10 @@ const HazardEditor = ({ hazards, onChange }: HazardEditorProps) => {
                 helperText={!hazard.description.trim() ? 'Describe the hazard.' : undefined}
                 onChange={(value) => update(index, { description: value })}
               />
-              <EnumSelect label="Likelihood before controls" value={hazard.inherentLikelihood} options={likelihoods} required onChange={(value) => value && update(index, { inherentLikelihood: value })} />
-              <EnumSelect label="Severity before controls" value={hazard.inherentSeverity} options={severities} required onChange={(value) => value && update(index, { inherentSeverity: value })} />
-              <EnumSelect label="Likelihood after controls" value={hazard.residualLikelihood} options={likelihoods} required onChange={(value) => value && update(index, { residualLikelihood: value })} />
-              <EnumSelect label="Severity after controls" value={hazard.residualSeverity} options={severities} required onChange={(value) => value && update(index, { residualSeverity: value })} />
+              <EnumField label="Likelihood before controls" value={hazard.inherentLikelihood} options={likelihoods} required onChange={(value) => value && update(index, { inherentLikelihood: value })} />
+              <EnumField label="Severity before controls" value={hazard.inherentSeverity} options={severities} required onChange={(value) => value && update(index, { inherentSeverity: value })} />
+              <EnumField label="Likelihood after controls" value={hazard.residualLikelihood} options={likelihoods} required onChange={(value) => value && update(index, { residualLikelihood: value })} />
+              <EnumField label="Severity after controls" value={hazard.residualSeverity} options={severities} required onChange={(value) => value && update(index, { residualSeverity: value })} />
             </div>
             <p className="mt-3 flex flex-wrap items-center gap-2 text-theme-xs text-gray-600">
               Preview: {inherent} before controls <RiskLevelChip level={previewLevel(inherent)} /> &rarr; {residual} residual{' '}
@@ -76,7 +77,7 @@ const HazardEditor = ({ hazards, onChange }: HazardEditorProps) => {
               )}
               {hazard.controls.map((control, controlIndex) => (
                 <div key={controlIndex} className="grid items-end gap-3 sm:grid-cols-[180px_1fr_auto]">
-                  <EnumSelect
+                  <EnumField
                     label="Control type"
                     value={control.controlType}
                     options={controlTypes}
@@ -88,7 +89,7 @@ const HazardEditor = ({ hazards, onChange }: HazardEditorProps) => {
                       })
                     }
                   />
-                  <TextInput
+                  <TextField
                     label="Control"
                     value={control.description}
                     maxLength={1000}
@@ -111,9 +112,9 @@ const HazardEditor = ({ hazards, onChange }: HazardEditorProps) => {
                 <Button
                   variant="outline"
                   size="sm"
-                  startIcon="plus"
+                 
                   onClick={() => update(index, { controls: [...hazard.controls, { controlType: 'ADMINISTRATIVE', description: '' }] })}
-                >
+                ><Icon name="plus" size={14} aria-hidden="true" />
                   Add control
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => remove(index)}>
@@ -124,7 +125,7 @@ const HazardEditor = ({ hazards, onChange }: HazardEditorProps) => {
           </fieldset>
         );
       })}
-      <Button variant="outline" startIcon="plus" onClick={() => onChange([...hazards, emptyHazard()])}>
+      <Button variant="outline" onClick={() => onChange([...hazards, emptyHazard()])}><Icon name="plus" size={14} aria-hidden="true" />
         Add hazard
       </Button>
     </div>

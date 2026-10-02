@@ -6,13 +6,13 @@ import {
 } from 'modules/emergency/components/EmergencyFields';
 import { formatElapsed, percentOf } from 'modules/emergency/components/emergencyFormat';
 import type { SiteRecords } from 'modules/emergency/components/useSiteRecords';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
 import SiteSelect from 'shared/components/SiteSelect';
-import { NumberInput, SelectInput, TextAreaInput } from 'shared/components/fields';
 import { formatNumber } from 'shared/components/format';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { integerAtLeast, maxLength, required } from 'shared/validation/validators';
+import { Banner } from '@rfdtech/components';
+import ActionDialog from 'modules/emergency/components/ActionDialog';
+import { TextAreaField, NumberField, SelectField } from 'modules/emergency/components/FormFields';
 
 const twoColumn = 'grid gap-4 sm:grid-cols-2';
 
@@ -68,7 +68,7 @@ export const StartDrillDialog = ({
   );
 
   return (
-    <FormDialog
+    <ActionDialog
       open={open}
       title="Start a drill"
       description="Exercises the activation path and records how it performed. Nothing is broadcast."
@@ -86,7 +86,7 @@ export const StartDrillDialog = ({
           onChange={(value) => form.setValues({ siteCode: value, scenarioId: '' })}
           {...form.fieldProps('siteCode')}
         />
-        <SelectInput
+        <SelectField
           label="Scenario"
           value={form.values.scenarioId}
           onChange={(value) => form.setValue('scenarioId', value)}
@@ -100,7 +100,7 @@ export const StartDrillDialog = ({
         />
       </div>
 
-      <NumberInput
+      <NumberField
         label="Target recipients"
         required
         value={form.values.targetRecipients}
@@ -113,7 +113,7 @@ export const StartDrillDialog = ({
         )}
       />
 
-      <TextAreaInput
+      <TextAreaField
         label="Notes"
         rows={3}
         value={form.values.notes}
@@ -121,11 +121,10 @@ export const StartDrillDialog = ({
         {...form.fieldProps('notes', 'What is being tested, and under what conditions.')}
       />
 
-      <Alert variant="info" title="The drill stays running until it is completed">
-        Completion is where the figures are recorded - reached, acknowledged and elapsed time. A
-        drill that is never completed contributes nothing to the performance record.
-      </Alert>
-    </FormDialog>
+      <Banner variant="info" heading="The drill stays running until it is completed"
+  subtext={<>Completion is where the figures are recorded - reached, acknowledged and elapsed time. A
+        drill that is never completed contributes nothing to the performance record.</>} />
+    </ActionDialog>
   );
 };
 
@@ -188,7 +187,7 @@ export const CompleteDrillDialog = ({
   const acknowledged = Number(form.values.acknowledgedRecipients || 0);
 
   return (
-    <FormDialog
+    <ActionDialog
       open={open}
       title={`Complete ${drill.drillNumber}`}
       description="Records what the drill achieved. A completed drill cannot be amended."
@@ -200,7 +199,7 @@ export const CompleteDrillDialog = ({
       onSubmit={form.submit}
     >
       <div className={twoColumn}>
-        <NumberInput
+        <NumberField
           label="Recipients reached"
           required
           value={form.values.reachedRecipients}
@@ -210,7 +209,7 @@ export const CompleteDrillDialog = ({
             `Out of a target of ${formatNumber(drill.targetRecipients)}.`,
           )}
         />
-        <NumberInput
+        <NumberField
           label="Recipients who acknowledged"
           required
           value={form.values.acknowledgedRecipients}
@@ -219,7 +218,7 @@ export const CompleteDrillDialog = ({
         />
       </div>
 
-      <NumberInput
+      <NumberField
         label="Elapsed time"
         required
         suffix="s"
@@ -231,7 +230,7 @@ export const CompleteDrillDialog = ({
         )}
       />
 
-      <TextAreaInput
+      <TextAreaField
         label="Notes"
         rows={3}
         value={form.values.notes}
@@ -258,6 +257,6 @@ export const CompleteDrillDialog = ({
           value={formatElapsed(Number(form.values.activationSeconds || 0) * 1000)}
         />
       </ConsequencePanel>
-    </FormDialog>
+    </ActionDialog>
   );
 };

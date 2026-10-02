@@ -1,43 +1,48 @@
 /**
- * Chart colours, taken from the CLET design system's Base collection.
+ * Chart colours, resolved from the `@rfdtech/components` tokens.
  *
- * ApexCharts renders to SVG with inline attributes and cannot resolve the CSS custom properties the
- * rest of the dashboard is themed with, so the values are restated here as literals. They are copied
- * from `src/index.css` - change one, change the other, or a chart and its legend will drift apart.
+ * Recharts writes these straight into SVG presentation attributes, and the browser resolves
+ * `var(--clet-*)` there exactly as it does in a stylesheet - so a chart follows the theme (and the
+ * dark scheme) with the rest of the dashboard instead of carrying a second copy of the palette that
+ * had to be kept in step by hand.
  *
- * The categorical order is deliberate and short. Deep Teal, CLET Gold and a mid navy are far apart
- * in both hue and lightness, so they stay separable in greyscale and to a viewer with deuteranopia
- * (SC 1.4.1 - colour is never the only cue; every series is also labelled). A fourth and fifth step
- * exist for the rare chart that needs them, but a panel that wants six series usually wants a table.
+ * The categorical order follows the fleet dashboard in Figma: a navy series with a blue accent beside
+ * it. Navy, blue and a gold accent are far apart in hue and lightness, so they stay separable in
+ * greyscale and to a viewer with deuteranopia (SC 1.4.1 - colour is never the only cue; every series
+ * is also labelled). A panel that wants six series usually wants a table.
+ *
+ * The names are older than the tokens: `teal` is the blue accent, `tealMid` its lighter step. They
+ * stay because modules reference them, and renaming eight call sites would hide what changed here.
  */
 
 export const chartColors = {
-  navy: '#0a1931',
-  navyMid: '#3e5f8a',
-  teal: '#0c4a6e',
-  tealMid: '#0284c7',
-  gold: '#b8960c',
-  goldSoft: '#facc15',
-  success: '#008236',
-  warning: '#b45309',
-  error: '#99080f',
-  grey: '#71717a',
-  greyLine: '#f4f4f5',
-  text: '#52525b',
+  navy: 'var(--clet-primary)',
+  navyMid: 'color-mix(in srgb, var(--clet-primary) 62%, white)',
+  teal: 'var(--clet-info)',
+  tealMid: 'color-mix(in srgb, var(--clet-info) 55%, white)',
+  gold: 'var(--clet-secondary)',
+  goldSoft: 'color-mix(in srgb, var(--clet-secondary) 55%, white)',
+  success: 'var(--clet-success)',
+  warning: 'var(--clet-warning)',
+  error: 'var(--clet-error)',
+  grey: 'var(--clet-text-muted)',
+  greyLine: 'var(--clet-border-subtle)',
+  text: 'var(--clet-text-muted)',
 } as const;
 
 /** Categorical sequence for series that carry no inherent status meaning. */
 export const seriesColors = [
+  chartColors.navy,
   chartColors.teal,
-  chartColors.gold,
   chartColors.navyMid,
-  chartColors.tealMid,
+  chartColors.gold,
   chartColors.grey,
 ] as const;
 
 /**
- * Tone-consistent with `StatusChip`: ready / caution / blocked read the same everywhere.
- * These are the 700–800 steps, so a thin bar or line still clears 3:1 against white (SC 1.4.11).
+ * Tone-consistent with `Badge`: ready / caution / blocked read the same everywhere. The stacked
+ * availability bar in the fleet design is navy / blue / red, which is `neutral`-free by construction:
+ * `active` is the blue and `accent` the navy.
  */
 export const toneColors = {
   ready: chartColors.success,
@@ -45,7 +50,7 @@ export const toneColors = {
   blocked: chartColors.error,
   neutral: chartColors.grey,
   active: chartColors.teal,
-  accent: chartColors.gold,
+  accent: chartColors.navy,
 } as const;
 
-export const chartFont = "Lato, 'Segoe UI', system-ui, -apple-system, Arial, sans-serif";
+export const chartFont = 'var(--clet-font-body)';

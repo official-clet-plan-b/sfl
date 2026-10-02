@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import FormDialog from 'shared/components/FormDialog';
-import { NumberInput, TextInput } from 'shared/components/fields';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import type { RecordPartRequest } from '../api/dto';
+import { FormDialog, NumberInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface RecordPartDialogProps {
   onClose: () => void;

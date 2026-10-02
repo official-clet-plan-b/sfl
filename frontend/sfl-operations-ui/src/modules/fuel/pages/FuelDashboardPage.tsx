@@ -2,6 +2,25 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import dayjs from 'dayjs';
 import {
+  Button,
+  EmptyState,
+  HeroBanner,
+  MetricCard,
+  MetricCards,
+  PageSection,
+  SectionActions,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  type TableColumn,
+} from '@rfdtech/components';
+import { Plus, RefreshCw } from 'lucide-react';
+import {
   DailyFuelTotals,
   DriverLogbook,
   FuelAnomalyCase,
@@ -24,17 +43,14 @@ import {
   formatMoney,
   formatQuantity,
 } from 'modules/fuel/components/fuelFormat';
-import Button from 'shared/components/Button';
-import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import FilterBar from 'shared/components/FilterBar';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatCard from 'shared/components/StatCard';
-import StatusChip from 'shared/components/StatusChip';
-import Tabs from 'shared/components/Tabs';
 import { formatDateTime, formatNumber } from 'shared/components/format';
+import { sflActor } from 'shared/api/config';
+import { canCaptureFuel } from 'modules/fleet/api/access';
+import { CaptureTransactionDialog } from 'modules/fuel/dialogs/transactionDialogs';
+import { CellStack, ErrorBanner, FuelBadge, Panel } from 'modules/fuel/components/fuelUi';
+import { metricLink } from 'modules/fuel/components/metricLink';
+import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fuelPaths } from 'shared/layout/navigation';
 
@@ -85,6 +101,8 @@ const FuelDashboardPage = () => {
   const navigate = useNavigate();
   const [attentionTab, setAttentionTab] = useState<'cases' | 'reconciliation'>('cases');
   const [siteCode, setSiteCode] = useState(defaultSite);
+  const [capturing, setCapturing] = useState(false);
+  const { notifySuccess } = useNotifier();
 
   const windowStart = useMemo(
     () =>
@@ -188,13 +206,13 @@ const FuelDashboardPage = () => {
     [anomalyCounts.data],
   );
 
-  const anomalyColumns = useMemo<Column<FuelAnomalyCase>[]>(
+  const anomalyColumns = useMemo<TableColumn<FuelAnomalyCase>[]>(
     () => [
       {
-        key: 'case',
+        id: 'case',
         header: 'Case',
-        width: 250,
-        cell: (row) => (
+        minWidth: 220,
+        cell: ({ row }) => (
           <CellStack
             primary={`${row.anomalyNumber} · ${humanise(row.type)}`}
             secondary={`SLA ${formatDueIn(row.slaDueAt)} · ${row.assignee ?? 'unassigned'}`}
@@ -202,23 +220,23 @@ const FuelDashboardPage = () => {
         ),
       },
       {
-        key: 'severity',
+        id: 'severity',
         header: 'Severity',
         width: 120,
         align: 'right',
-        cell: (row) => <StatusChip value={row.severity} />,
+        cell: ({ row }) => <FuelBadge value={row.severity} />,
       },
     ],
     [],
   );
 
-  const logbookColumns = useMemo<Column<DriverLogbook>[]>(
+  const logbookColumns = useMemo<TableColumn<DriverLogbook>[]>(
     () => [
       {
-        key: 'logbook',
+        id: 'logbook',
         header: 'Logbook',
-        width: 250,
-        cell: (row) => (
+        minWidth: 220,
+        cell: ({ row }) => (
           <CellStack
             primary={`${row.logbookNumber} · ${row.origin} → ${row.destination}`}
             secondary={`Submitted ${formatDateTime(row.submittedAt)}`}
@@ -226,23 +244,23 @@ const FuelDashboardPage = () => {
         ),
       },
       {
-        key: 'status',
+        id: 'status',
         header: 'Status',
         width: 130,
         align: 'right',
-        cell: (row) => <StatusChip value={row.status} />,
+        cell: ({ row }) => <FuelBadge value={row.status} />,
       },
     ],
     [],
   );
 
-  const unreconciledColumns = useMemo<Column<FuelTransaction>[]>(
+  const unreconciledColumns = useMemo<TableColumn<FuelTransaction>[]>(
     () => [
       {
-        key: 'transaction',
+        id: 'transaction',
         header: 'Transaction',
-        width: 250,
-        cell: (row) => (
+        minWidth: 220,
+        cell: ({ row }) => (
           <CellStack
             primary={`${row.vendorReference} · ${formatQuantity(row.quantity, row.quantityUnit)}`}
             secondary={`${formatDateTime(row.occurredAt)} · ${row.sourceSystem}`}
@@ -250,11 +268,11 @@ const FuelDashboardPage = () => {
         ),
       },
       {
-        key: 'cost',
+        id: 'cost',
         header: 'Cost',
         width: 130,
         align: 'right',
-        cell: (row) => formatMoney(row.totalCost, row.currency),
+        cell: ({ row }) => formatMoney(row.totalCost, row.currency),
       },
     ],
     [],
@@ -270,313 +288,302 @@ const FuelDashboardPage = () => {
     unreconciled.refetch();
   };
 
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning,' : hour < 17 ? 'Good afternoon,' : 'Good evening,';
+  const metricsLoading = snapshot.initialising;
+  const awaitingReconciliation = unreconciled.data?.totalElements ?? 0;
+
   return (
-    <div>
-      <PageHeader
-        title="Fuel and driver logbooks"
-        subtitle="Spend, reconciliation standing and the exceptions waiting on somebody at this site."
-        crumbs={[{ label: 'Fuel' }]}
-        actions={
-          <Button variant="outline" startIcon="refresh" onClick={refreshAll}>
-            Refresh
-          </Button>
-        }
-      />
+    <>
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Fuel dashboard</SectionTitle>
+          <SectionActions>
+            <SiteSelect value={siteCode} onChange={setSiteCode} required />
+            <Button variant="outline" onClick={refreshAll}>
+              <RefreshCw size={14} strokeWidth={1.5} aria-hidden />
+              Refresh
+            </Button>
+            {canCaptureFuel() && (
+              <Button variant="primary" onClick={() => setCapturing(true)}>
+                <Plus size={14} strokeWidth={1.5} aria-hidden />
+                Capture transaction
+              </Button>
+            )}
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      <SectionCard flush>
-        <FilterBar>
-          <SiteSelect
-            value={siteCode}
-            onChange={setSiteCode}
-            required
+      <PageSection>
+        <HeroBanner greeting={greeting} name={sflActor.displayName} />
+      </PageSection>
+
+      {snapshot.error && (
+        <PageSection>
+          <ErrorBanner error={snapshot.error} onRetry={snapshot.refetch} />
+        </PageSection>
+      )}
+
+      {/*
+        Staleness is shown as a quiet note beside the figures rather than a warning banner across
+        the top.
+
+        The banner explained the platform's freshness threshold to somebody who had asked for a fuel
+        summary, and it fires constantly on a site that simply has not refuelled today - so it
+        trained people to scroll past the one place a real warning would appear. What is worth saying
+        is when the figures were last true, which the note says in a line.
+      */}
+      {data?.stale && data.sourceUpdatedAt && (
+        <PageSection>
+          <p className="text-xs text-(--clet-text-secondary)">
+            Figures as at {formatDateTime(data.sourceUpdatedAt)}.
+          </p>
+        </PageSection>
+      )}
+
+      {/*
+       * Nine indicators, all published by the service. The split into "from the snapshot" and
+       * "counted by this application" that this row used to carry is gone: the dashboard endpoint
+       * now counts the anomaly, logbook and import figures itself, across the whole site rather
+       * than across whatever page the dashboard happened to fetch.
+       */}
+      <PageSection>
+        <MetricCards>
+          <MetricCard
+            variant="soft"
+            loading={metricsLoading}
+            label="Transactions"
+            value={data ? formatNumber(data.transactionCount) : 0}
+            description="All statuses, all time"
+            {...metricLink(() => navigate(fuelPaths.transactions))}
           />
-        </FilterBar>
-      </SectionCard>
+          <MetricCard
+            variant="soft"
+            loading={metricsLoading}
+            label="Fuel spend"
+            value={data ? formatMoney(data.fuelSpend, currencyCode) : 0}
+            description="Sum of recorded totals"
+          />
+          <MetricCard
+            variant="soft"
+            loading={metricsLoading}
+            label="Fuel volume"
+            value={data ? formatQuantity(data.fuelVolume, quantityUnit) : 0}
+            description="Sum of recorded quantities"
+          />
+          <MetricCard
+            variant="soft"
+            loading={metricsLoading}
+            label="Reconciled"
+            value={data ? formatNumber(data.reconciledCount) : 0}
+            description="Passed every policy rule"
+            {...metricLink(() => navigate(`${fuelPaths.transactions}?status=RECONCILED`))}
+          />
+          <MetricCard
+            variant="soft"
+            loading={metricsLoading}
+            label="In exception"
+            value={data ? formatNumber(data.exceptionCount) : 0}
+            description="Failed at least one rule"
+            {...metricLink(() => navigate(`${fuelPaths.transactions}?status=EXCEPTION`))}
+          />
+        </MetricCards>
+      </PageSection>
 
-      <div className="mt-5">
-        <DataState
-          loading={snapshot.initialising}
-          error={snapshot.error}
-          onRetry={snapshot.refetch}
-          minHeight={360}
-        >
-          {data && (
-            <div className="space-y-5">
-              {/*
-                Staleness is shown as a quiet note beside the figures rather than a warning banner
-                across the top.
+      <PageSection>
+        <MetricCards>
+          <MetricCard
+            variant="soft"
+            loading={metricsLoading}
+            label="Open anomaly cases"
+            value={data ? formatNumber(data.openAnomalies) : 0}
+            description={`${formatNumber(data?.unassignedAnomalies ?? 0)} unassigned`}
+            {...metricLink(() => navigate(fuelPaths.anomalies))}
+          />
+          <MetricCard
+            variant="soft"
+            loading={metricsLoading}
+            label="Breaching SLA"
+            value={data ? formatNumber(data.anomaliesBreachingSla) : 0}
+            description={`${formatNumber(data?.materialOpenAnomalies ?? 0)} material`}
+            {...metricLink(() => navigate(fuelPaths.anomalies))}
+          />
+          <MetricCard
+            variant="soft"
+            loading={metricsLoading}
+            label="Logbooks awaiting review"
+            value={data ? formatNumber(data.pendingLogbookReviews) : 0}
+            description={`${formatNumber(data?.draftLogbooks ?? 0)} still in draft`}
+            {...metricLink(() => navigate(`${fuelPaths.logbooks}?status=SUBMITTED`))}
+          />
+          <MetricCard
+            variant="soft"
+            loading={metricsLoading}
+            label="Awaiting reconciliation"
+            value={data ? formatNumber(data.awaitingReconciliation) : 0}
+            description="Received but not yet run"
+            {...metricLink(() => navigate(fuelPaths.reconciliation))}
+          />
+        </MetricCards>
+      </PageSection>
 
-                The banner explained the platform's freshness threshold to somebody who had asked for
-                a fuel summary, and it fires constantly on a site that simply has not refuelled today
-                - so it trained people to scroll past the one place a real warning would appear. What
-                is worth saying is when the figures were last true, which the note below says in a
-                line.
-              */}
-              {data.stale && data.sourceUpdatedAt && (
-                <p className="text-theme-xs text-gray-500">
-                  Figures as at {formatDateTime(data.sourceUpdatedAt)}.
-                </p>
+      <PageSection>
+        <div className="grid gap-6 xl:grid-cols-3">
+          <Panel
+            className="xl:col-span-2"
+            title="Fuel spend and volume"
+            description={`By day · last ${SPEND_DAYS} days`}
+          >
+            {dailyTotals.error ? (
+              <ErrorBanner error={dailyTotals.error} onRetry={dailyTotals.refetch} />
+            ) : (
+              <SpendChart points={spendPoints} currencyCode={currencyCode} unit={quantityUnit} />
+            )}
+          </Panel>
+
+          <Panel title="Reconciliation standing" description="Every transaction at this site">
+            <ReconciliationChart slices={reconciliationSlices} />
+            {data && (
+              <DerivedNote>
+                Reconciled and in-exception are snapshot figures. Not-yet-reconciled is the
+                remainder of the {formatNumber(data.transactionCount)} transactions the snapshot
+                counts.
+              </DerivedNote>
+            )}
+          </Panel>
+        </div>
+      </PageSection>
+
+      <PageSection>
+        <div className="grid gap-6 xl:grid-cols-2">
+          <Panel
+            title="Open anomaly cases"
+            description="Oldest SLA first"
+            actions={
+              <Button size="sm" variant="outline" onClick={() => navigate(fuelPaths.anomalies)}>
+                View all {formatNumber(data?.openAnomalies ?? openAnomalies.length)}
+              </Button>
+            }
+          >
+            {anomalies.error && <ErrorBanner error={anomalies.error} onRetry={anomalies.refetch} />}
+            <Table paramPrefix="fuel-dash-anomalies" variant="soft">
+              <TableContent
+                variant="soft"
+                columns={anomalyColumns}
+                data={openAnomalies}
+                rowKey={(row) => row.id}
+                loading={anomalies.initialising}
+                onRowClick={(row) => navigate(fuelPaths.anomalyDetail(row.id))}
+                emptyContent={
+                  <EmptyState
+                    title="No open anomaly cases"
+                    description="Nothing at this site is waiting on an explanation or a decision."
+                  />
+                }
+              />
+            </Table>
+          </Panel>
+
+          <Panel
+            title="Logbooks awaiting review"
+            description="With a reviewer rather than a driver"
+            actions={
+              <Button size="sm" variant="outline" onClick={() => navigate(fuelPaths.logbooks)}>
+                View all {formatNumber(data?.pendingLogbookReviews ?? pendingReviews.length)}
+              </Button>
+            }
+          >
+            {logbooks.error && <ErrorBanner error={logbooks.error} onRetry={logbooks.refetch} />}
+            <Table paramPrefix="fuel-dash-logbooks" variant="soft">
+              <TableContent
+                variant="soft"
+                columns={logbookColumns}
+                data={pendingReviews.slice(0, 6)}
+                rowKey={(row) => row.id}
+                loading={logbooks.initialising}
+                onRowClick={(row) => navigate(fuelPaths.logbookDetail(row.id))}
+                emptyContent={
+                  <EmptyState
+                    title="Nothing awaiting review"
+                    description="No logbook at this site is submitted or under review."
+                  />
+                }
+              />
+            </Table>
+          </Panel>
+        </div>
+      </PageSection>
+
+      <PageSection>
+        <Panel title="Cases and reconciliation">
+          <Tabs
+            variant="pill"
+            value={attentionTab}
+            onValueChange={(value) => setAttentionTab(value as 'cases' | 'reconciliation')}
+          >
+            <TabsList>
+              <TabsTrigger value="cases">Open cases by type ({anomalyBars.length})</TabsTrigger>
+              <TabsTrigger value="reconciliation">
+                Awaiting reconciliation ({awaitingReconciliation})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="cases">
+              {anomalyCounts.error && (
+                <ErrorBanner error={anomalyCounts.error} onRetry={anomalyCounts.refetch} />
               )}
+              {anomalyBars.length === 0 && !anomalyCounts.initialising ? (
+                <EmptyState title="No open cases" description="There is nothing to break down." />
+              ) : (
+                <AnomalyMixChart bars={anomalyBars} />
+              )}
+            </TabsContent>
 
-              {/*
-               * Nine indicators, all published by the service. The split into "from the snapshot"
-               * and "counted by this application" that this row used to carry is gone: the dashboard
-               * endpoint now counts the anomaly, logbook and import figures itself, across the whole
-               * site rather than across whatever page the dashboard happened to fetch.
-               */}
-              <div>
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-                  <StatCard
-                    label="Transactions"
-                    value={formatNumber(data.transactionCount)}
-                    icon="coins"
-                    caption="All statuses, all time"
-                    onClick={() => navigate(fuelPaths.transactions)}
-                  />
-                  <StatCard
-                    label="Fuel spend"
-                    value={formatMoney(data.fuelSpend, currencyCode)}
-                    icon="fuel"
-                    caption="Sum of recorded totals"
-                  />
-                  <StatCard
-                    label="Fuel volume"
-                    value={formatQuantity(data.fuelVolume, quantityUnit)}
-                    icon="gauge"
-                    caption="Sum of recorded quantities"
-                  />
-                  <StatCard
-                    label="Reconciled"
-                    value={formatNumber(data.reconciledCount)}
-                    icon="check-circle"
-                    tone={
-                      data.transactionCount > 0 && data.reconciledCount === data.transactionCount
-                        ? 'good'
-                        : 'neutral'
-                    }
-                    caption="Passed every policy rule"
-                    onClick={() => navigate(`${fuelPaths.transactions}?status=RECONCILED`)}
-                  />
-                  <StatCard
-                    label="In exception"
-                    value={formatNumber(data.exceptionCount)}
-                    icon="alert-circle"
-                    tone={data.exceptionCount > 0 ? 'critical' : 'neutral'}
-                    caption="Failed at least one rule"
-                    onClick={() => navigate(`${fuelPaths.transactions}?status=EXCEPTION`)}
-                  />
-                </div>
-                <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <StatCard
-                    label="Open anomaly cases"
-                    value={formatNumber(data.openAnomalies)}
-                    icon="alert-triangle"
-                    tone={data.openAnomalies > 0 ? 'caution' : 'neutral'}
-                    caption={`${formatNumber(data.unassignedAnomalies)} unassigned`}
-                    onClick={() => navigate(fuelPaths.anomalies)}
-                  />
-                  <StatCard
-                    label="Breaching SLA"
-                    value={formatNumber(data.anomaliesBreachingSla)}
-                    icon="clock"
-                    tone={data.anomaliesBreachingSla > 0 ? 'critical' : 'neutral'}
-                    caption={`${formatNumber(data.materialOpenAnomalies)} material`}
-                    onClick={() => navigate(fuelPaths.anomalies)}
-                  />
-                  <StatCard
-                    label="Logbooks awaiting review"
-                    value={formatNumber(data.pendingLogbookReviews)}
-                    icon="book"
-                    tone={data.pendingLogbookReviews > 0 ? 'caution' : 'neutral'}
-                    caption={`${formatNumber(data.draftLogbooks)} still in draft`}
-                    onClick={() => navigate(`${fuelPaths.logbooks}?status=SUBMITTED`)}
-                  />
-                  <StatCard
-                    label="Awaiting reconciliation"
-                    value={formatNumber(data.awaitingReconciliation)}
-                    icon="scale"
-                    tone={data.awaitingReconciliation > 0 ? 'caution' : 'neutral'}
-                    caption="Received but not yet run"
-                    onClick={() => navigate(fuelPaths.reconciliation)}
-                  />
-                </div>
+            <TabsContent value="reconciliation">
+              <div className="mb-2 flex justify-end">
+                <Button size="sm" variant="outline" onClick={() => navigate(fuelPaths.reconciliation)}>
+                  Reconcile
+                </Button>
               </div>
-
-              <div className="grid gap-5 xl:grid-cols-3">
-                <SectionCard
-                  className="xl:col-span-2"
-                  title="Fuel spend and volume"
-                  subtitle={`By day · last ${SPEND_DAYS} days`}
-                >
-                  <DataState
-                    loading={dailyTotals.initialising}
-                    error={dailyTotals.error}
-                    onRetry={dailyTotals.refetch}
-                    minHeight={280}
-                  >
-                    <SpendChart
-                      points={spendPoints}
-                      currencyCode={currencyCode}
-                      unit={quantityUnit}
+              {unreconciled.error && (
+                <ErrorBanner error={unreconciled.error} onRetry={unreconciled.refetch} />
+              )}
+              <Table paramPrefix="fuel-dash-unreconciled" variant="soft">
+                <TableContent
+                  variant="soft"
+                  columns={unreconciledColumns}
+                  data={unreconciled.data?.content ?? []}
+                  rowKey={(row) => row.id}
+                  loading={unreconciled.initialising}
+                  onRowClick={(row) => navigate(fuelPaths.transactionDetail(row.id))}
+                  emptyContent={
+                    <EmptyState
+                      title="Everything has been reconciled"
+                      description="No transaction at this site is still in the received state."
                     />
-                  </DataState>
-                </SectionCard>
-
-                <SectionCard
-                  title="Reconciliation standing"
-                  subtitle="Every transaction at this site"
-                >
-                  <ReconciliationChart slices={reconciliationSlices} />
-                  <DerivedNote>
-                    Reconciled and in-exception are snapshot figures. Not-yet-reconciled is the
-                    remainder of the {formatNumber(data.transactionCount)} transactions the snapshot
-                    counts.
-                  </DerivedNote>
-                </SectionCard>
-              </div>
-
-              <div className="grid gap-5 xl:grid-cols-2">
-                <SectionCard
-                  title="Open anomaly cases"
-                  subtitle="Oldest SLA first"
-                  actions={
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      endIcon="chevron-right"
-                      onClick={() => navigate(fuelPaths.anomalies)}
-                    >
-                      View queue
-                    </Button>
                   }
-                  flush
-                >
-                  <DataState
-                    loading={anomalies.initialising}
-                    error={anomalies.error}
-                    empty={openAnomalies.length === 0}
-                    emptyTitle="No open anomaly cases"
-                    emptyHint="Nothing at this site is waiting on an explanation or a decision."
-                    onRetry={anomalies.refetch}
-                    minHeight={160}
-                  >
-                    <DataTable
-                      rows={openAnomalies}
-                      columns={anomalyColumns}
-                      getRowId={(row) => row.id}
-                      loading={anomalies.loading}
-                      onRowClick={(row) => navigate(fuelPaths.anomalyDetail(row.id))}
-                      caption="Open fuel anomaly cases at this site, ordered by SLA due time, with their severity."
-                      dense
-                    />
-                  </DataState>
-                </SectionCard>
-
-                <SectionCard
-                  title="Logbooks awaiting review"
-                  subtitle="With a reviewer rather than a driver"
-                  actions={
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      endIcon="chevron-right"
-                      onClick={() => navigate(fuelPaths.logbooks)}
-                    >
-                      View register
-                    </Button>
-                  }
-                  flush
-                >
-                  <DataState
-                    loading={logbooks.initialising}
-                    error={logbooks.error}
-                    empty={pendingReviews.length === 0}
-                    emptyTitle="Nothing awaiting review"
-                    emptyHint="No logbook at this site is submitted or under review."
-                    onRetry={logbooks.refetch}
-                    minHeight={160}
-                  >
-                    <DataTable
-                      rows={pendingReviews.slice(0, 6)}
-                      columns={logbookColumns}
-                      getRowId={(row) => row.id}
-                      loading={logbooks.loading}
-                      onRowClick={(row) => navigate(fuelPaths.logbookDetail(row.id))}
-                      caption="Driver logbooks at this site that are with a reviewer, with their status."
-                      dense
-                    />
-                  </DataState>
-                </SectionCard>
-              </div>
-
-              <SectionCard flush>
-                <Tabs
-                  variant="pill"
-                  className="px-5 pt-5"
-                  value={attentionTab}
-                  onChange={(value) => setAttentionTab(value as 'cases' | 'reconciliation')}
-                  items={[
-                    { value: 'cases', label: 'Open cases by type', count: anomalyBars.length },
-                    {
-                      value: 'reconciliation',
-                      label: 'Awaiting reconciliation',
-                      count: unreconciled.data?.totalElements ?? 0,
-                    },
-                  ]}
                 />
-                {attentionTab === 'cases' ? (
-                  <div className="px-5 pb-5 pt-4">
-                    <DataState
-                      loading={anomalyCounts.initialising}
-                      error={anomalyCounts.error}
-                      empty={anomalyBars.length === 0}
-                      emptyTitle="No open cases"
-                      emptyHint="There is nothing to break down."
-                      onRetry={anomalyCounts.refetch}
-                      minHeight={260}
-                    >
-                      <AnomalyMixChart bars={anomalyBars} />
-                    </DataState>
-                  </div>
-                ) : (
-                  <div className="pb-2 pt-3">
-                    <div className="flex justify-end px-5 pb-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        endIcon="chevron-right"
-                        onClick={() => navigate(fuelPaths.reconciliation)}
-                      >
-                        Reconcile
-                      </Button>
-                    </div>
-                    <DataState
-                      loading={unreconciled.initialising}
-                      error={unreconciled.error}
-                      empty={(unreconciled.data?.totalElements ?? 0) === 0}
-                      emptyTitle="Everything has been reconciled"
-                      emptyHint="No transaction at this site is still in the received state."
-                      onRetry={unreconciled.refetch}
-                      minHeight={160}
-                    >
-                      <DataTable
-                        rows={unreconciled.data?.content ?? []}
-                        columns={unreconciledColumns}
-                        getRowId={(row) => row.id}
-                        loading={unreconciled.loading}
-                        onRowClick={(row) => navigate(fuelPaths.transactionDetail(row.id))}
-                        caption="Fuel transactions at this site that have been received but not reconciled, with their cost."
-                        dense
-                      />
-                    </DataState>
-                  </div>
-                )}
-              </SectionCard>
-            </div>
-          )}
-        </DataState>
-      </div>
-    </div>
+              </Table>
+            </TabsContent>
+          </Tabs>
+        </Panel>
+      </PageSection>
+
+      {capturing && (
+        <CaptureTransactionDialog
+          open
+          defaultSiteCode={siteCode}
+          onClose={() => setCapturing(false)}
+          onSaved={(transaction) => {
+            notifySuccess(
+              `Transaction captured against ${transaction.vendorReference}.`,
+              'It is in the received state until reconciliation runs.',
+            );
+            refreshAll();
+          }}
+        />
+      )}
+    </>
   );
 };
 

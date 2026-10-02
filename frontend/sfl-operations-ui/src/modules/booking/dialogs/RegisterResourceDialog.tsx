@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import FormDialog from 'shared/components/FormDialog';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import { NumberInput, SelectInput, TextAreaInput, TextInput } from 'shared/components/fields';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import { humaniseCode } from 'modules/facilities/components/facilitiesFormat';
 import type { RegisterResourceBody } from '../api/dto';
 import { RESOURCE_CATEGORIES } from '../api/enums';
 import type { ResourceCategory } from '../api/enums';
+import { FormDialog, NumberInput, SelectInput, TextAreaInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface RegisterResourceDialogProps {
   onClose: () => void;

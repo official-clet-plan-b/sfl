@@ -3,6 +3,7 @@ import type { HazardView } from '../api/dto';
 import { hazardTypeLabel } from '../api/enums';
 import { RiskLevelChip } from './riskChips';
 
+
 /** A version's hazards as the service scored them - read-only, every figure the service's own. */
 const HazardTable = ({ hazards }: { hazards: HazardView[] }) => {
   if (hazards.length === 0) {

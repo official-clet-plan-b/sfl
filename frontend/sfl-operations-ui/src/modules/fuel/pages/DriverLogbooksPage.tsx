@@ -1,5 +1,17 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
+import {
+  Button,
+  PageSection,
+  SectionActions,
+  SectionHeader,
+  SectionTitle,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  type TableColumn,
+} from '@rfdtech/components';
+import { Plus } from 'lucide-react';
 import { DriverLogbook } from 'modules/fuel/api/dto';
 import {
   LOGBOOK_STATUSES,
@@ -11,18 +23,11 @@ import { driverLogbooksApi } from 'modules/fuel/api/fuelApi';
 import { CreateLogbookDialog } from 'modules/fuel/dialogs/logbookDialogs';
 import { DriverSelect, VehicleSelect } from 'modules/fleet/components/FleetReferenceSelect';
 import { humanise } from 'modules/fleet/api/enums';
-import { useClampPage, useServerPage } from 'modules/fuel/components/useServerPage';
-import Button from 'shared/components/Button';
-import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar from 'shared/components/FilterBar';
+import { useClampPage, useRegisterPaging } from 'modules/fuel/components/useRegisterPaging';
+import { CellStack, ErrorBanner, FuelBadge, Panel, RegisterTable } from 'modules/fuel/components/fuelUi';
+import { DateField, EnumField } from 'modules/fuel/components/fuelFields';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
-import { DateField } from 'shared/components/DateField';
 import { formatDate, formatDateTime, formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fuelPaths } from 'shared/layout/navigation';
@@ -55,21 +60,8 @@ const DriverLogbooksPage = () => {
   const [journeyTo, setJourneyTo] = useState('');
   const [creating, setCreating] = useState(false);
 
-  /**
-   * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
-   * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
-   * option already active clears it, same as the dropdown it replaces; toggling a different one while
-   * one is active swaps to the new choice instead of appearing to hold both.
-   */
-  const pickSingle = <T extends string>(current: T | '', next: string[]): T | '' => {
-    if (next.length === 0) {
-      return '';
-    }
-    return (next.find((value) => value !== current) ?? next[0]) as T;
-  };
-
   const filterKey = `${siteCode}|${status}|${useClass}|${driverId}|${vehicleId}|${journeyFrom}|${journeyTo}`;
-  const paging = useServerPage(filterKey);
+  const paging = useRegisterPaging('fuel-logbooks', filterKey);
 
   const query = useApiQuery(
     (signal) =>
@@ -92,13 +84,13 @@ const DriverLogbooksPage = () => {
 
   useClampPage(paging.page, query.data?.totalPages, paging.setPage);
 
-  const columns = useMemo<Column<DriverLogbook>[]>(
+  const columns = useMemo<TableColumn<DriverLogbook>[]>(
     () => [
       {
-        key: 'logbook',
+        id: 'logbook',
         header: 'Logbook',
-        width: 280,
-        cell: (row) => (
+        minWidth: 240,
+        cell: ({ row }) => (
           <CellStack
             primary={`${row.logbookNumber} · ${row.origin} → ${row.destination}`}
             secondary={row.purpose}
@@ -106,41 +98,39 @@ const DriverLogbooksPage = () => {
         ),
       },
       {
-        key: 'journey',
+        id: 'journey',
         header: 'Journey date',
         width: 130,
-        cell: (row) => formatDate(row.journeyDate),
+        cell: ({ row }) => formatDate(row.journeyDate),
       },
       {
-        key: 'distance',
+        id: 'distance',
         header: 'Distance',
         width: 110,
         align: 'right',
-        cell: (row) =>
+        cell: ({ row }) =>
           row.endOdometer === null || row.endOdometer === undefined
             ? '-'
             : `${formatNumber(row.endOdometer - row.startOdometer)} km`,
       },
       {
-        key: 'use',
+        id: 'use',
         header: 'Use',
         width: 120,
-        hideBelowLg: true,
-        cell: (row) => <StatusChip value={row.useClassification} tone="neutral" />,
+        cell: ({ row }) => <FuelBadge value={row.useClassification} tone="neutral" />,
       },
       {
-        key: 'submitted',
+        id: 'submitted',
         header: 'Submitted',
         width: 160,
-        hideBelowLg: true,
-        cell: (row) => formatDateTime(row.submittedAt),
+        cell: ({ row }) => formatDateTime(row.submittedAt),
       },
       {
-        key: 'status',
+        id: 'status',
         header: 'Status',
         width: 140,
         align: 'right',
-        cell: (row) => <StatusChip value={row.status} />,
+        cell: ({ row }) => <FuelBadge value={row.status} />,
       },
     ],
     [],
@@ -151,91 +141,102 @@ const DriverLogbooksPage = () => {
   );
 
   return (
-    <div>
-      <PageHeader
-        title="Driver logbooks"
-        subtitle="Journey records from draft through review to approval."
-        crumbs={[{ label: 'Fuel', to: fuelPaths.dashboard }, { label: 'Driver logbooks' }]}
-        actions={
-          // A driver holds this - the logbook is their own journey record. A reporting viewer reads
-          // the register and creates nothing in it.
-          canCreateLogbooks() ? (
-            <Button variant="primary" startIcon="plus" onClick={() => setCreating(true)}>
-              Create logbook
-            </Button>
-          ) : undefined
-        }
-      />
+    <>
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Driver logbooks</SectionTitle>
+          <SectionActions>
+            <SiteSelect value={siteCode} onChange={setSiteCode} required />
+            {/*
+              A driver holds this - the logbook is their own journey record. A reporting viewer
+              reads the register and creates nothing in it.
+            */}
+            {canCreateLogbooks() && (
+              <Button variant="primary" onClick={() => setCreating(true)}>
+                <Plus size={14} strokeWidth={1.5} aria-hidden />
+                Create logbook
+              </Button>
+            )}
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      <SectionCard flush>
-        <FilterBar
-          onReset={() => {
-            setStatus('');
-            setUseClass('');
-            setDriverId('');
-            setVehicleId('');
-            setJourneyFrom('');
-            setJourneyTo('');
-          }}
-          resetDisabled={!filtersApplied}
+      <PageSection>
+        <Panel
+          title="Logbooks"
+          description="Journey records from draft through review to approval. Approved logbooks feed fuel reconciliation."
         >
-          <SiteSelect value={siteCode} onChange={setSiteCode} required />
-          <FacetFilter
-            label="Status"
-            selected={status ? [status] : []}
-            onChange={(next) => setStatus(pickSingle(status, next))}
-            options={LOGBOOK_STATUSES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <FacetFilter
-            label="Use classification"
-            selected={useClass ? [useClass] : []}
-            onChange={(next) => setUseClass(pickSingle(useClass, next))}
-            options={LOGBOOK_USE_CLASSIFICATIONS.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <DriverSelect
-            siteCode={siteCode}
-            value={driverId}
-            onChange={setDriverId}
-            allowEmpty
-            emptyLabel="Any driver"
-          />
-          <VehicleSelect
-            siteCode={siteCode}
-            value={vehicleId}
-            onChange={setVehicleId}
-            allowEmpty
-            emptyLabel="Any vehicle"
-          />
-          <DateField label="Journey from" value={journeyFrom} onChange={setJourneyFrom} />
-          <DateField label="Journey to" value={journeyTo} onChange={setJourneyTo} />
-        </FilterBar>
-      </SectionCard>
-
-      <div className="mt-5">
-        <SectionCard flush>
-          <DataState
-            loading={query.initialising}
-            error={query.error}
-            onRetry={query.refetch}
-            minHeight={300}
+          <Tabs
+            variant="pill"
+            value={status || 'all'}
+            onValueChange={(value) => setStatus(value === 'all' ? '' : (value as LogbookStatus))}
           >
-            <DataTable
-              rows={query.data?.content ?? []}
-              columns={columns}
-              getRowId={(row) => row.id}
-              loading={query.loading}
-              onRowClick={(row) => navigate(fuelPaths.logbookDetail(row.id))}
-              caption="Driver logbooks matching the current filters, with journey date, distance, use classification, submission time and status."
-              emptyMessage="No logbook matches these filters."
-              page={query.data?.page ?? paging.page}
-              pageSize={query.data?.size ?? paging.size}
-              totalElements={query.data?.totalElements ?? 0}
-              onPageChange={paging.setPage}
-              onPageSizeChange={paging.setSize}
-            />
-          </DataState>
-        </SectionCard>
-      </div>
+            <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
+              {LOGBOOK_STATUSES.map((value) => (
+                <TabsTrigger key={value} value={value}>
+                  {humanise(value)}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
+          {query.error && <ErrorBanner error={query.error} onRetry={query.refetch} className="mt-4" />}
+
+          <RegisterTable
+            paramPrefix="fuel-logbooks"
+            columns={columns}
+            rows={query.data?.content ?? []}
+            rowKey={(row) => row.id}
+            loading={query.loading}
+            onRowClick={(row) => navigate(fuelPaths.logbookDetail(row.id))}
+            empty={{
+              title: 'Nothing to review',
+              description: 'Logbooks drivers create at this site appear here.',
+              filteredTitle: 'No logbook matches these filters',
+            }}
+            filtersApplied={filtersApplied}
+            totalPages={query.data?.totalPages ?? 0}
+            totalItems={query.data?.totalElements ?? 0}
+            pageSize={paging.size}
+            onResetFilters={() => {
+              setUseClass('');
+              setDriverId('');
+              setVehicleId('');
+              setJourneyFrom('');
+              setJourneyTo('');
+            }}
+            filters={
+              <>
+                <EnumField
+                  label="Use classification"
+                  value={useClass}
+                  options={LOGBOOK_USE_CLASSIFICATIONS}
+                  onChange={setUseClass}
+                  allowEmpty
+                  emptyLabel="Any use"
+                />
+                <DriverSelect
+                  siteCode={siteCode}
+                  value={driverId}
+                  onChange={setDriverId}
+                  allowEmpty
+                  emptyLabel="Any driver"
+                />
+                <VehicleSelect
+                  siteCode={siteCode}
+                  value={vehicleId}
+                  onChange={setVehicleId}
+                  allowEmpty
+                  emptyLabel="Any vehicle"
+                />
+                <DateField label="Journey from" value={journeyFrom} onChange={setJourneyFrom} />
+                <DateField label="Journey to" value={journeyTo} onChange={setJourneyTo} />
+              </>
+            }
+          />
+        </Panel>
+      </PageSection>
 
       {creating && (
         <CreateLogbookDialog
@@ -252,7 +253,7 @@ const DriverLogbooksPage = () => {
           }}
         />
       )}
-    </div>
+    </>
   );
 };
 

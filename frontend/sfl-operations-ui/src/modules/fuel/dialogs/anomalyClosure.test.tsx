@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotifierProvider } from 'shared/components/Notifier';
 
@@ -63,15 +64,17 @@ const closeable = {
 
 const renderClose = () =>
   render(
-    <NotifierProvider>
-      <AnomalyActionDialog
-        open
-        anomaly={closeable}
-        action="close"
-        onClose={vi.fn()}
-        onSaved={vi.fn()}
-      />
-    </NotifierProvider>,
+    <MemoryRouter>
+      <NotifierProvider>
+        <AnomalyActionDialog
+          open
+          anomaly={closeable}
+          action="close"
+          onClose={vi.fn()}
+          onSaved={vi.fn()}
+        />
+      </NotifierProvider>
+    </MemoryRouter>,
   );
 
 describe('AnomalyActionDialog closure evidence', () => {
@@ -88,7 +91,7 @@ describe('AnomalyActionDialog closure evidence', () => {
     renderClose();
 
     expect(screen.getByText(/closure evidence/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /choose a file/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /upload file/i })).toBeInTheDocument();
     expect(screen.queryByText(/paste its identifier/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/evidence reference/i)).not.toBeInTheDocument();
   });

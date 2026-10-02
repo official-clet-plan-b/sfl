@@ -1,5 +1,5 @@
 import { permits } from 'shared/layout/actorPermissions';
-import type { Tone } from 'shared/components/StatusChip';
+import type { Tone } from 'modules/emergency/components/StatusBadge';
 import type { NotificationActivation } from './dto';
 import type { ActivationStatus } from './enums';
 

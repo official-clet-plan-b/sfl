@@ -6,26 +6,25 @@ import {
   VehicleResponse,
 } from 'modules/fleet/api/dto';
 import {
-  COMPLIANCE_DOCUMENT_STATUSES,
   COMPLIANCE_DOCUMENT_TYPES,
-  ComplianceDocumentStatus,
   ComplianceDocumentType,
   humanise,
 } from 'modules/fleet/api/enums';
 import { dashboardApi, vehiclesApi } from 'modules/fleet/api/fleetApi';
-
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
-import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import { DateField } from 'shared/components/DateField';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar from 'shared/components/FilterBar';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
-import Tabs from 'shared/components/Tabs';
+import { Banner, Button, MetricCard, PageSection } from '@rfdtech/components';
+import FleetTable, {
+  CellStack,
+  FilterDropdown,
+  FilterField,
+  FleetColumn,
+  useRegisterState,
+} from 'modules/fleet/components/FleetTable';
+import MetricGroup from 'modules/fleet/components/MetricGroup';
+import Panel from 'modules/fleet/components/Panel';
+import RegisterHeader from 'modules/fleet/components/RegisterHeader';
+import StatusBadge from 'modules/fleet/components/StatusBadge';
+import { DateField } from 'modules/fleet/components/formFields';
+import Icon from 'shared/components/Icon';
 import { formatDate, formatDaysRemaining, formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fleetPaths } from 'shared/layout/navigation';
@@ -63,9 +62,9 @@ type TabKey = 'expiring' | 'service' | 'all';
 /** Expiry urgency is the one thing an operator reads first, so it carries a tone of its own. */
 const expiryClass = (daysUntilExpiry: number): string => {
   if (daysUntilExpiry < 0) {
-    return 'text-error-600';
+    return 'text-error-700';
   }
-  return daysUntilExpiry < 30 ? 'text-warning-600' : 'text-gray-500';
+  return daysUntilExpiry < 30 ? 'text-warning-700' : 'opacity-70';
 };
 
 /**
@@ -83,25 +82,13 @@ const expiryClass = (daysUntilExpiry: number): string => {
 const CompliancePage = () => {
   const navigate = useNavigate();
   const { notifyError } = useNotifier();
-  const [siteCode, setSiteCode] = useState(defaultSite);
   const [tab, setTab] = useState<TabKey>('expiring');
-  const [documentType, setDocumentType] = useState<ComplianceDocumentType | ''>('');
-  const [status, setStatus] = useState<ComplianceDocumentStatus | ''>('');
-  const [expiringBefore, setExpiringBefore] = useState('');
-  const filtered = Boolean(documentType || status || expiringBefore);
-
-  /**
-   * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
-   * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
-   * option already active clears it, same as the dropdown it replaces; toggling a different one while
-   * one is active swaps to the new choice instead of appearing to hold both.
-   */
-  const pickSingle = <T extends string>(current: T | '', next: string[]): T | '' => {
-    if (next.length === 0) {
-      return '';
-    }
-    return (next.find((value) => value !== current) ?? next[0]) as T;
-  };
+  const state = useRegisterState('compliance');
+  const { filters, setFilter } = state;
+  const siteCode = state.site;
+  const documentType = (filters.type ?? '') as ComplianceDocumentType | '';
+  const expiringBefore = filters.expiringBefore ?? '';
+  const filtered = Boolean(documentType || expiringBefore);
 
   const snapshot = useApiQuery(
     (signal) => dashboardApi.operations({ siteCode: siteCode || undefined }, signal),
@@ -131,7 +118,6 @@ const CompliancePage = () => {
         vehiclesApi.searchComplianceDocuments(
           {
             documentType: documentType || undefined,
-            status: status || undefined,
             expiringBefore: expiringBefore || undefined,
             size: SEARCH_LIMIT,
           },
@@ -144,11 +130,14 @@ const CompliancePage = () => {
         // The search is scoped to the actor's own sites, which can be wider than the one site this
         // screen is showing, so the chosen site is applied here.
         .filter((document) => !siteCode || document.siteCode === siteCode)
-        .map((document) => ({ document, vehicle: byId.get(document.vehicleId) ?? null }));
+        .map((document) => ({
+          document,
+          vehicle: byId.get(document.vehicleId) ?? null,
+        }));
       // Measured before the site filter, because the cap applies to what the service returned.
       return { rows, truncated: documentList.length >= SEARCH_LIMIT };
     },
-    [siteCode, documentType, status, expiringBefore],
+    [siteCode, documentType, expiringBefore],
   );
 
   const rows = documents.data?.rows ?? [];
@@ -156,9 +145,18 @@ const CompliancePage = () => {
   const expiringRows = rows.filter(
     (row) => row.document.daysUntilExpiry < 60 || row.document.status !== 'ACTIVE',
   );
-  const visibleRows = tab === 'expiring' ? expiringRows : rows;
+  const wanted = state.search.trim().toLowerCase();
+  const visibleRows = (tab === 'expiring' ? expiringRows : rows).filter(
+    (row) =>
+      !wanted ||
+      [
+        row.vehicle?.registrationNumber,
+        row.document.documentReference,
+        row.document.issuingAuthority,
+      ].some((value) => value?.toLowerCase().includes(wanted)),
+  );
 
-  const documentColumns = useMemo<Column<DocumentRow>[]>(
+  const documentColumns = useMemo<FleetColumn<DocumentRow>[]>(
     () => [
       {
         key: 'vehicle',
@@ -166,7 +164,10 @@ const CompliancePage = () => {
         width: 180,
         cell: (row) =>
           row.vehicle ? (
-            <CellStack primary={row.vehicle.registrationNumber} secondary={row.vehicle.siteCode} />
+            <CellStack
+              primary={row.vehicle.registrationNumber}
+              secondary={`${row.vehicle.make} ${row.vehicle.model}`}
+            />
           ) : (
             // The document is real even when its vehicle is outside the fetched page; showing the
             // shortened id is more use than hiding the exposure.
@@ -179,22 +180,24 @@ const CompliancePage = () => {
       {
         key: 'document',
         header: 'Document',
-        width: 280,
+        width: 220,
         cell: (row) => (
           <div className="min-w-0">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <span className="font-semibold text-gray-800">
-                {humanise(row.document.documentType)}
-              </span>
+              <span className="font-semibold">{humanise(row.document.documentType)}</span>
               {row.document.mandatory && (
-                <StatusChip value="MANDATORY" label="Mandatory" tone="accent" />
+                <StatusBadge value="MANDATORY" label="Mandatory" tone="accent" />
               )}
             </div>
-            <div className="truncate text-theme-xs text-gray-500">
-              {row.document.documentReference} · {row.document.issuingAuthority}
-            </div>
+            <div className="truncate text-theme-xs opacity-70">{row.document.issuingAuthority}</div>
           </div>
         ),
+      },
+      {
+        key: 'reference',
+        header: 'Reference',
+        width: 140,
+        cell: (row) => row.document.documentReference,
       },
       {
         key: 'expiry',
@@ -212,10 +215,21 @@ const CompliancePage = () => {
         ),
       },
       {
+        key: 'effect',
+        header: 'Effect on readiness',
+        width: 170,
+        cell: (row) =>
+          row.document.mandatory && row.document.status !== 'ACTIVE' ? (
+            'Withheld from assignment'
+          ) : (
+            <span className="opacity-70">None until expiry</span>
+          ),
+      },
+      {
         key: 'status',
         header: 'Status',
         width: 130,
-        cell: (row) => <StatusChip value={row.document.status} />,
+        cell: (row) => <StatusBadge value={row.document.status} />,
       },
       {
         key: 'file',
@@ -234,220 +248,207 @@ const CompliancePage = () => {
               />
             </div>
           ) : (
-            <span className="text-theme-xs text-gray-500">Not attached</span>
+            <span className="text-theme-xs opacity-70">Not attached</span>
           ),
       },
     ],
     [notifyError],
   );
 
-  const drilldownColumns = useMemo<Column<DashboardDrilldownRow>[]>(
+  const drilldownColumns = useMemo<FleetColumn<DashboardDrilldownRow>[]>(
     () => [
       {
         key: 'summary',
         header: 'Record',
         width: 320,
-        cell: (row) => <span className="font-medium text-gray-800">{row.summary}</span>,
+        cell: (row) => <span className="font-medium">{row.summary}</span>,
       },
       {
         key: 'siteCode',
         header: 'Site',
         width: 120,
-        align: 'right',
-        cell: (row) => <span className="text-theme-xs text-gray-500">{row.siteCode}</span>,
+        cell: (row) => <span className="text-theme-xs opacity-70">{row.siteCode}</span>,
       },
     ],
     [],
   );
 
+  const refreshAll = () => {
+    snapshot.refetch();
+    documents.refetch();
+    expiredDrilldown.refetch();
+    serviceDrilldown.refetch();
+  };
+
+  const indicators = snapshot.data?.indicators;
+  const tabs = [
+    {
+      value: 'expiring',
+      label: 'Expiring and expired',
+      count: documents.data ? expiringRows.length : undefined,
+    },
+    { value: 'service', label: 'Service exposure', count: serviceDrilldown.data?.length },
+    { value: 'all', label: 'All documents', count: documents.data?.rows.length },
+  ];
+
   return (
-    <div>
-      <PageHeader
-        title="Compliance & service"
-        subtitle="Expiring documents and service exposure across the vehicles in your site scope."
-        crumbs={[{ label: 'Fleet', to: fleetPaths.dashboard }, { label: 'Compliance & service' }]}
+    <>
+      <RegisterHeader
+        title="Compliance and service"
+        siteCode={siteCode}
+        onSiteChange={state.setSite}
         actions={
-          <Button
-            variant="outline"
-            startIcon="refresh"
-            onClick={() => {
-              snapshot.refetch();
-              documents.refetch();
-              expiredDrilldown.refetch();
-              serviceDrilldown.refetch();
-            }}
-          >
-            Refresh
+          <Button variant="outline" aria-label="Refresh" title="Refresh" onClick={refreshAll}>
+            <Icon name="refresh" size={14} aria-hidden="true" />
           </Button>
-        }
-        meta={
-          snapshot.data && (
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusChip
-                value={snapshot.data.indicators.expiredCompliance > 0 ? 'EXPIRED' : 'ACTIVE'}
-                label={`${snapshot.data.indicators.expiredCompliance} expired (whole scope)`}
-              />
-              <StatusChip
-                value={snapshot.data.indicators.serviceDue > 0 ? 'DUE' : 'IN_SERVICE'}
-                label={`${snapshot.data.indicators.serviceDue} service due (whole scope)`}
-              />
-            </div>
-          )
         }
       />
 
-      <div className="space-y-5">
-        <SectionCard>
-          <SiteSelect
-            value={siteCode}
-            onChange={setSiteCode}
-            allowEmpty
-            className="max-w-[280px]"
+      <MetricGroup>
+        <MetricCard
+          variant="soft"
+          loading={snapshot.initialising}
+          label="Expired"
+          value={indicators?.expiredCompliance ?? 0}
+          description="Whole scope, past expiry"
+        />
+        <MetricCard
+          variant="soft"
+          loading={documents.initialising}
+          label="Expiring within 60 days"
+          value={expiringRows.filter((row) => row.document.status === 'ACTIVE').length}
+          description="Renew before they lapse"
+        />
+        <MetricCard
+          variant="soft"
+          loading={snapshot.initialising}
+          label="Service due or overdue"
+          value={indicators?.serviceDue ?? 0}
+          description="Whole scope"
+        />
+        <MetricCard
+          variant="soft"
+          loading={snapshot.initialising}
+          label="Vehicles withheld"
+          value={indicators?.readinessBlockers ?? 0}
+          description="Not ready for any trip"
+        />
+      </MetricGroup>
+
+      {documents.data?.truncated && (
+        <PageSection>
+          <Banner
+            variant="warning"
+            heading={`The search returned its maximum of ${SEARCH_LIMIT} documents, so there are more than are listed here.`}
+            subtext="Narrow it with a document type, a status or an expiry date - the counts above are computed server-side over the whole scope and stay right either way."
           />
-        </SectionCard>
+        </PageSection>
+      )}
 
-        {documents.data?.truncated && (
-          <Alert variant="warning">
-            The search returned its maximum of {SEARCH_LIMIT} documents, so there are more than are
-            listed here. Narrow it with a document type, a status or an expiry date - the counts
-            above are computed server-side over the whole scope and stay right either way.
-          </Alert>
-        )}
-
-        <SectionCard flush>
-          <Tabs
-            items={[
-              {
-                value: 'expiring',
-                label: 'Expiring & expired',
-                count: documents.data ? expiringRows.length : undefined,
-              },
-              {
-                value: 'service',
-                label: 'Service exposure',
-                count: serviceDrilldown.data?.length,
-              },
-              { value: 'all', label: 'All documents', count: documents.data?.rows.length },
-            ]}
-            value={tab}
-            onChange={(value) => setTab(value as TabKey)}
-            variant="pill"
-            className="px-5 pt-5 pb-3"
+      <PageSection>
+        {tab === 'service' ? (
+          <FleetTable
+            paramPrefix="service-exposure"
+            rows={serviceDrilldown.data ?? []}
+            columns={drilldownColumns}
+            getRowId={(row) => `${row.resourceType}-${row.resourceId}`}
+            loading={serviceDrilldown.loading}
+            error={serviceDrilldown.error}
+            onRetry={serviceDrilldown.refetch}
+            onRowClick={(row) => navigate(fleetPaths.vehicleDetail(row.resourceId))}
+            caption="Vehicles due or overdue for service"
+            heading={{
+              title: 'Compliance documents',
+              description:
+                'Expiring documents and service exposure across the vehicles in your site scope.',
+            }}
+            tabs={tabs}
+            tab={tab}
+            onTabChange={(value) => setTab(value as TabKey)}
+            emptyTitle="No vehicles due for service"
+            emptyDescription="Nothing in this scope is due or overdue."
           />
-
-          {tab !== 'service' && (
-            <FilterBar
-              onReset={() => {
-                setDocumentType('');
-                setStatus('');
-                setExpiringBefore('');
-              }}
-              resetDisabled={!filtered}
-            >
-              <FacetFilter
-                label="Document type"
-                selected={documentType ? [documentType] : []}
-                onChange={(next) => setDocumentType(pickSingle(documentType, next))}
-                options={COMPLIANCE_DOCUMENT_TYPES.map((value) => ({ value, label: humanise(value) }))}
-              />
-              <FacetFilter
-                label="Status"
-                selected={status ? [status] : []}
-                onChange={(next) => setStatus(pickSingle(status, next))}
-                options={COMPLIANCE_DOCUMENT_STATUSES.map((value) => ({ value, label: humanise(value) }))}
-              />
-              <DateField
-                label="Expiring before"
-                value={expiringBefore}
-                onChange={setExpiringBefore}
-                helperText="Includes documents that have already expired."
-              />
-            </FilterBar>
-          )}
-
-          <div className="p-5">
-            {tab === 'service' ? (
-              <DataState
-                loading={serviceDrilldown.initialising}
-                error={serviceDrilldown.error}
-                empty={(serviceDrilldown.data?.length ?? 0) === 0}
-                emptyTitle="No vehicles due for service"
-                emptyHint="Nothing in this scope is due or overdue."
-                onRetry={serviceDrilldown.refetch}
-                minHeight={180}
-              >
-                <DataTable
-                  rows={serviceDrilldown.data ?? []}
-                  columns={drilldownColumns}
-                  getRowId={(row) => `${row.resourceType}-${row.resourceId}`}
-                  loading={serviceDrilldown.loading}
-                  onRowClick={(row) => navigate(fleetPaths.vehicleDetail(row.resourceId))}
-                  dense
+        ) : (
+          <FleetTable
+            paramPrefix="compliance"
+            rows={visibleRows}
+            columns={documentColumns}
+            getRowId={(row) => row.document.id}
+            loading={documents.loading}
+            error={documents.error}
+            onRetry={documents.refetch}
+            // The document's own `vehicleId` is always present; the resolved vehicle is not.
+            onRowClick={(row) => navigate(fleetPaths.vehicleDetail(row.document.vehicleId))}
+            caption="Compliance documents"
+            heading={{
+              title: 'Compliance documents',
+              description:
+                'Expiring documents and service exposure across the vehicles in your site scope.',
+            }}
+            tabs={tabs}
+            tab={tab}
+            onTabChange={(value) => setTab(value as TabKey)}
+            searchPlaceholder="Search vehicle or reference"
+            spreadFilters
+            filters={
+              <>
+                <FilterDropdown
+                  name="type"
+                  label="Document type"
+                  value={documentType}
+                  onChange={(value) => setFilter('type', value)}
+                  options={COMPLIANCE_DOCUMENT_TYPES.map((value) => ({
+                    value,
+                    label: humanise(value),
+                  }))}
                 />
-              </DataState>
-            ) : (
-              <DataState
-                loading={documents.initialising}
-                error={documents.error}
-                empty={visibleRows.length === 0}
-                emptyTitle={
-                  tab === 'expiring' ? 'Nothing expiring soon' : 'No compliance documents'
-                }
-                emptyHint={
-                  tab === 'expiring'
-                    ? 'Nothing in this scope expires within 60 days or is already expired.'
-                    : filtered
-                      ? 'No document matches these filters.'
-                      : 'Register compliance documents from a vehicle record.'
-                }
-                onRetry={documents.refetch}
-                minHeight={200}
-              >
-                <DataTable
-                  rows={visibleRows}
-                  columns={documentColumns}
-                  getRowId={(row) => row.document.id}
-                  loading={documents.loading}
-                  // The document's own `vehicleId` is always present; the resolved vehicle is not.
-                  onRowClick={(row) => navigate(fleetPaths.vehicleDetail(row.document.vehicleId))}
-                />
-              </DataState>
-            )}
-          </div>
-        </SectionCard>
-
-        <SectionCard
-          title="Expired documents (whole scope)"
-          subtitle="Server-computed drilldown behind the dashboard indicator"
-        >
-          <DataState
-            loading={expiredDrilldown.initialising}
-            error={expiredDrilldown.error}
-            empty={(expiredDrilldown.data?.length ?? 0) === 0}
-            emptyTitle="No expired documents"
-            emptyHint="Nothing in your scope is past its expiry date."
-            onRetry={expiredDrilldown.refetch}
-            minHeight={140}
-          >
-            <DataTable
-              rows={expiredDrilldown.data ?? []}
-              columns={drilldownColumns}
-              getRowId={(row) => `${row.resourceType}-${row.resourceId}`}
-              loading={expiredDrilldown.loading}
-              dense
-            />
-          </DataState>
-        </SectionCard>
-
-        {snapshot.data && (
-          <p className="text-theme-xs text-gray-500">
-            Reconciliation: {formatNumber(snapshot.data.reconciliation.complianceDocuments)}{' '}
-            compliance documents and {formatNumber(snapshot.data.reconciliation.vehicles)} vehicles
-            in the current scope.
-          </p>
+                <FilterField name="expiringBefore" value={expiringBefore}>
+                  <DateField
+                    label="Expiring before"
+                    value={expiringBefore}
+                    onChange={(value) => setFilter('expiringBefore', value)}
+                  />
+                </FilterField>
+              </>
+            }
+            emptyTitle={tab === 'expiring' ? 'Nothing expiring soon' : 'No compliance documents'}
+            emptyDescription={
+              tab === 'expiring'
+                ? 'Nothing in this scope expires within 60 days or is already expired.'
+                : filtered
+                  ? 'No document matches these filters.'
+                  : 'Register compliance documents from a vehicle record.'
+            }
+          />
         )}
-      </div>
-    </div>
+      </PageSection>
+
+      <Panel
+        title="Expired documents (whole scope)"
+        description="Server-computed drilldown behind the dashboard indicator"
+      >
+        <FleetTable
+          paramPrefix="expired-documents"
+          rows={expiredDrilldown.data ?? []}
+          columns={drilldownColumns}
+          getRowId={(row) => `${row.resourceType}-${row.resourceId}`}
+          loading={expiredDrilldown.loading}
+          error={expiredDrilldown.error}
+          onRetry={expiredDrilldown.refetch}
+          caption="Documents past their expiry date"
+          emptyTitle="No expired documents"
+          emptyDescription="Nothing in your scope is past its expiry date."
+        />
+      </Panel>
+
+      {snapshot.data && (
+        <p className="text-theme-xs opacity-70">
+          {formatNumber(snapshot.data.reconciliation.complianceDocuments)} compliance documents
+          across {formatNumber(snapshot.data.reconciliation.vehicles)} vehicles in scope. Figures
+          are checked against the vehicle register each time this page loads.
+        </p>
+      )}
+    </>
   );
 };
 

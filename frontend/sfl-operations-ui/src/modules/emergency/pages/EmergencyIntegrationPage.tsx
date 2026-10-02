@@ -2,18 +2,19 @@ import { useMemo, useState } from 'react';
 import type { EmergencyInboxMessage, EmergencyOutboxEntry } from 'modules/emergency/api/dto';
 import { emergencyIntegrationsApi } from 'modules/emergency/api/emergencyApi';
 import { shortId } from 'modules/fuel/components/fuelFormat';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatCard from 'shared/components/StatCard';
-import StatusChip from 'shared/components/StatusChip';
 import { formatDateTime, formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { emergencyPaths } from 'shared/layout/navigation';
+import { Button, Banner, type TableColumn } from '@rfdtech/components';
+import RegisterTable from 'modules/emergency/components/RegisterTable';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import Panel from 'modules/emergency/components/Panel';
+import StatMetric from 'modules/emergency/components/StatMetric';
+import StatusBadge from 'modules/emergency/components/StatusBadge';
+import { CellStack } from 'modules/emergency/components/RegisterTable';
+import Icon from 'shared/components/Icon';
 
 /**
  * Provider and downstream integration health for S174.
@@ -59,13 +60,13 @@ const EmergencyIntegrationPage = () => {
     }
   };
 
-  const columns = useMemo<Column<EmergencyOutboxEntry>[]>(
+  const columns = useMemo<TableColumn<EmergencyOutboxEntry>[]>(
     () => [
       {
-        key: 'event',
+        id: 'event',
         header: 'Event',
         width: 280,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack
             primary={row.eventType}
             secondary={`${row.aggregateType} ${shortId(row.aggregateId)}`}
@@ -73,47 +74,44 @@ const EmergencyIntegrationPage = () => {
         ),
       },
       {
-        key: 'failure',
+        id: 'failure',
         header: 'Failure',
         width: 300,
-        cell: (row) => row.failureReason ?? <span className="text-gray-500">Not recorded</span>,
+        cell: ({ row }) => row.failureReason ?? <span className="text-gray-500">Not recorded</span>,
       },
       {
-        key: 'attempts',
+        id: 'attempts',
         header: 'Attempts',
         width: 100,
         align: 'right',
-        hideBelowLg: true,
-        cell: (row) => row.attemptCount,
+        cell: ({ row }) => row.attemptCount,
       },
       {
-        key: 'status',
+        id: 'status',
         header: 'Status',
         width: 130,
-        hideBelowLg: true,
-        cell: (row) => <StatusChip value={row.status} />,
+        cell: ({ row }) => <StatusBadge value={row.status} />,
       },
       {
-        key: 'created',
+        id: 'created',
         header: 'Created',
         width: 170,
-        hideBelowLg: true,
-        cell: (row) => formatDateTime(row.createdAt),
+        cell: ({ row }) => formatDateTime(row.createdAt),
       },
       {
-        key: 'replay',
+        id: 'replay',
         header: '',
         width: 120,
         align: 'right',
-        cell: (row) => (
+        cell: ({ row }) => (
           <Button
             size="sm"
             variant="outline"
-            startIcon="refresh"
+           
             loading={replaying === row.id}
             disabled={replaying !== null}
             onClick={() => replay(row.id)}
-          >
+          ><Icon name="refresh" size={14} aria-hidden="true" />
             Replay
           </Button>
         ),
@@ -124,13 +122,13 @@ const EmergencyIntegrationPage = () => {
     [replaying],
   );
 
-  const inboxColumns = useMemo<Column<EmergencyInboxMessage>[]>(
+  const inboxColumns = useMemo<TableColumn<EmergencyInboxMessage>[]>(
     () => [
       {
-        key: 'message',
+        id: 'message',
         header: 'Message',
         width: 250,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack
             primary={`${row.sourceSystem} · ${row.eventType}`}
             secondary={row.idempotencyKey ? `key ${shortId(row.idempotencyKey)}` : 'no key'}
@@ -138,38 +136,36 @@ const EmergencyIntegrationPage = () => {
         ),
       },
       {
-        key: 'site',
+        id: 'site',
         header: 'Site',
         width: 110,
-        hideBelowLg: true,
-        cell: (row) => row.siteScope ?? '-',
+        cell: ({ row }) => row.siteScope ?? '-',
       },
       {
-        key: 'received',
+        id: 'received',
         header: 'Received',
         width: 170,
-        cell: (row) => formatDateTime(row.receivedAt),
+        cell: ({ row }) => formatDateTime(row.receivedAt),
       },
       {
-        key: 'failure',
+        id: 'failure',
         header: 'Failure',
         width: 240,
-        cell: (row) => row.failureReason ?? <span className="text-gray-500">-</span>,
+        cell: ({ row }) => row.failureReason ?? <span className="text-gray-500">-</span>,
       },
       {
-        key: 'attempts',
+        id: 'attempts',
         header: 'Attempts',
         width: 100,
         align: 'right',
-        hideBelowLg: true,
-        cell: (row) => row.attempts,
+        cell: ({ row }) => row.attempts,
       },
       {
-        key: 'status',
+        id: 'status',
         header: 'Status',
         width: 140,
         align: 'right',
-        cell: (row) => <StatusChip value={row.status} />,
+        cell: ({ row }) => <StatusBadge value={row.status} />,
       },
     ],
     [],
@@ -179,7 +175,7 @@ const EmergencyIntegrationPage = () => {
 
   return (
     <div>
-      <PageHeader
+      <PageHeading
         title="Provider integration"
         subtitle="What this service publishes, and what providers have posted back to it."
         crumbs={[
@@ -187,7 +183,7 @@ const EmergencyIntegrationPage = () => {
           { label: 'Provider integration' },
         ]}
         actions={
-          <Button variant="outline" startIcon="refresh" onClick={health.refetch}>
+          <Button variant="outline" onClick={health.refetch}><Icon name="refresh" size={14} aria-hidden="true" />
             Refresh
           </Button>
         }
@@ -202,31 +198,29 @@ const EmergencyIntegrationPage = () => {
         {outbox && (
           <div className="space-y-5">
             {outbox.deadLettered > 0 && (
-              <Alert
-                variant="error"
-                title={`${outbox.deadLettered} outbound messages are dead lettered`}
-              >
-                Downstream systems have not been told about these activations. Replay them below
+              <Banner
+                variant="danger"
+                heading={`${outbox.deadLettered} outbound messages are dead lettered`}
+  subtext={<>Downstream systems have not been told about these activations. Replay them below
                 once the cause has been dealt with - a replay returns the message to the pending
-                queue for another attempt.
-              </Alert>
+                queue for another attempt.</>} />
             )}
 
             <div className="grid gap-4 sm:grid-cols-3">
-              <StatCard
+              <StatMetric
                 label="Published"
                 value={formatNumber(outbox.published)}
                 icon="cloud"
                 caption="Delivered to downstream systems"
               />
-              <StatCard
+              <StatMetric
                 label="Pending"
                 value={formatNumber(outbox.pending)}
                 icon="inbox"
                 tone={outbox.pending > 0 ? 'caution' : 'neutral'}
                 caption="Awaiting their next attempt"
               />
-              <StatCard
+              <StatMetric
                 label="Dead lettered"
                 value={formatNumber(outbox.deadLettered)}
                 icon="alert-triangle"
@@ -235,10 +229,10 @@ const EmergencyIntegrationPage = () => {
               />
             </div>
 
-            <SectionCard
+            <Panel
               title="Outbound dead letters"
               subtitle="Emergency events downstream systems did not receive"
-              flush
+             
             >
               <DataState
                 loading={false}
@@ -247,20 +241,21 @@ const EmergencyIntegrationPage = () => {
                 emptyHint="Every emergency event this service raised has been published."
                 minHeight={180}
               >
-                <DataTable
+                <RegisterTable
+                  paramPrefix="emergency-dead-letters"
                   rows={outbox.recentDeadLetters}
                   columns={columns}
-                  getRowId={(row) => row.id}
-                  caption="Emergency outbound messages that could not be published, with the recorded failure, attempt count, status and a control to replay each."
-                  dense
+                  rowKey={(row) => row.id}
+                  emptyTitle="No dead-letter messages"
+                  framed={false}
                 />
               </DataState>
-            </SectionCard>
+            </Panel>
 
-            <SectionCard
+            <Panel
               title="Inbound provider callbacks"
               subtitle="Delivery status and acknowledgements, as the secure inbox recorded them"
-              flush
+             
             >
               <DataState
                 loading={inbox.initialising}
@@ -272,32 +267,30 @@ const EmergencyIntegrationPage = () => {
                   <>
                     {inbox.data.rejected > 0 && (
                       <div className="px-5 pt-4">
-                        <Alert
+                        <Banner
                           variant="warning"
-                          title={`${inbox.data.rejected} inbound messages were rejected`}
-                        >
-                          A rejected message failed signature verification or schema validation and
+                          heading={`${inbox.data.rejected} inbound messages were rejected`}
+  subtext={<>A rejected message failed signature verification or schema validation and
                           was never applied, so nothing it carried reached an activation. There is no
-                          inbound replay by design - the sending system has to correct and re-send it.
-                        </Alert>
+                          inbound replay by design - the sending system has to correct and re-send it.</>} />
                       </div>
                     )}
 
                     <div className="grid gap-4 px-5 py-4 sm:grid-cols-3">
-                      <StatCard
+                      <StatMetric
                         label="Processed"
                         value={formatNumber(inbox.data.processed)}
                         icon="check-circle"
                         caption="Accepted and applied to an activation"
                       />
-                      <StatCard
+                      <StatMetric
                         label="Rejected"
                         value={formatNumber(inbox.data.rejected)}
                         icon="alert-circle"
                         tone={inbox.data.rejected > 0 ? 'caution' : 'neutral'}
                         caption="Signature or payload refused"
                       />
-                      <StatCard
+                      <StatMetric
                         label="Dead lettered"
                         value={formatNumber(inbox.data.deadLettered)}
                         icon="alert-triangle"
@@ -313,12 +306,13 @@ const EmergencyIntegrationPage = () => {
                       emptyHint="Which is why delivered and acknowledged read zero: nothing else writes them."
                       minHeight={160}
                     >
-                      <DataTable
+                      <RegisterTable
+                        paramPrefix="emergency-inbox"
                         rows={inbox.data.recentMessages}
                         columns={inboxColumns}
-                        getRowId={(row) => row.id}
-                        caption="Recent inbound provider callbacks, with source, event type, site scope, receipt time, recorded failure, attempt count and status."
-                        dense
+                        rowKey={(row) => row.id}
+                        emptyTitle="No provider callbacks"
+                        framed={false}
                       />
                     </DataState>
 
@@ -332,9 +326,9 @@ const EmergencyIntegrationPage = () => {
                   </>
                 )}
               </DataState>
-            </SectionCard>
+            </Panel>
 
-            <SectionCard title="How the callback path behaves">
+            <Panel title="How the callback path behaves">
               <ul className="space-y-3 text-theme-sm text-gray-700">
                 <li>
                   <strong>Delivery status</strong> is idempotent on{' '}
@@ -356,7 +350,7 @@ const EmergencyIntegrationPage = () => {
                   dashboard that could post delivery facts would be fabricating them.
                 </li>
               </ul>
-            </SectionCard>
+            </Panel>
           </div>
         )}
       </DataState>

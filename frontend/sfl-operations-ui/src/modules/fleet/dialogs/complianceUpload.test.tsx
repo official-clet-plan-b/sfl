@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotifierProvider } from 'shared/components/Notifier';
@@ -60,32 +60,28 @@ const choose = async (user: ReturnType<typeof userEvent.setup>, label: RegExp, o
 };
 
 /**
- * Sets a `DateField` through the flatpickr instance that owns it.
+ * Sets a date field through its calendar, the way a person does.
  *
- * <p>The visible control is an `altInput` flatpickr creates for itself, and the element React renders
- * is hidden and not editable - so typing into either one fails. `setDate(..., true)` is the supported
- * way in, and it fires the same change handler a real click on the calendar would.
+ * <p>The field is the library's `DateSelector`: a trigger button that opens a calendar popover. The
+ * dialog's own rule is that a document must expire after it was issued, and issue defaults to today,
+ * so the first selectable day of next month satisfies it whatever day the suite runs on.
  */
-const setDate = async (container: HTMLElement, index: number, value: string) => {
-  const inputs = container.querySelectorAll<HTMLInputElement & { _flatpickr?: { setDate: (d: string, fire: boolean) => void } }>(
-    'input.hidden',
+const pickNextMonthDate = async (user: ReturnType<typeof userEvent.setup>, label: RegExp) => {
+  const field = screen.getByRole('group', { name: label });
+  await user.click(within(field).getByRole('button'));
+  await user.click(await screen.findByRole('button', { name: 'Next month' }));
+  const days = (await screen.findAllByRole('gridcell')).filter(
+    (day) => !day.hasAttribute('disabled'),
   );
-  const picker = inputs[index]?._flatpickr;
-  expect(picker, `no flatpickr on hidden input ${index}`).toBeDefined();
-  await act(async () => {
-    picker!.setDate(value, true);
-  });
+  await user.click(days[0]);
 };
 
-const fillTheTextFields = async (
-  user: ReturnType<typeof userEvent.setup>,
-  container: HTMLElement,
-) => {
+const fillTheTextFields = async (user: ReturnType<typeof userEvent.setup>) => {
   await choose(user, /document type/i, /roadworthiness/i);
   await user.type(screen.getByLabelText(/document reference/i), 'RW-2026-0001');
   await user.type(screen.getByLabelText(/issuing authority/i), 'DVLA');
-  // Two date fields in this form: issued on (index 0, already defaulted to today) and expires on.
-  await setDate(container, 1, '2027-12-31');
+  // Issued on is already defaulted to today; only the expiry needs choosing.
+  await pickNextMonthDate(user, /expires on/i);
 };
 
 describe('RegisterComplianceDocumentDialog', () => {
@@ -109,24 +105,24 @@ describe('RegisterComplianceDocumentDialog', () => {
     renderDialog();
 
     expect(screen.getByText('The document')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /choose a file/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /upload file/i })).toBeInTheDocument();
     // The instruction that could not be followed. A driver - and most operators - have no Evidence
     // and audit screen, so an identifier to paste was never obtainable.
     expect(screen.queryByText(/paste its identifier/i)).not.toBeInTheDocument();
   });
 
   it('accepts only PDF, JPG and JPEG', () => {
-    const { container } = renderDialog();
+    renderDialog();
 
-    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
     expect(input).not.toBeNull();
     expect(input.accept).toBe('.pdf,.jpg,.jpeg,application/pdf,image/jpeg');
   });
 
   it('refuses to register a document when no file is attached', async () => {
     const user = userEvent.setup();
-    const { container } = renderDialog();
-    await fillTheTextFields(user, container);
+    renderDialog();
+    await fillTheTextFields(user);
 
     await user.click(screen.getByRole('button', { name: /register document/i }));
 
@@ -140,13 +136,13 @@ describe('RegisterComplianceDocumentDialog', () => {
 
   it('uploads the file first, then registers the document against the id it returns', async () => {
     const user = userEvent.setup();
-    const { container } = renderDialog();
-    await fillTheTextFields(user, container);
+    renderDialog();
+    await fillTheTextFields(user);
 
     const file = new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], 'certificate.jpg', {
       type: 'image/jpeg',
     });
-    await user.upload(container.querySelector('input[type="file"]') as HTMLInputElement, file);
+    await user.upload(document.querySelector('input[type="file"]') as HTMLInputElement, file);
     await user.click(screen.getByRole('button', { name: /register document/i }));
 
     await waitFor(() => expect(evidenceFilesApi.upload).toHaveBeenCalledTimes(1));

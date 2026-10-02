@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import { DateField, DateTimeField } from 'shared/components/DateField';
-import FormDialog from 'shared/components/FormDialog';
 import SiteSelect from 'shared/components/SiteSelect';
-import { NumberInput, SelectInput, TextAreaInput, TextInput } from 'shared/components/fields';
 import { FleetApiError } from 'shared/errors/FleetApiError';
 import { IfimpRecord, IfimpWriteMethod, writeIfimpRecord } from '../api/ifimpPhase2Api';
+import { DateField, DateTimeField, FormDialog, NumberInput, SelectInput, TextAreaInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
 
 export interface CreateField {
   key: string;

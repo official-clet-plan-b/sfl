@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
-import Button from 'shared/components/Button';
-import DataTable, { CellStack, type Column } from 'shared/components/DataTable';
-import FormDialog from 'shared/components/FormDialog';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
+import { useNavigate } from 'react-router';
+import { Plus } from 'lucide-react';
+import { Button, Dropdown, PageSection, useTableState, type TableColumn } from '@rfdtech/components';
+import ActionDialog from 'modules/emergency/components/ActionDialog';
+import { DateTimeField, EnumField, TextField } from 'modules/emergency/components/FormFields';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import Panel from 'modules/emergency/components/Panel';
+import RegisterTable, { CellStack, DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from 'modules/emergency/components/RegisterTable';
+import StatusBadge from 'modules/emergency/components/StatusBadge';
+import { humanise } from 'modules/fleet/api/enums';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
-import { EnumSelect, TextInput } from 'shared/components/fields';
 import { formatDateTime } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { permits } from 'shared/layout/actorPermissions';
@@ -22,29 +24,28 @@ const toIso = (value: string) => new Date(value).toISOString();
 
 const VisitorVisitsPage = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const notify = useNotifier();
   const [siteCode, setSiteCode] = useState(defaultSite);
-  const requestedStatus = searchParams.get('status') as VisitStatus | null;
-  const [status, setStatus] = useState<VisitStatus | ''>(requestedStatus && statuses.includes(requestedStatus) ? requestedStatus : '');
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(25);
+  const { page, pageSize, setPage, filters } = useTableState({ paramPrefix: 'visits', defaultPageSize: DEFAULT_PAGE_SIZE, pageSizeOptions: PAGE_SIZE_OPTIONS });
+  const requestedStatus = filters.status as VisitStatus | undefined;
+  const status: VisitStatus | '' = requestedStatus && statuses.includes(requestedStatus) ? requestedStatus : '';
+  const [statusField, setStatusField] = useState(status);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ visitorName: '', visitorOrganization: '', visitorContact: '', hostId: '', hostName: '', purpose: 'MEETING' as VisitPurpose, expectedArrival: '', expectedDeparture: '' });
 
   const query = useApiQuery(
-    (signal) => visitorApi.search({ siteCode: siteCode || undefined, status: status || undefined, page, size, sort: 'expectedArrival,desc' }, signal),
-    [siteCode, status, page, size],
+    (signal) => visitorApi.search({ siteCode: siteCode || undefined, status: status || undefined, page: page - 1, size: pageSize, sort: 'expectedArrival,desc' }, signal),
+    [siteCode, status, page, pageSize],
   );
 
-  const columns = useMemo<Column<VisitorVisit>[]>(() => [
-    { key: 'visitor', header: 'Visitor', width: 240, cell: (row) => <CellStack primary={row.visitorName} secondary={row.visitorOrganization ?? row.visitorContact ?? 'No organisation'} /> },
-    { key: 'host', header: 'Host', width: 190, cell: (row) => <CellStack primary={row.hostName ?? row.hostId} secondary={row.hostName ? row.hostId : undefined} /> },
-    { key: 'purpose', header: 'Purpose', width: 150, cell: (row) => <StatusChip value={row.purpose} /> },
-    { key: 'arrival', header: 'Expected arrival', width: 180, cell: (row) => formatDateTime(row.expectedArrival) },
-    { key: 'site', header: 'Site', width: 100, hideBelowLg: true, cell: (row) => row.siteCode },
-    { key: 'status', header: 'Status', width: 150, align: 'right', cell: (row) => <StatusChip value={row.status} /> },
+  const columns = useMemo<TableColumn<VisitorVisit>[]>(() => [
+    { id: 'visitor', header: 'Visitor', width: 240, cell: ({ row }) => <CellStack primary={row.visitorName} secondary={row.visitorOrganization ?? row.visitorContact ?? 'No organisation'} /> },
+    { id: 'host', header: 'Host', width: 190, cell: ({ row }) => <CellStack primary={row.hostName ?? row.hostId} secondary={row.hostName ? row.hostId : undefined} /> },
+    { id: 'purpose', header: 'Purpose', width: 150, cell: ({ row }) => <StatusBadge value={row.purpose} /> },
+    { id: 'arrival', header: 'Expected arrival', width: 180, cell: ({ row }) => formatDateTime(row.expectedArrival) },
+    { id: 'site', header: 'Site', width: 100, cell: ({ row }) => row.siteCode },
+    { id: 'status', header: 'Status', width: 150, align: 'right', cell: ({ row }) => <StatusBadge value={row.status} /> },
   ], []);
 
   const create = async () => {
@@ -73,30 +74,60 @@ const VisitorVisitsPage = () => {
     }
   };
 
-  return <div>
-    <PageHeader title="Visitor management" subtitle="Pre-register visits, manage approvals and follow every visitor through arrival and departure." crumbs={[{ label: 'Safety & security' }, { label: 'Visitors' }]} actions={permits('VISITOR_VISIT_CREATE') ? <Button variant="primary" startIcon="plus" onClick={() => setOpen(true)}>Pre-register visit</Button> : undefined} />
-    <SectionCard title="Visit register" subtitle="Server-paginated and scoped to the selected site and lifecycle state." flush>
-      <div className="grid gap-4 px-5 py-4 sm:grid-cols-2">
-        <SiteSelect value={siteCode} onChange={(value) => { setSiteCode(value); setPage(0); }} allowEmpty />
-        <EnumSelect label="Status" value={status} options={statuses} allowEmpty onChange={(value) => { setStatus(value); setPage(0); }} />
-      </div>
-      <DataTable rows={query.data?.content ?? []} columns={columns} getRowId={(row) => row.id} loading={query.loading} onRowClick={(row) => navigate(visitorPaths.visitDetail(row.id))} caption="Visitor visits" page={page} pageSize={size} totalElements={query.data?.totalElements ?? 0} onPageChange={setPage} onPageSizeChange={(value) => { setSize(value); setPage(0); }} emptyMessage="No visits match these filters." />
-    </SectionCard>
+  return <>
+    <PageHeading
+      title="Visitor management"
+      subtitle="Pre-register visits, manage approvals and follow every visitor through arrival and departure."
+      crumbs={[{ label: 'Safety & security' }, { label: 'Visitors' }]}
+      actions={<>
+        <SiteSelect label="Site" value={siteCode} onChange={(value) => { setSiteCode(value); setPage(1); }} allowEmpty className="w-44" />
+        {permits('VISITOR_VISIT_CREATE') && <Button variant="primary" onClick={() => setOpen(true)}><Plus size={14} strokeWidth={1.5} aria-hidden /> Pre-register visit</Button>}
+      </>}
+    />
+    <PageSection>
+      <Panel title="Visit register" subtitle="Server-paginated and scoped to the selected site and lifecycle state.">
+        <RegisterTable
+          paramPrefix="visits"
+          framed={false}
+          columns={columns}
+          rows={query.data?.content ?? []}
+          rowKey={(row) => row.id}
+          loading={query.initialising}
+          onRowClick={(row) => navigate(visitorPaths.visitDetail(row.id))}
+          emptyTitle="No visits match these filters"
+          emptyDescription="Pre-register a visit, or widen the site and status."
+          totalItems={query.data?.totalElements ?? 0}
+          size={pageSize}
+          filterCount={1}
+          filters={
+            <Dropdown
+              name="status"
+              aria-label="Filter by status"
+              value={statusField || null}
+              onValueChange={(next) => setStatusField((next ?? '') as VisitStatus | '')}
+              options={statuses.map((value) => ({ value, label: humanise(value) }))}
+              placeholder="All statuses"
+              clearable
+            />
+          }
+        />
+      </Panel>
+    </PageSection>
 
-    <FormDialog open={open} title="Pre-register a visit" description="Reserve the visit window and start the approval workflow." submitLabel="Pre-register visit" submitting={submitting} submitDisabled={!siteCode || !form.visitorName.trim() || !form.hostId.trim() || !form.expectedArrival} onClose={() => setOpen(false)} onSubmit={create}>
+    <ActionDialog open={open} title="Pre-register a visit" description="Reserve the visit window and start the approval workflow." submitLabel="Pre-register visit" submitting={submitting} submitDisabled={!siteCode || !form.visitorName.trim() || !form.hostId.trim() || !form.expectedArrival} onClose={() => setOpen(false)} onSubmit={create}>
       <div className="grid gap-4 sm:grid-cols-2">
         <SiteSelect value={siteCode} onChange={setSiteCode} required />
-        <EnumSelect label="Purpose" value={form.purpose} options={purposes} required onChange={(value) => value && setForm((current) => ({ ...current, purpose: value }))} />
-        <TextInput label="Visitor name" value={form.visitorName} onChange={(value) => setForm((current) => ({ ...current, visitorName: value }))} required />
-        <TextInput label="Organisation" value={form.visitorOrganization} onChange={(value) => setForm((current) => ({ ...current, visitorOrganization: value }))} />
-        <TextInput label="Contact" value={form.visitorContact} onChange={(value) => setForm((current) => ({ ...current, visitorContact: value }))} />
-        <TextInput label="Host ID" value={form.hostId} onChange={(value) => setForm((current) => ({ ...current, hostId: value }))} required />
-        <TextInput label="Host name" value={form.hostName} onChange={(value) => setForm((current) => ({ ...current, hostName: value }))} />
-        <label className="text-theme-sm font-medium text-gray-800">Expected arrival<input type="datetime-local" className="mt-2 h-10 w-full rounded-md border border-gray-500 px-3" value={form.expectedArrival} onChange={(event) => setForm((current) => ({ ...current, expectedArrival: event.target.value }))} required /></label>
-        <label className="text-theme-sm font-medium text-gray-800">Expected departure<input type="datetime-local" className="mt-2 h-10 w-full rounded-md border border-gray-500 px-3" value={form.expectedDeparture} onChange={(event) => setForm((current) => ({ ...current, expectedDeparture: event.target.value }))} /></label>
+        <EnumField label="Purpose" value={form.purpose} options={purposes} required onChange={(value) => value && setForm((current) => ({ ...current, purpose: value }))} />
+        <TextField label="Visitor name" value={form.visitorName} onChange={(value) => setForm((current) => ({ ...current, visitorName: value }))} required />
+        <TextField label="Organisation" value={form.visitorOrganization} onChange={(value) => setForm((current) => ({ ...current, visitorOrganization: value }))} />
+        <TextField label="Contact" value={form.visitorContact} onChange={(value) => setForm((current) => ({ ...current, visitorContact: value }))} />
+        <TextField label="Host ID" value={form.hostId} onChange={(value) => setForm((current) => ({ ...current, hostId: value }))} required />
+        <TextField label="Host name" value={form.hostName} onChange={(value) => setForm((current) => ({ ...current, hostName: value }))} />
+        <DateTimeField label="Expected arrival" value={form.expectedArrival} required onChange={(value) => setForm((current) => ({ ...current, expectedArrival: value }))} />
+        <DateTimeField label="Expected departure" value={form.expectedDeparture} onChange={(value) => setForm((current) => ({ ...current, expectedDeparture: value }))} />
       </div>
-    </FormDialog>
-  </div>;
+    </ActionDialog>
+  </>;
 };
 
 export default VisitorVisitsPage;

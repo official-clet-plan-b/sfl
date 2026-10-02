@@ -1,13 +1,12 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import { DateField } from 'shared/components/DateField';
-import FormDialog from 'shared/components/FormDialog';
 import { useNotifier } from 'shared/components/Notifier';
-import { TextAreaInput } from 'shared/components/fields';
 import { todayIsoDate } from 'shared/components/format';
 import type { ReviewFlag } from '../api/dto';
 import { riskAssessmentApi } from '../api/riskAssessmentApi';
 import { deferralProblem } from '../api/workflow';
+import { Banner } from '@rfdtech/components';
+import ActionDialog from 'modules/emergency/components/ActionDialog';
+import { TextAreaField, DateField } from 'modules/emergency/components/FormFields';
 
 interface FlagDialogProps {
   flag: ReviewFlag;
@@ -36,7 +35,7 @@ export const CompleteReviewDialog = ({ flag, onClose, onDone }: FlagDialogProps)
     }
   };
   return (
-    <FormDialog
+    <ActionDialog
       open
       title={`Complete the review of ${flag.assessmentReference}`}
       description={`Raised by ${flag.sourceReference ?? 'an incident'} against version ${flag.versionNumber}.`}
@@ -46,12 +45,11 @@ export const CompleteReviewDialog = ({ flag, onClose, onDone }: FlagDialogProps)
       onClose={onClose}
       onSubmit={() => void submit()}
     >
-      <Alert variant="info" title="Findings are required">
-        Say what the review found about the controls that were in place. If they need to change, revise the assessment as well -
-        clearing the flag does not change it.
-      </Alert>
-      <TextAreaInput label="Review findings" value={findings} maxLength={4000} rows={6} required onChange={setFindings} />
-    </FormDialog>
+      <Banner variant="info" heading="Findings are required"
+  subtext={<>Say what the review found about the controls that were in place. If they need to change, revise the assessment as well -
+        clearing the flag does not change it.</>} />
+      <TextAreaField label="Review findings" value={findings} maxLength={4000} rows={6} required onChange={setFindings} />
+    </ActionDialog>
   );
 };
 
@@ -75,7 +73,7 @@ export const DeferFlagDialog = ({ flag, onClose, onDone }: FlagDialogProps) => {
     }
   };
   return (
-    <FormDialog
+    <ActionDialog
       open
       title={`Defer the review of ${flag.assessmentReference}`}
       description="A deferral postpones the review; it does not clear the flag."
@@ -86,8 +84,8 @@ export const DeferFlagDialog = ({ flag, onClose, onDone }: FlagDialogProps) => {
       onClose={onClose}
       onSubmit={() => void submit()}
     >
-      <TextAreaInput label="Reason for deferring" value={reason} maxLength={1000} rows={3} required onChange={setReason} />
+      <TextAreaField label="Reason for deferring" value={reason} maxLength={1000} rows={3} required onChange={setReason} />
       <DateField label="Back on the queue on" value={until} required onChange={setUntil} />
-    </FormDialog>
+    </ActionDialog>
   );
 };

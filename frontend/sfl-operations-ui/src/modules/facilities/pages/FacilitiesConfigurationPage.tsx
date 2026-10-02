@@ -1,18 +1,30 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
+import {
+  Banner,
+  Card,
+  EmptyState,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  useBreadcrumbs,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import FilterBar from 'shared/components/FilterBar';
-import PageHeader from 'shared/components/PageHeader';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
+import { facilitiesPaths } from 'shared/layout/navigation';
 import type { ConfigurationValue } from '../api/dto';
 import { describeKey } from '../api/configurationCatalogue';
 import { listConfiguration, putConfiguration } from '../api/facilitiesApi';
 import { canManageConfiguration } from '../api/workflow';
+import CellStack from '../components/CellStack';
 import RowActions, { EditRowAction } from '../components/RowActions';
+import StatusBadge from '../components/StatusBadge';
 import { formatDateTime } from '../components/facilitiesFormat';
 import { EditConfigurationDialog } from '../dialogs/configurationDialogs';
 
@@ -39,6 +51,7 @@ import { EditConfigurationDialog } from '../dialogs/configurationDialogs';
  */
 const FacilitiesConfigurationPage = () => {
   const notify = useNotifier();
+  useBreadcrumbs([{ label: 'Facilities', href: facilitiesPaths.dashboard }, { label: 'Configuration' }]);
   const [siteCode, setSiteCode] = useState<string>(defaultSite);
   const [editing, setEditing] = useState<ConfigurationValue | null>(null);
 
@@ -54,64 +67,63 @@ const FacilitiesConfigurationPage = () => {
     (data ?? []).filter((value) => value.siteCode !== null).map((value) => value.key),
   );
 
-  const columns: Column<ConfigurationValue>[] = [
+  const columns: TableColumn<ConfigurationValue>[] = [
     {
-      key: 'setting',
+      id: 'setting',
       header: 'Setting',
-      cell: (value) => {
+      cell: ({ row: value }) => {
         const entry = describeKey(value.key, value.description);
         return (
           <div className="min-w-0">
             <CellStack primary={entry.label} secondary={value.key} />
-            <p className="mt-1 max-w-xl text-theme-xs text-gray-600">{entry.effect}</p>
+            <p className="mt-1 max-w-xl text-xs text-muted-foreground">{entry.effect}</p>
           </div>
         );
       },
     },
     {
-      key: 'value',
+      id: 'value',
       header: 'In force',
       width: 150,
-      cell: (value) => <span className="font-medium text-gray-900">{value.value}</span>,
+      cell: ({ row }) => <span className="font-medium text-foreground">{row.value}</span>,
     },
     {
-      key: 'scope',
+      id: 'scope',
       header: 'Scope',
       width: 170,
-      cell: (value) =>
+      cell: ({ row: value }) =>
         value.siteCode ? (
-          <StatusChip value="OVERRIDE" label={`${value.siteCode} override`} tone="accent" />
+          <StatusBadge value="OVERRIDE" label={`${value.siteCode} override`} tone="accent" />
         ) : overriddenKeys.has(value.key) ? (
-          <StatusChip value="SHADOWED" label="Default (overridden)" tone="neutral" />
+          <StatusBadge value="SHADOWED" label="Default (overridden)" tone="neutral" />
         ) : (
-          <StatusChip value="DEFAULT" label="Platform default" tone="neutral" />
+          <StatusBadge value="DEFAULT" label="Platform default" tone="neutral" />
         ),
     },
     {
-      key: 'version',
+      id: 'version',
       header: 'Version',
       align: 'right',
       width: 90,
-      cell: (value) => `v${value.version}`,
+      cell: ({ row }) => `v${row.version}`,
     },
     {
-      key: 'updated',
+      id: 'updated',
       header: 'Last set',
       width: 200,
       align: 'right',
-      hideBelowLg: true,
-      cell: (value) => (
-        <span className="text-gray-600">
-          {formatDateTime(value.updatedAt)} by {value.updatedBy}
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          {formatDateTime(row.updatedAt)} by {row.updatedBy}
         </span>
       ),
     },
     {
-      key: 'actions',
+      id: 'actions',
       header: '',
       width: 80,
       align: 'right',
-      cell: (value) => (
+      cell: ({ row: value }) => (
         <RowActions>
           <EditRowAction
             state={mayManage ? { kind: 'allowed' } : { kind: 'hidden' }}
@@ -125,45 +137,55 @@ const FacilitiesConfigurationPage = () => {
 
   return (
     <>
-      <PageHeader
-        title="Configuration"
-        subtitle="The thresholds the facilities rules are evaluated against, and which value is in force"
-      />
-
-      <FilterBar>
-        <SiteSelect
-          value={siteCode}
-          onChange={setSiteCode}
-          allowEmpty
-          emptyLabel="Platform defaults"
-        />
-      </FilterBar>
-
-      <DataState
-        loading={loading}
-        error={error}
-        empty={!data || data.length === 0}
-        emptyTitle="No configuration values"
-        emptyHint="The service seeds its defaults on first migration; an empty list means something is wrong."
-        onRetry={refetch}
-      >
-        {data && (
-          <>
-            {!mayManage && (
-              <Alert variant="info" className="mb-4">
-                These values are read-only for you. Changing one needs the facilities configuration
-                management permission.
-              </Alert>
-            )}
-            <DataTable
-              rows={data}
-              columns={columns}
-              getRowId={(value) => `${value.key}:${value.siteCode ?? 'default'}`}
-              caption="Runtime configuration"
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Configuration</SectionTitle>
+          <SectionDescription>
+            The thresholds the facilities rules are evaluated against, and which value is in force
+          </SectionDescription>
+          <SectionActions>
+            <SiteSelect
+              value={siteCode}
+              onChange={setSiteCode}
+              allowEmpty
+              emptyLabel="Platform defaults"
             />
-          </>
-        )}
-      </DataState>
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
+
+      {data && !mayManage && (
+        <PageSection>
+          <Banner
+            variant="info"
+            heading="These values are read-only for you."
+            subtext="Changing one needs the facilities configuration management permission."
+          />
+        </PageSection>
+      )}
+
+      <PageSection>
+        <DataState loading={false} error={error} onRetry={refetch}>
+          <Table paramPrefix="configuration" variant="soft">
+            <Card bordered>
+              <TableContent
+                variant="soft"
+                columns={columns}
+                data={data ?? []}
+                rowKey={(value) => `${value.key}:${value.siteCode ?? 'default'}`}
+                loading={loading}
+                aria-label="Runtime configuration"
+                emptyContent={
+                  <EmptyState
+                    title="No configuration values"
+                    description="The service seeds its defaults on first migration; an empty list means something is wrong."
+                  />
+                }
+              />
+            </Card>
+          </Table>
+        </DataState>
+      </PageSection>
 
       {editing && (
         <EditConfigurationDialog

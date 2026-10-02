@@ -1,11 +1,11 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { Field, FieldControl, FieldDescription, FieldError, FieldLabel, Input } from '@rfdtech/components';
 import {
   fetchPlaceSuggestions,
   newSessionToken,
   placesConfigured,
   type PlaceSuggestion,
 } from 'shared/places/openStreetMapPlaces';
-import { TextInput } from './fields';
 
 /**
  * A place, chosen rather than typed.
@@ -117,47 +117,67 @@ const PlaceField = ({
   };
 
   const showList = open && suggestions.length > 0;
+  const datalistId = recent && recent.length > 0 ? `${listboxId}-recent` : undefined;
+
+  /*
+    One short, non-technical line, and never the reason.
+
+    It used to read "the Places API is not enabled for this key's Google Cloud project",
+    which is true, useful, and addressed to entirely the wrong person: the driver reading it
+    at a pump cannot enable anything, and naming an internal service in a form field turns a
+    minor degradation into something that looks broken. The diagnosis still exists in full -
+    it goes to the console once, where whoever fixes the key will look.
+  */
+  const hint = unavailable
+    ? 'Suggestions are unavailable right now. Type the place - it will be saved as you enter it.'
+    : helperText;
 
   return (
     <div className={className}>
       <div className="relative">
-        <TextInput
-          label={label}
-          required={required}
-          value={value}
-          onChange={(next) => {
-            onChange(next);
-            setOpen(true);
-          }}
-          error={error}
-          disabled={disabled}
-          // The recent list stays as the datalist. It is the offline answer, and it costs nothing.
-          suggestions={recent}
-          /*
-            One short, non-technical line, and never the reason.
-
-            It used to read "the Places API is not enabled for this key's Google Cloud project",
-            which is true, useful, and addressed to entirely the wrong person: the driver reading it
-            at a pump cannot enable anything, and naming an internal service in a form field turns a
-            minor degradation into something that looks broken. The diagnosis still exists in full -
-            it goes to the console once, where whoever fixes the key will look.
-          */
-          helperText={
-            unavailable
-              ? 'Suggestions are unavailable right now. Type the place - it will be saved as you enter it.'
-              : helperText
-          }
-          onBlur={() => {
-            // Delayed so a click on a suggestion lands before the list closes underneath it.
-            setTimeout(() => setOpen(false), 150);
-            onBlur?.();
-          }}
-        />
+        <Field invalid={error}>
+          <FieldLabel>
+            {label}
+            {required && (
+              <>
+                <span className="ml-0.5 text-error" aria-hidden="true">
+                  *
+                </span>
+                <span className="sr-only"> (required)</span>
+              </>
+            )}
+          </FieldLabel>
+          <FieldControl>
+            <Input
+              value={value}
+              onChange={(event) => {
+                onChange(event.target.value);
+                setOpen(true);
+              }}
+              disabled={disabled}
+              // The recent list stays as the datalist. It is the offline answer, and it costs nothing.
+              list={datalistId}
+              onBlur={() => {
+                // Delayed so a click on a suggestion lands before the list closes underneath it.
+                setTimeout(() => setOpen(false), 150);
+                onBlur?.();
+              }}
+            />
+          </FieldControl>
+          {datalistId && (
+            <datalist id={datalistId}>
+              {recent?.map((entry) => (
+                <option key={entry} value={entry} />
+              ))}
+            </datalist>
+          )}
+          {error ? <FieldError>{hint}</FieldError> : <FieldDescription>{hint}</FieldDescription>}
+        </Field>
         {showList && (
           <ul
             id={listboxId}
             role="listbox"
-            className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-theme-lg"
+            className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-background py-1 shadow-lg"
           >
             {suggestions.map((suggestion) => (
               <li key={suggestion.placeId || suggestion.description} role="option" aria-selected="false">
@@ -169,11 +189,11 @@ const PlaceField = ({
                     event.preventDefault();
                     choose(suggestion);
                   }}
-                  className="block w-full px-3 py-2 text-left hover:bg-gray-50"
+                  className={'block w-full px-3 py-2 text-left hover:bg-(--clet-hover)'}
                 >
-                  <span className="block truncate text-theme-sm text-gray-900">{suggestion.primary}</span>
+                  <span className="block truncate text-sm text-foreground">{suggestion.primary}</span>
                   {suggestion.secondary && (
-                    <span className="block truncate text-theme-xs text-gray-500">
+                    <span className="block truncate text-xs text-muted-foreground">
                       {suggestion.secondary}
                     </span>
                   )}

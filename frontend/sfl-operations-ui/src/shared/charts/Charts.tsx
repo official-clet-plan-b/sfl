@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useId, useState } from 'react';
 import {
   Area,
   AreaChart as RechartsArea,
@@ -43,10 +43,11 @@ import { chartColors, seriesColors } from './palette';
  * - **Resize is native.** `ResponsiveContainer` observes the element; the sidebar collapsing no
  *   longer leaves a chart at its old width until something else forces a reflow.
  *
- * <h2>Colours are still literals</h2>
+ * <h2>Colours come from the library tokens</h2>
  *
- * Same reason as before: SVG attributes cannot resolve the CSS custom properties the rest of the
- * dashboard is themed with. `palette.ts` restates them and says so.
+ * `palette.ts` hands Recharts `var(--clet-*)` strings, which the browser resolves inside SVG
+ * attributes, so the plot is themed by the same tokens as everything around it. Where the dashboard
+ * once restated the palette as hex literals, a theme change now reaches the charts too.
  */
 
 export interface Series {
@@ -78,7 +79,7 @@ const toRows = (categories: string[], series: Series[]): Record<string, string |
     return row;
   });
 
-const axisTick = { fill: chartColors.text, fontSize: 11 };
+const axisTick = { fill: chartColors.text, fontSize: 12 };
 
 const integerFormatter = (value: number) => String(Math.round(value));
 
@@ -108,18 +109,18 @@ const ChartTooltip = ({
     return null;
   }
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-theme-lg">
-      <p className="mb-1 text-theme-xs font-semibold text-gray-900">{label}</p>
+    <div className="rounded-lg border border-border bg-background px-3 py-2 shadow-lg">
+      <p className="mb-1 text-xs font-semibold text-foreground">{label}</p>
       <ul className="space-y-0.5">
         {payload.map((entry) => (
-          <li key={String(entry.name)} className="flex items-center gap-2 text-theme-xs">
+          <li key={String(entry.name)} className="flex items-center gap-2 text-xs">
             <span
               aria-hidden="true"
               className="h-2 w-2 shrink-0 rounded-full"
               style={{ backgroundColor: entry.color }}
             />
-            <span className="text-gray-600">{entry.name}</span>
-            <span className="ml-auto font-semibold text-gray-900 tabular-nums">
+            <span className="text-muted-foreground">{entry.name}</span>
+            <span className="ml-auto font-semibold text-foreground tabular-nums">
               {String(entry.value)}
             </span>
           </li>
@@ -145,16 +146,18 @@ const useHiddenSeries = () => {
 };
 
 const legendProps = (hidden: string[], toggle: (name: string) => void) => ({
+  // Dots above the plot and flush left, as in the fleet design - the reading starts at the legend.
   verticalAlign: 'top' as const,
-  align: 'right' as const,
-  height: 32,
+  align: 'left' as const,
+  wrapperStyle: { paddingBottom: 12, paddingLeft: 4 },
+  height: 36,
   iconType: 'circle' as const,
   iconSize: 8,
   onClick: (entry: { value?: string }) => entry.value && toggle(entry.value),
   formatter: (value: string) => (
     <span
-      className="cursor-pointer text-theme-xs"
-      style={{ color: hidden.includes(value) ? chartColors.grey : chartColors.text }}
+      className="cursor-pointer text-xs font-medium"
+      style={{ color: hidden.includes(value) ? chartColors.grey : 'var(--clet-text)' }}
     >
       {value}
     </span>
@@ -186,7 +189,7 @@ export const AreaChart = ({
             );
           })}
         </defs>
-        <CartesianGrid stroke={chartColors.greyLine} strokeDasharray="4 4" vertical={false} />
+        <CartesianGrid stroke={chartColors.greyLine} vertical={false} />
         <XAxis dataKey="category" tick={axisTick} tickLine={false} axisLine={false} />
         <YAxis
           tick={axisTick}
@@ -211,7 +214,7 @@ export const AreaChart = ({
             // Dots only on hover: a 30-point series with a marker per point is noise, but the
             // hovered point must be identifiable.
             dot={false}
-            activeDot={{ r: 4, strokeWidth: 2, stroke: '#fff' }}
+            activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--clet-bg)' }}
           />
         ))}
       </RechartsArea>
@@ -242,7 +245,6 @@ export const BarChart = ({
       >
         <CartesianGrid
           stroke={chartColors.greyLine}
-          strokeDasharray="4 4"
           // The grid lines belong on the value axis, and which axis that is swaps with the layout.
           vertical={horizontal}
           horizontal={!horizontal}
@@ -279,7 +281,7 @@ export const BarChart = ({
             />
           </>
         )}
-        <Tooltip content={<ChartTooltip />} cursor={{ fill: chartColors.greyLine }} />
+        <Tooltip content={<ChartTooltip />} cursor={{ fill: 'var(--clet-surface-subtle)' }} />
         {showLegend && <Legend {...legendProps(hidden, toggle)} />}
         {series.map((entry, index) => (
           <Bar
@@ -288,8 +290,20 @@ export const BarChart = ({
             hide={hidden.includes(entry.name)}
             stackId={stacked ? 'stack' : undefined}
             fill={entry.color ?? defaultColor(index)}
-            radius={horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]}
-            maxBarSize={48}
+            // A stacked column is one bar, so only its last segment takes the rounded cap - the
+            // availability bar in the design is a single navy/blue/red column, not three pills.
+            radius={
+              stacked
+                ? index === series.length - 1
+                  ? horizontal
+                    ? [0, 4, 4, 0]
+                    : [4, 4, 0, 0]
+                  : 0
+                : horizontal
+                  ? [0, 4, 4, 0]
+                  : [4, 4, 0, 0]
+            }
+            maxBarSize={40}
           />
         ))}
       </RechartsBar>
@@ -361,13 +375,10 @@ export const DonutChart = ({
           pointer.
         */}
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-theme-xs" style={{ color: chartColors.text }}>
+          <span className="text-xs text-muted-foreground">
             {centreLabel}
           </span>
-          <span
-            className="text-title-sm font-bold tabular-nums"
-            style={{ color: chartColors.navy }}
-          >
+          <span className="text-title-sm font-bold text-primary tabular-nums">
             {total}
           </span>
         </div>
@@ -389,13 +400,13 @@ export const DonutChart = ({
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ backgroundColor: colors[index] ?? defaultColor(index) }}
               />
-              <span className="min-w-0 flex-1 truncate text-theme-sm text-gray-600">
+              <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
                 {row.name}
               </span>
-              <span className="text-theme-sm font-semibold text-gray-900 tabular-nums">
+              <span className="text-sm font-semibold text-foreground tabular-nums">
                 {row.value}
               </span>
-              <span className="w-10 shrink-0 text-right text-theme-xs text-gray-500 tabular-nums">
+              <span className="w-10 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
                 {share}%
               </span>
             </li>
@@ -413,27 +424,31 @@ interface SparklineProps {
 }
 
 /** A bare trend line for a KPI card. No axes, no tooltip - shape only. */
-export const Sparkline = ({ values, colour = chartColors.navy, height = 42 }: SparklineProps) => (
-  <ResponsiveContainer width="100%" height={height}>
-    <RechartsArea
-      data={values.map((value, index) => ({ index, value }))}
-      margin={{ top: 2, right: 0, left: 0, bottom: 0 }}
-    >
-      <defs>
-        <linearGradient id={`spark-${colour.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={colour} stopOpacity={0.3} />
-          <stop offset="100%" stopColor={colour} stopOpacity={0} />
-        </linearGradient>
-      </defs>
-      <Area
-        type="monotone"
-        dataKey="value"
-        stroke={colour}
-        strokeWidth={2}
-        fill={`url(#spark-${colour.replace('#', '')})`}
-        dot={false}
-        isAnimationActive={false}
-      />
-    </RechartsArea>
-  </ResponsiveContainer>
-);
+export const Sparkline = ({ values, colour = chartColors.navy, height = 42 }: SparklineProps) => {
+  // `colour` is a token expression now, not a hex, so it cannot be spliced into an id.
+  const gradientId = `spark-${useId().replace(/:/g, '')}`;
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <RechartsArea
+        data={values.map((value, index) => ({ index, value }))}
+        margin={{ top: 2, right: 0, left: 0, bottom: 0 }}
+      >
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={colour} stopOpacity={0.3} />
+            <stop offset="100%" stopColor={colour} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <Area
+          type="monotone"
+          dataKey="value"
+          stroke={colour}
+          strokeWidth={2}
+          fill={`url(#${gradientId})`}
+          dot={false}
+          isAnimationActive={false}
+        />
+      </RechartsArea>
+    </ResponsiveContainer>
+  );
+};

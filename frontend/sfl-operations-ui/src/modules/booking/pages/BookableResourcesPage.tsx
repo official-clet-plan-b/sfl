@@ -1,19 +1,35 @@
 import { useState } from 'react';
+import { Plus } from 'lucide-react';
+import {
+  Card,
+  Dropdown,
+  EmptyState,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  TableFilter,
+  TableHeader,
+  useBreadcrumbs,
+  useTableState,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar from 'shared/components/FilterBar';
-import PageHeader from 'shared/components/PageHeader';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
+import { facilitiesPaths } from 'shared/layout/navigation';
 import { humaniseCode } from 'modules/facilities/components/facilitiesFormat';
+import StatusBadge from 'modules/facilities/components/StatusBadge';
 import { bookableResourcesApi } from '../api/bookingApi';
 import type { BookableResource } from '../api/dto';
 import { RESOURCE_CATEGORIES } from '../api/enums';
 import type { ResourceCategory } from '../api/enums';
 import { canManageResources } from '../api/workflow';
+import CellStack from '../components/CellStack';
 import ControlButton from '../components/ControlButton';
 import RegisterResourceDialog from '../dialogs/RegisterResourceDialog';
 
@@ -32,22 +48,16 @@ import RegisterResourceDialog from '../dialogs/RegisterResourceDialog';
  */
 const BookableResourcesPage = () => {
   const notify = useNotifier();
-  const [siteCode, setSiteCode] = useState(defaultSite);
-  const [category, setCategory] = useState('');
+  useBreadcrumbs([
+    { label: 'Facilities', href: facilitiesPaths.dashboard },
+    { label: 'Bookable resources' },
+  ]);
+  const { filters } = useTableState({ paramPrefix: 'resources' });
+  // The search endpoint takes one category, so the filter is a single choice rather than a facet.
+  const category = filters.category ?? '';
+  const [categoryValue, setCategoryValue] = useState(category);
+  const [siteCode, setSiteCode] = useState<string>(defaultSite);
   const [registering, setRegistering] = useState(false);
-
-  /**
-   * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
-   * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
-   * option already active clears it, same as the dropdown it replaces; toggling a different one while
-   * one is active swaps to the new choice instead of appearing to hold both.
-   */
-  const pickSingle = (current: string, next: string[]): string => {
-    if (next.length === 0) {
-      return '';
-    }
-    return next.find((value) => value !== current) ?? next[0];
-  };
 
   const resources = useApiQuery(
     (signal) =>
@@ -63,110 +73,122 @@ const BookableResourcesPage = () => {
 
   const rows = resources.data ?? [];
 
-  const columns: Column<BookableResource>[] = [
+  const columns: TableColumn<BookableResource>[] = [
     {
-      key: 'name',
+      id: 'name',
       header: 'Resource',
       width: 260,
-      cell: (resource) => (
+      cell: ({ row: resource }) => (
         <CellStack primary={resource.name} secondary={resource.resourceCode} />
       ),
     },
     {
-      key: 'category',
+      id: 'category',
       header: 'Category',
       width: 160,
-      cell: (resource) => humaniseCode(resource.category),
+      cell: ({ row: resource }) => humaniseCode(resource.category),
     },
     {
-      key: 'quantity',
+      id: 'quantity',
       header: 'Quantity',
       align: 'right',
       width: 110,
-      cell: (resource) => resource.quantity,
+      accessorKey: 'quantity',
     },
     {
-      key: 'exclusive',
+      id: 'exclusive',
       header: 'Contention',
       width: 170,
-      cell: (resource) =>
+      cell: ({ row: resource }) =>
         resource.exclusive ? (
           <span title="Enforced by the database's exclusion constraint, not by arithmetic.">
-            <StatusChip value="EXCLUSIVE" tone="accent" />
+            <StatusBadge value="EXCLUSIVE" tone="accent" />
           </span>
         ) : (
-          <span className="text-theme-xs text-gray-500">Shared pool</span>
+          <span className="text-xs text-muted-foreground">Shared pool</span>
         ),
     },
     {
-      key: 'requiresSetup',
+      id: 'requiresSetup',
       header: 'Turnaround',
       width: 150,
-      hideBelowLg: true,
-      cell: (resource) =>
+      cell: ({ row: resource }) =>
         resource.requiresSetup ? (
-          <StatusChip value="SETUP" label="Raises a task" tone="caution" />
+          <StatusBadge value="SETUP" label="Raises a task" tone="caution" />
         ) : (
-          <span className="text-gray-400">-</span>
+          <span className="text-muted-foreground">-</span>
         ),
     },
+    { id: 'site', header: 'Site', width: 110, accessorKey: 'siteCode' },
     {
-      key: 'site',
-      header: 'Site',
-      width: 110,
-      hideBelowLg: true,
-      cell: (resource) => resource.siteCode,
-    },
-    {
-      key: 'lifecycle',
+      id: 'lifecycle',
       header: 'Lifecycle',
       width: 130,
       align: 'right',
-      cell: (resource) => <StatusChip value={resource.lifecycleStatus} />,
+      cell: ({ row: resource }) => <StatusBadge value={resource.lifecycleStatus} />,
     },
   ];
 
   return (
     <>
-      <PageHeader
-        title="Bookable resources"
-        subtitle="Projectors, furniture and everything else booked alongside a room"
-        actions={
-          <ControlButton
-            state={canManageResources()}
-            startIcon="plus"
-            onClick={() => setRegistering(true)}
-          >
-            Register a resource
-          </ControlButton>
-        }
-      />
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Bookable resources</SectionTitle>
+          <SectionDescription>
+            Projectors, furniture and everything else booked alongside a room
+          </SectionDescription>
+          <SectionActions>
+            <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
+            <ControlButton
+              state={canManageResources()}
+              variant="primary"
+              onClick={() => setRegistering(true)}
+            >
+              <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+              Register a resource
+            </ControlButton>
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      <FilterBar onReset={() => setCategory('')} resetDisabled={!category}>
-        <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
-        <FacetFilter
-          label="Category"
-          selected={category ? [category] : []}
-          onChange={(next) => setCategory(pickSingle(category, next))}
-          options={RESOURCE_CATEGORIES.map((value) => ({ value, label: humaniseCode(value) }))}
-        />
-      </FilterBar>
-
-      <DataState
-        loading={resources.loading}
-        error={resources.error}
-        empty={rows.length === 0}
-        emptyTitle="No bookable resources"
-        emptyHint="Nothing is registered for this site and category yet."
-        onRetry={resources.refetch}
-      >
-        <DataTable
-          rows={rows}
-          columns={columns}
-          getRowId={(resource) => resource.id}
-          caption="Bookable resources"
-        />
-      </DataState>
+      <PageSection>
+        <DataState loading={false} error={resources.error} onRetry={resources.refetch}>
+          <Table paramPrefix="resources" variant="soft">
+            <Card bordered>
+              <TableHeader>
+                <TableFilter variant="spread">
+                  <Dropdown
+                    name="category"
+                    aria-label="Category"
+                    placeholder="All categories"
+                    value={categoryValue || null}
+                    onValueChange={(next) => setCategoryValue(next ?? '')}
+                    clearable
+                    options={RESOURCE_CATEGORIES.map((value) => ({
+                      value,
+                      label: humaniseCode(value),
+                    }))}
+                  />
+                </TableFilter>
+              </TableHeader>
+              <TableContent
+                variant="soft"
+                columns={columns}
+                data={rows}
+                rowKey={(resource) => resource.id}
+                loading={resources.loading}
+                aria-label="Bookable resources"
+                emptyContent={
+                  <EmptyState
+                    title="No bookable resources"
+                    description="Nothing is registered for this site and category yet."
+                  />
+                }
+              />
+            </Card>
+          </Table>
+        </DataState>
+      </PageSection>
 
       {registering && (
         <RegisterResourceDialog

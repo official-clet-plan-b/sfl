@@ -1,8 +1,7 @@
 import { ReactNode } from 'react';
 import { FleetApiError, errorDetail, errorLabel } from 'shared/errors/FleetApiError';
-import Alert from './Alert';
-import Button from './Button';
-import Icon from './Icon';
+import { Banner, Button, EmptyState } from '@rfdtech/components';
+import { Inbox, RefreshCw } from 'lucide-react';
 
 interface DataStateProps {
   loading: boolean;
@@ -17,7 +16,7 @@ interface DataStateProps {
 
 export const Spinner = ({ size = 26 }: { size?: number }) => (
   <svg
-    className="animate-spin text-teal-700"
+    className="animate-spin text-primary"
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -54,44 +53,46 @@ const DataState = ({
         role="status"
       >
         <Spinner />
-        <p className="text-theme-sm text-gray-600">Loading…</p>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       </div>
     );
   }
 
   if (error) {
+    const detail = errorDetail(error);
     return (
       <div className="flex items-center" style={{ minHeight }}>
-        <Alert
-          variant={error.isForbidden ? 'warning' : 'error'}
-          title={errorLabel(error)}
-          footnote={errorDetail(error)}
+        <Banner
+          variant={error.isForbidden ? 'warning' : 'danger'}
+          heading={errorLabel(error)}
+          subtext={
+            <>
+              <span className="block">{error.message}</span>
+              {detail && <span className="mt-1 block">{detail}</span>}
+            </>
+          }
           action={
             onRetry ? (
-              <Button size="sm" variant="outline" startIcon="refresh" onClick={onRetry}>
+              <Button size="sm" variant="outline" onClick={onRetry}>
+                <RefreshCw size={14} strokeWidth={1.75} aria-hidden />
                 Retry
               </Button>
             ) : undefined
           }
           className="w-full"
-        >
-          {error.message}
-        </Alert>
+        />
       </div>
     );
   }
 
   if (empty) {
     return (
-      <div
-        className="flex flex-col items-center justify-center gap-1.5 px-6 text-center"
-        style={{ minHeight }}
-      >
-        <span className="mb-1 flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-600">
-          <Icon name="inbox" size={22} />
-        </span>
-        <p className="text-theme-sm font-semibold text-gray-900">{emptyTitle}</p>
-        {emptyHint && <p className="max-w-sm text-theme-sm text-gray-600">{emptyHint}</p>}
+      <div className="flex items-center justify-center" style={{ minHeight }}>
+        <EmptyState
+          icon={<Inbox size={22} strokeWidth={1.75} />}
+          title={emptyTitle}
+          description={emptyHint}
+        />
       </div>
     );
   }

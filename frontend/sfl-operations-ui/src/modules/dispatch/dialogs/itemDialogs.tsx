@@ -9,11 +9,16 @@ import {
   Sensitivity,
 } from 'modules/dispatch/api/enums';
 import { courierItemsApi, inboundMailApi } from 'modules/dispatch/api/dispatchApi';
-import { EVIDENCE_RETENTION_CLASSES, EvidenceRetentionClass } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
+import { EVIDENCE_RETENTION_CLASSES, EvidenceRetentionClass, humanise } from 'modules/fleet/api/enums';
 import SiteSelect from 'shared/components/SiteSelect';
-import { EnumSelect, TextAreaInput, TextInput } from 'shared/components/fields';
+import { Field, FieldLabel, Radio, RadioGroup } from '@rfdtech/components';
+import {
+  Callout,
+  EnumSelectField,
+  FormModal,
+  TextAreaField,
+  TextField,
+} from 'modules/dispatch/components/formKit';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { compose, maxLength, required } from 'shared/validation/validators';
 
@@ -94,7 +99,7 @@ export const RegisterItemDialog = ({
     form.values.sensitivity !== 'ORDINARY';
 
   return (
-    <FormDialog
+    <FormModal
       open={open}
       title={inboundOnly ? 'Register inbound mail' : 'Register a courier item'}
       description="Recorded as received. Its number is allocated by the service when you leave it blank."
@@ -112,23 +117,27 @@ export const RegisterItemDialog = ({
           onChange={(value) => form.setValue('siteCode', value)}
           {...form.fieldProps('siteCode')}
         />
-        <TextInput
+        <TextField
           label="Item number"
           value={form.values.itemNumber}
           onChange={(value) => form.setValue('itemNumber', value)}
           {...form.fieldProps('itemNumber', 'Leave blank and the service allocates one.')}
         />
         {!inboundOnly && (
-          <EnumSelect
-            label="Direction"
-            required
-            value={form.values.direction}
-            options={ITEM_DIRECTIONS}
-            onChange={(value) => form.setValue('direction', (value || 'OUTBOUND') as ItemDirection)}
-            {...form.fieldProps('direction')}
-          />
+          <Field className="sm:col-span-2">
+            <FieldLabel htmlFor={undefined}>Direction</FieldLabel>
+            <RadioGroup
+              orientation="horizontal"
+              value={form.values.direction}
+              onValueChange={(value) => form.setValue('direction', value as ItemDirection)}
+            >
+              {ITEM_DIRECTIONS.map((direction) => (
+                <Radio key={direction} value={direction} label={humanise(direction)} />
+              ))}
+            </RadioGroup>
+          </Field>
         )}
-        <EnumSelect
+        <EnumSelectField
           label="Item type"
           required
           value={form.values.itemType}
@@ -136,7 +145,7 @@ export const RegisterItemDialog = ({
           onChange={(value) => form.setValue('itemType', (value || 'ORDINARY_MAIL') as ItemType)}
           {...form.fieldProps('itemType')}
         />
-        <EnumSelect
+        <EnumSelectField
           label="Sensitivity"
           required
           value={form.values.sensitivity}
@@ -144,33 +153,33 @@ export const RegisterItemDialog = ({
           onChange={(value) => form.setValue('sensitivity', (value || 'ORDINARY') as Sensitivity)}
           {...form.fieldProps('sensitivity')}
         />
-        <TextInput
+        <TextField
           label="Handler"
           value={form.values.assignedHandler}
           onChange={(value) => form.setValue('assignedHandler', value)}
           {...form.fieldProps('assignedHandler', 'Who is accountable for it now.')}
         />
-        <TextInput
+        <TextField
           label="Origin"
           required
           value={form.values.origin}
           onChange={(value) => form.setValue('origin', value)}
           {...form.fieldProps('origin')}
         />
-        <TextInput
+        <TextField
           label="Destination"
           required
           value={form.values.destination}
           onChange={(value) => form.setValue('destination', value)}
           {...form.fieldProps('destination')}
         />
-        <TextInput
+        <TextField
           label="Sender"
           value={form.values.sender}
           onChange={(value) => form.setValue('sender', value)}
           {...form.fieldProps('sender')}
         />
-        <TextInput
+        <TextField
           label="Recipient"
           value={form.values.recipient}
           onChange={(value) => form.setValue('recipient', value)}
@@ -178,12 +187,12 @@ export const RegisterItemDialog = ({
         />
       </div>
 
-      <Alert variant={custodyExpected ? 'warning' : 'info'} title="Chain of custody">
+      <Callout tone={custodyExpected ? 'warning' : 'info'} title="Chain of custody">
         {custodyExpected
           ? 'This type and sensitivity will require a chain of custody. Every handover has to be recorded, and the manifest carrying it cannot close until the chain is complete.'
           : 'Ordinary mail at ordinary sensitivity does not require a recorded chain of custody. The service decides this from the type and sensitivity, not from anything entered here.'}
-      </Alert>
-    </FormDialog>
+      </Callout>
+    </FormModal>
   );
 };
 
@@ -213,7 +222,7 @@ export const MisrouteItemDialog = ({ open, onClose, onSaved, item }: MisrouteDia
   });
 
   return (
-    <FormDialog
+    <FormModal
       open={open}
       title="Record a misroute"
       description={`${item.itemNumber} · ${item.origin} → ${item.destination}`}
@@ -223,11 +232,11 @@ export const MisrouteItemDialog = ({ open, onClose, onSaved, item }: MisrouteDia
       onClose={onClose}
       onSubmit={form.submit}
     >
-      <Alert variant="info">
+      <Callout tone="info">
         The item returns to the received state with the reason recorded against it, so it can be
         staged again for the right destination. The misroute stays on the record.
-      </Alert>
-      <TextAreaInput
+      </Callout>
+      <TextAreaField
         label="What went wrong"
         required
         rows={3}
@@ -235,13 +244,13 @@ export const MisrouteItemDialog = ({ open, onClose, onSaved, item }: MisrouteDia
         onChange={(value) => form.setValue('reason', value)}
         {...form.fieldProps('reason')}
       />
-      <TextInput
+      <TextField
         label="Reassign to"
         value={form.values.handler}
         onChange={(value) => form.setValue('handler', value)}
         {...form.fieldProps('handler', 'Optional. Leave as is to keep the current handler.')}
       />
-    </FormDialog>
+    </FormModal>
   );
 };
 
@@ -307,7 +316,7 @@ export const DistributeInboundDialog = ({
   });
 
   return (
-    <FormDialog
+    <FormModal
       open={open}
       title="Record distribution"
       description={`${item.itemNumber} · for ${item.recipient ?? 'an unnamed recipient'}`}
@@ -319,14 +328,14 @@ export const DistributeInboundDialog = ({
       onSubmit={form.submit}
     >
       <div className={twoColumn}>
-        <TextInput
+        <TextField
           label="Acknowledged by"
           required
           value={form.values.acknowledgedBy}
           onChange={(value) => form.setValue('acknowledgedBy', value)}
           {...form.fieldProps('acknowledgedBy', 'Who physically took the item.')}
         />
-        <TextInput
+        <TextField
           label="Distribution reference"
           value={form.values.distributionReference}
           onChange={(value) => form.setValue('distributionReference', value)}
@@ -337,32 +346,32 @@ export const DistributeInboundDialog = ({
         />
       </div>
 
-      <Alert variant="info" title="Signature evidence">
+      <Callout tone="info" title="Signature evidence">
         Required unless a distribution reference is given above - between the two, this is the only
         proof the acknowledgement happened. Register the signature in the evidence store first, then
         paste its storage reference here.
-      </Alert>
+      </Callout>
 
       <div className={twoColumn}>
-        <TextInput
+        <TextField
           label="Signature storage reference"
           value={form.values.signatureStorageReference}
           onChange={(value) => form.setValue('signatureStorageReference', value)}
           {...form.fieldProps('signatureStorageReference')}
         />
-        <TextInput
+        <TextField
           label="Signature file name"
           value={form.values.signatureFileName}
           onChange={(value) => form.setValue('signatureFileName', value)}
           {...form.fieldProps('signatureFileName')}
         />
-        <TextInput
+        <TextField
           label="Signature checksum"
           value={form.values.signatureSha256}
           onChange={(value) => form.setValue('signatureSha256', value)}
           {...form.fieldProps('signatureSha256', 'SHA-256, if the capture produced one.')}
         />
-        <EnumSelect
+        <EnumSelectField
           label="Retention class"
           value={form.values.retentionClass}
           options={EVIDENCE_RETENTION_CLASSES}
@@ -372,6 +381,6 @@ export const DistributeInboundDialog = ({
           {...form.fieldProps('retentionClass', 'How long the evidence must be kept.')}
         />
       </div>
-    </FormDialog>
+    </FormModal>
   );
 };

@@ -1,6 +1,4 @@
-import FormDialog from 'shared/components/FormDialog';
 import SiteSelect from 'shared/components/SiteSelect';
-import { Checkbox, NumberInput, SelectInput, TextInput } from 'shared/components/fields';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { compose, maxLength, nonNegativeInteger, nonNegativeNumber, required } from 'shared/validation/validators';
 import type { CreateSpaceRequest, Space, UpdateSpaceRequest } from '../api/dto';
@@ -9,6 +7,7 @@ import type { SpaceType } from '../api/enums';
 import { FloorPicker } from '../components/estatePickers';
 import { humaniseCode } from '../components/facilitiesFormat';
 import { StaleWriteNotice } from './common';
+import { Checkbox, FormDialog, NumberInput, SelectInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
 
 /**
  * Creating and editing a space.
@@ -293,7 +292,7 @@ const SpaceAttributes = ({
       />
     </div>
 
-    <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+    <div className="space-y-3 rounded-lg border border-border bg-surface-muted/20 px-4 py-3">
       <Checkbox
         checked={bookable}
         onChange={(checked) => onChange({ bookable: checked })}

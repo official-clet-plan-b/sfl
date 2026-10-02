@@ -14,11 +14,9 @@ import {
 } from 'modules/fleet/components/FleetReferenceSelect';
 import { driversApi, tripsApi, vehiclesApi } from 'modules/fleet/api/fleetApi';
 import { humanise } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
+import { Alert, FormDialog } from 'modules/fuel/components/fuelMigration';
 import SiteSelect from 'shared/components/SiteSelect';
-import { DateField, DateTimeField } from 'shared/components/DateField';
-import { Checkbox, EnumSelect, NumberInput, TextAreaInput, TextInput } from 'shared/components/fields';
+import { DateField, DateTimeField, Checkbox, EnumSelect, NumberInput, TextAreaInput, TextInput } from 'modules/fuel/components/fuelMigration';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import {
   compose,

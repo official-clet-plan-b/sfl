@@ -1,225 +1,181 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate } from 'react-router';
+import { Button, DateRangeSelector, type TableColumn } from '@rfdtech/components';
+import { Plus } from 'lucide-react';
 import { DispatchManifest } from 'modules/dispatch/api/dto';
 import { DISPATCH_STATUSES, DispatchStatus } from 'modules/dispatch/api/enums';
 import { manifestsApi } from 'modules/dispatch/api/dispatchApi';
+import CellStack from 'modules/dispatch/components/CellStack';
+import PageHeading from 'modules/dispatch/components/PageHeading';
+import Panel from 'modules/dispatch/components/Panel';
+import {
+  FilterDropdown,
+  RegisterTable,
+  emptyRange,
+  rangeToInstants,
+  useClampRegisterPage,
+  useRegisterQuery,
+} from 'modules/dispatch/components/registerTable';
+import StatusBadge from 'modules/dispatch/components/StatusBadge';
 import { CreateManifestDialog } from 'modules/dispatch/dialogs/manifestDialogs';
 import { humanise } from 'modules/fleet/api/enums';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar from 'shared/components/FilterBar';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
-import { DateTimeField } from 'shared/components/DateField';
-import { TextInput } from 'shared/components/fields';
 import { formatDateTime, formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
-import { useClampPage, useServerPage } from 'shared/hooks/useServerPage';
 import { dispatchPaths } from 'shared/layout/navigation';
 import { canCreateManifests } from 'modules/fleet/api/access';
+
+export const MANIFESTS_PREFIX = 'manifests';
 
 /**
  * The manifest register.
  *
- * Site, status, destination centre, trip and the date range all reach the service. The seal count is
+ * Site, stage, destination centre and the date range all reach the service; the search box is the
+ * destination centre, which is the one text field the manifest search accepts. The seal count is
  * shown beside the item count because the two disagreeing is the first sign that a consignment was
  * assembled wrongly - a sealed manifest with no seals recorded should not exist.
+ *
+ * The stage filter is read from `manifests.f_status`, which is what the dashboard's figures link to.
  */
 const ManifestsPage = () => {
   const navigate = useNavigate();
   const { notifySuccess } = useNotifier();
-  const [searchParams] = useSearchParams();
 
   const [siteCode, setSiteCode] = useState(defaultSite);
-  const [status, setStatus] = useState<DispatchStatus | ''>(
-    (searchParams.get('status') as DispatchStatus | null) ?? '',
-  );
-  const [destinationCentre, setDestinationCentre] = useState('');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
+  const [range, setRange] = useState(emptyRange);
   const [creating, setCreating] = useState(false);
 
-  /**
-   * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
-   * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
-   * option already active clears it, same as the dropdown it replaces; toggling a different one while
-   * one is active swaps to the new choice instead of appearing to hold both.
-   */
-  const pickSingle = <T extends string>(current: T | '', next: string[]): T | '' => {
-    if (next.length === 0) {
-      return '';
-    }
-    return (next.find((value) => value !== current) ?? next[0]) as T;
-  };
-
-  const filterKey = `${siteCode}|${status}|${destinationCentre}|${from}|${to}`;
-  const paging = useServerPage(filterKey);
+  const table = useRegisterQuery(MANIFESTS_PREFIX);
 
   const query = useApiQuery(
     (signal) =>
       manifestsApi.search(
         {
           siteCode,
-          status: status || undefined,
-          destinationCentre: destinationCentre.trim() || undefined,
-          from: from ? new Date(from).toISOString() : undefined,
-          to: to ? new Date(to).toISOString() : undefined,
-          page: paging.page,
-          size: paging.size,
+          status: (table.filters.status as DispatchStatus) || undefined,
+          destinationCentre: table.search || undefined,
+          ...rangeToInstants(range),
+          page: table.page,
+          size: table.size,
         },
         signal,
       ),
-    [siteCode, status, destinationCentre, from, to, paging.page, paging.size],
+    [siteCode, table.filters.status, table.search, range, table.page, table.size],
   );
 
-  useClampPage(paging.page, query.data?.totalPages, paging.setPage);
+  useClampRegisterPage(table, query.data?.totalPages);
 
-  const columns = useMemo<Column<DispatchManifest>[]>(
+  const columns = useMemo<TableColumn<DispatchManifest>[]>(
     () => [
       {
-        key: 'manifest',
+        id: 'manifest',
         header: 'Manifest',
-        width: 280,
-        cell: (row) => (
+        minWidth: 240,
+        cell: ({ row }) => <CellStack primary={row.route} secondary={row.manifestNumber} />,
+      },
+      {
+        id: 'destination',
+        header: 'Destination',
+        cell: ({ row }) =>
+          row.destinationCentre ?? (
+            <span className="text-muted-foreground">No destination centre recorded</span>
+          ),
+      },
+      {
+        id: 'handler',
+        header: 'Carried by',
+        cell: ({ row }) => (
           <CellStack
-            primary={`${row.manifestNumber} · ${row.route}`}
-            secondary={row.destinationCentre ?? 'No destination centre recorded'}
+            primary={row.assignedHandler}
+            secondary={row.tripId ? 'On a trip' : undefined}
           />
         ),
       },
       {
-        key: 'items',
-        header: 'Items',
-        width: 100,
-        align: 'right',
-        cell: (row) => formatNumber(row.itemCount),
+        id: 'seals',
+        header: 'Seals and items',
+        cell: ({ row }) => (
+          <CellStack
+            primary={`${formatNumber(row.itemCount)} item${row.itemCount === 1 ? '' : 's'}`}
+            secondary={
+              row.sealIds.length > 0
+                ? `${formatNumber(row.sealIds.length)} seal${row.sealIds.length === 1 ? '' : 's'}`
+                : 'No seals'
+            }
+          />
+        ),
       },
       {
-        key: 'seals',
-        header: 'Seals',
-        width: 110,
-        align: 'right',
-        cell: (row) =>
-          row.sealIds.length > 0 ? (
-            formatNumber(row.sealIds.length)
-          ) : (
-            <span className="text-gray-500">None</span>
-          ),
-      },
-      {
-        key: 'handler',
-        header: 'Handler',
-        width: 150,
-        hideBelowLg: true,
-        cell: (row) => row.assignedHandler,
-      },
-      {
-        key: 'dispatched',
+        id: 'dispatched',
         header: 'Dispatched',
-        width: 160,
-        hideBelowLg: true,
-        cell: (row) => formatDateTime(row.dispatchedAt),
+        cell: ({ row }) => formatDateTime(row.dispatchedAt),
       },
       {
-        key: 'movement',
-        header: 'Movement',
-        width: 110,
-        align: 'center',
-        hideBelowLg: true,
-        cell: (row) =>
-          row.tripId ? (
-            <StatusChip value="ASSIGNED" label="Trip" tone="active" />
-          ) : (
-            <span className="text-gray-500">-</span>
-          ),
-      },
-      {
-        key: 'status',
-        header: 'Status',
-        width: 130,
-        align: 'right',
-        cell: (row) => <StatusChip value={row.status} />,
+        id: 'status',
+        header: 'Custody stage',
+        cell: ({ row }) => <StatusBadge value={row.status} />,
       },
     ],
     [],
   );
 
-  const filtersApplied = Boolean(status || destinationCentre || from || to);
-
   return (
-    <div>
-      <PageHeader
-        title="Dispatch manifests"
+    <>
+      <PageHeading
+        title="Manifests"
         subtitle="Consignments, their seals, custody chain, receipt and return leg."
         crumbs={[{ label: 'Dispatch', to: dispatchPaths.dashboard }, { label: 'Manifests' }]}
         actions={
-          // DISPATCH_MANIFEST_CREATE. A reporting viewer reads the register and creates nothing.
-          canCreateManifests() ? (
-            <Button variant="primary" startIcon="plus" onClick={() => setCreating(true)}>
-              Create manifest
-            </Button>
-          ) : undefined
+          <>
+            <SiteSelect value={siteCode} onChange={setSiteCode} required />
+            {/* DISPATCH_MANIFEST_CREATE. A reporting viewer reads the register and creates nothing. */}
+            {canCreateManifests() && (
+              <Button variant="primary" onClick={() => setCreating(true)}>
+                <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+                Create a manifest
+              </Button>
+            )}
+          </>
         }
       />
 
-      <SectionCard flush>
-        <FilterBar
-          onReset={() => {
-            setStatus('');
-            setDestinationCentre('');
-            setFrom('');
-            setTo('');
-          }}
-          resetDisabled={!filtersApplied}
-        >
-          <SiteSelect value={siteCode} onChange={setSiteCode} required />
-          <FacetFilter
-            label="Status"
-            selected={status ? [status] : []}
-            onChange={(next) => setStatus(pickSingle(status, next))}
-            options={DISPATCH_STATUSES.map((value) => ({ value, label: humanise(value) }))}
+      <Panel title="Manifests" description={`Consignments assembled at ${siteCode}`}>
+        <DataState loading={false} error={query.error} onRetry={query.refetch}>
+          <RegisterTable
+            paramPrefix={MANIFESTS_PREFIX}
+            caption="Dispatch manifests matching the current filters, with destination, who carries them, item and seal counts, dispatch time and custody stage."
+            columns={columns}
+            rows={query.data?.content ?? []}
+            rowKey={(row) => row.id}
+            loading={query.loading}
+            totalPages={query.data?.totalPages ?? 1}
+            totalItems={query.data?.totalElements ?? 0}
+            onRowClick={(row) => navigate(dispatchPaths.manifestDetail(row.id))}
+            searchPlaceholder="Search destination centre"
+            spreadFilters
+            filters={
+              <FilterDropdown
+                paramPrefix={MANIFESTS_PREFIX}
+                name="status"
+                label="Stage"
+                options={DISPATCH_STATUSES.map((value) => ({ value, label: humanise(value) }))}
+              />
+            }
+            actions={
+              <DateRangeSelector
+                aria-label="Dispatched between"
+                placeholder="Dispatched: any time"
+                value={range}
+                onChange={setRange}
+              />
+            }
+            emptyTitle="No manifests open"
+            emptyDescription="No manifest matches these filters."
           />
-          <TextInput
-            label="Destination centre"
-            value={destinationCentre}
-            onChange={setDestinationCentre}
-            placeholder="Part of a centre name"
-          />
-          <DateTimeField label="From" value={from} onChange={setFrom} />
-          <DateTimeField label="To" value={to} onChange={setTo} />
-        </FilterBar>
-      </SectionCard>
-
-      <div className="mt-5">
-        <SectionCard flush>
-          <DataState
-            loading={query.initialising}
-            error={query.error}
-            onRetry={query.refetch}
-            minHeight={300}
-          >
-            <DataTable
-              rows={query.data?.content ?? []}
-              columns={columns}
-              getRowId={(row) => row.id}
-              loading={query.loading}
-              onRowClick={(row) => navigate(dispatchPaths.manifestDetail(row.id))}
-              caption="Dispatch manifests matching the current filters, with item and seal counts, handler, dispatch time, whether a movement is assigned, and status."
-              emptyMessage="No manifest matches these filters."
-              page={query.data?.page ?? paging.page}
-              pageSize={query.data?.size ?? paging.size}
-              totalElements={query.data?.totalElements ?? 0}
-              onPageChange={paging.setPage}
-              onPageSizeChange={paging.setSize}
-            />
-          </DataState>
-        </SectionCard>
-      </div>
+        </DataState>
+      </Panel>
 
       {creating && (
         <CreateManifestDialog
@@ -236,7 +192,7 @@ const ManifestsPage = () => {
           }}
         />
       )}
-    </div>
+    </>
   );
 };
 

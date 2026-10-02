@@ -1,13 +1,23 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
+import { Plus } from 'lucide-react';
+import {
+  Banner,
+  Button,
+  Card,
+  EmptyState,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  useBreadcrumbs,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatusChip from 'shared/components/StatusChip';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
@@ -27,6 +37,8 @@ import {
   editSiteControl,
 } from '../api/workflow';
 import { EditRowAction, RetireRowAction } from '../components/RowActions';
+import StatusBadge from '../components/StatusBadge';
+import TitledSection from '../components/TitledSection';
 import CreateBuildingDialog from '../dialogs/CreateBuildingDialog';
 import OperatingModeDialog from '../dialogs/OperatingModeDialog';
 import { LifecycleDialog } from '../dialogs/common';
@@ -56,26 +68,31 @@ const SiteDetailPage = () => {
     [site.data?.siteCode],
   );
 
-  const columns: Column<Building>[] = [
+  useBreadcrumbs([
+    { label: 'Facilities', href: facilitiesPaths.dashboard },
+    { label: 'Sites', href: facilitiesPaths.sites },
+    { label: site.data?.siteCode ?? 'Site' },
+  ]);
+
+  const columns: TableColumn<Building>[] = [
     {
-      key: 'buildingCode',
+      id: 'buildingCode',
       header: 'Code',
       width: 140,
-      cell: (building) => <span className="font-medium text-gray-900">{building.buildingCode}</span>,
+      cell: ({ row }) => <span className="font-medium text-foreground">{row.buildingCode}</span>,
     },
-    { key: 'name', header: 'Building', cell: (building) => building.name },
+    { id: 'name', header: 'Building', accessorKey: 'name' },
     {
-      key: 'description',
+      id: 'description',
       header: 'Description',
-      hideBelowLg: true,
-      cell: (building) => <span className="text-gray-600">{orDash(building.description)}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">{orDash(row.description)}</span>,
     },
     {
-      key: 'lifecycle',
+      id: 'lifecycle',
       header: 'Lifecycle',
       width: 120,
       align: 'right',
-      cell: (building) => <StatusChip value={building.lifecycleStatus} />,
+      cell: ({ row }) => <StatusBadge value={row.lifecycleStatus} />,
     },
   ];
 
@@ -92,16 +109,11 @@ const SiteDetailPage = () => {
       >
         {site.data && (
           <>
-            <PageHeader
-              title={site.data.name}
-              subtitle={site.data.siteCode}
-              crumbs={[
-                { label: 'Facilities', to: facilitiesPaths.dashboard },
-                { label: 'Sites', to: facilitiesPaths.sites },
-                { label: site.data.siteCode },
-              ]}
-              actions={
-                <>
+            <PageSection>
+              <SectionHeader>
+                <SectionTitle>{site.data.name}</SectionTitle>
+                <SectionDescription>{site.data.siteCode}</SectionDescription>
+                <SectionActions>
                   <EditRowAction
                     size="md"
                     state={editSiteControl(site.data)}
@@ -116,7 +128,7 @@ const SiteDetailPage = () => {
                   />
                   {modeAction.allowed && (
                     <Button
-                      variant={site.data.operatingMode === 'EXAMINATION' ? 'outline' : 'accent'}
+                      variant={site.data.operatingMode === 'EXAMINATION' ? 'outline' : 'primary'}
                       onClick={() => setChangingMode(true)}
                     >
                       {site.data.operatingMode === 'EXAMINATION'
@@ -124,20 +136,22 @@ const SiteDetailPage = () => {
                         : 'Declare examination mode'}
                     </Button>
                   )}
-                </>
-              }
-            />
+                </SectionActions>
+              </SectionHeader>
+            </PageSection>
 
-            <div className="space-y-5">
-              {site.data.operatingMode === 'EXAMINATION' && (
-                <Alert variant="warning" title="This centre is in examination mode">
-                  Declared by {orDash(site.data.operatingModeChangedBy)} on{' '}
-                  {formatDateTime(site.data.operatingModeChangedAt)}. Readiness is assessed against
-                  the examination standard and the staleness threshold is tighter.
-                </Alert>
-              )}
+            {site.data.operatingMode === 'EXAMINATION' && (
+              <PageSection>
+                <Banner
+                  variant="warning"
+                  heading="This centre is in examination mode"
+                  subtext={`Declared by ${orDash(site.data.operatingModeChangedBy)} on ${formatDateTime(site.data.operatingModeChangedAt)}. Readiness is assessed against the examination standard and the staleness threshold is tighter.`}
+                />
+              </PageSection>
+            )}
 
-              <SectionCard title="Site record">
+            <TitledSection title="Site record">
+              <Card bordered>
                 <KeyValueGrid
                   items={[
                     { label: 'Code', value: site.data.siteCode },
@@ -146,7 +160,7 @@ const SiteDetailPage = () => {
                     {
                       label: 'Operating mode',
                       value: (
-                        <StatusChip
+                        <StatusBadge
                           value={site.data.operatingMode}
                           tone={site.data.operatingMode === 'EXAMINATION' ? 'accent' : 'neutral'}
                         />
@@ -154,7 +168,7 @@ const SiteDetailPage = () => {
                     },
                     {
                       label: 'Lifecycle',
-                      value: <StatusChip value={site.data.lifecycleStatus} />,
+                      value: <StatusBadge value={site.data.lifecycleStatus} />,
                     },
                     { label: 'Created by', value: site.data.metadata.createdBy },
                     {
@@ -168,55 +182,60 @@ const SiteDetailPage = () => {
                     },
                   ]}
                 />
-              </SectionCard>
+              </Card>
+            </TitledSection>
 
-              <SectionCard
-                title="Buildings"
-                subtitle="What stands on this site. Open one for its floors and what is on them."
-                actions={
-                  canManageSpaces() ? (
-                    <Button size="sm" variant="outline" startIcon="plus" onClick={() => setAddingBuilding(true)}>
-                      Register a building
-                    </Button>
-                  ) : undefined
-                }
-              >
-                <DataState
-                  loading={buildings.loading}
-                  error={buildings.error}
-                  onRetry={buildings.refetch}
-                  minHeight={80}
-                >
-                  <DataTable
-                    rows={buildings.data ?? []}
-                    columns={columns}
-                    getRowId={(building) => building.id}
-                    onRowClick={(building) => navigate(facilitiesPaths.buildingDetail(building.id))}
-                    emptyMessage="No buildings are registered on this site."
-                    dense
-                  />
-                </DataState>
-              </SectionCard>
-
-              <SectionCard
-                title="Spaces"
-                subtitle="Open the space register filtered to this site"
-                actions={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(facilitiesPaths.spaces)}
-                  >
-                    Open space register
+            <TitledSection
+              title="Buildings"
+              description="What stands on this site. Open one for its floors and what is on them."
+              actions={
+                canManageSpaces() ? (
+                  <Button size="sm" variant="outline" onClick={() => setAddingBuilding(true)}>
+                    <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+                    Register a building
                   </Button>
-                }
+                ) : undefined
+              }
+            >
+              <DataState
+                loading={false}
+                error={buildings.error}
+                onRetry={buildings.refetch}
+                minHeight={80}
               >
-                <p className="text-theme-sm text-gray-600">
+                <Table paramPrefix="buildings" variant="soft">
+                  <Card bordered>
+                    <TableContent
+                      variant="soft"
+                      columns={columns}
+                      data={buildings.data ?? []}
+                      rowKey={(building) => building.id}
+                      loading={buildings.loading}
+                      onRowClick={(building) => navigate(facilitiesPaths.buildingDetail(building.id))}
+                      aria-label="Buildings"
+                      emptyContent={<EmptyState title="No buildings are registered on this site." />}
+                    />
+                  </Card>
+                </Table>
+              </DataState>
+            </TitledSection>
+
+            <TitledSection
+              title="Spaces"
+              description="Open the space register filtered to this site"
+              actions={
+                <Button variant="outline" size="sm" onClick={() => navigate(facilitiesPaths.spaces)}>
+                  Open space register
+                </Button>
+              }
+            >
+              <Card bordered>
+                <p className="text-sm text-muted-foreground">
                   Spaces are searched rather than listed here - an estate of any size is not
                   browsable, and readiness is the thing worth filtering on.
                 </p>
-              </SectionCard>
-            </div>
+              </Card>
+            </TitledSection>
           </>
         )}
       </DataState>

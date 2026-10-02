@@ -1,17 +1,26 @@
 import { useMemo, useState } from 'react';
+import {
+  Button,
+  EmptyState,
+  MetricCard,
+  MetricCards,
+  PageSection,
+  Table,
+  TableContent,
+  type TableColumn,
+} from '@rfdtech/components';
+import { RefreshCw } from 'lucide-react';
 import { DispatchIntegrationHealth } from 'modules/dispatch/api/dto';
 import { dispatchIntegrationsApi } from 'modules/dispatch/api/dispatchApi';
 import { shortId } from 'modules/fuel/components/fuelFormat';
 import { humanise } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
+import CellStack from 'modules/dispatch/components/CellStack';
+import { Callout } from 'modules/dispatch/components/formKit';
+import PageHeading from 'modules/dispatch/components/PageHeading';
+import Panel from 'modules/dispatch/components/Panel';
+import StatusBadge from 'modules/dispatch/components/StatusBadge';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatCard from 'shared/components/StatCard';
-import StatusChip from 'shared/components/StatusChip';
 import { formatDateTime, formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { dispatchPaths } from 'shared/layout/navigation';
@@ -51,13 +60,13 @@ const DispatchIntegrationPage = () => {
   const inbox = health.data?.inbox;
   const outbox = health.data?.outbox;
 
-  const messageColumns = useMemo<Column<InboxMessage>[]>(
+  const messageColumns = useMemo<TableColumn<InboxMessage>[]>(
     () => [
       {
-        key: 'message',
+        id: 'message',
         header: 'Message',
         width: 260,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack
             primary={`${row.sourceSystem} · ${row.eventType}`}
             secondary={row.idempotencyKey ? `key ${shortId(row.idempotencyKey)}` : 'no key'}
@@ -65,44 +74,42 @@ const DispatchIntegrationPage = () => {
         ),
       },
       {
-        key: 'site',
+        id: 'site',
         header: 'Site',
         width: 110,
-        hideBelowLg: true,
-        cell: (row) => row.siteCode ?? '-',
+        cell: ({ row }) => row.siteCode ?? '-',
       },
       {
-        key: 'received',
+        id: 'received',
         header: 'Received',
         width: 170,
-        cell: (row) => formatDateTime(row.receivedAt),
+        cell: ({ row }) => formatDateTime(row.receivedAt),
       },
       {
-        key: 'attempts',
+        id: 'attempts',
         header: 'Attempts',
         width: 100,
         align: 'right',
-        hideBelowLg: true,
-        cell: (row) => row.attempts,
+        cell: ({ row }) => row.attempts,
       },
       {
-        key: 'status',
+        id: 'status',
         header: 'Status',
         width: 140,
         align: 'right',
-        cell: (row) => <StatusChip value={row.status} />,
+        cell: ({ row }) => <StatusBadge value={row.status} />,
       },
     ],
     [],
   );
 
-  const outboxColumns = useMemo<Column<OutboxEntry>[]>(
+  const outboxColumns = useMemo<TableColumn<OutboxEntry>[]>(
     () => [
       {
-        key: 'event',
+        id: 'event',
         header: 'Event',
         width: 260,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack
             primary={row.eventType}
             secondary={`${row.aggregateType} ${shortId(row.aggregateId)}`}
@@ -110,40 +117,39 @@ const DispatchIntegrationPage = () => {
         ),
       },
       {
-        key: 'failure',
+        id: 'failure',
         header: 'Failure',
         width: 280,
-        cell: (row) => row.failureReason ?? <span className="text-gray-500">Not recorded</span>,
+        cell: ({ row }) =>
+          row.failureReason ?? <span className="text-muted-foreground">Not recorded</span>,
       },
       {
-        key: 'attempts',
+        id: 'attempts',
         header: 'Attempts',
         width: 100,
         align: 'right',
-        hideBelowLg: true,
-        cell: (row) => row.attemptCount,
+        cell: ({ row }) => row.attemptCount,
       },
       {
-        key: 'created',
+        id: 'created',
         header: 'Created',
         width: 170,
-        hideBelowLg: true,
-        cell: (row) => formatDateTime(row.createdAt),
+        cell: ({ row }) => formatDateTime(row.createdAt),
       },
       {
-        key: 'replay',
+        id: 'replay',
         header: '',
         width: 120,
         align: 'right',
-        cell: (row) => (
+        cell: ({ row }) => (
           <Button
             size="sm"
             variant="outline"
-            startIcon="refresh"
             loading={replaying === row.id}
             disabled={replaying !== null}
             onClick={() => replay(row.id)}
           >
+            <RefreshCw size={14} strokeWidth={1.5} aria-hidden="true" />
             Replay
           </Button>
         ),
@@ -155,8 +161,8 @@ const DispatchIntegrationPage = () => {
   );
 
   return (
-    <div>
-      <PageHeader
+    <>
+      <PageHeading
         title="Scanner integration"
         subtitle="Inbound scanner and carrier feeds, and the events this module publishes."
         crumbs={[
@@ -164,7 +170,8 @@ const DispatchIntegrationPage = () => {
           { label: 'Scanner integration' },
         ]}
         actions={
-          <Button variant="outline" startIcon="refresh" onClick={health.refetch}>
+          <Button variant="outline" onClick={health.refetch}>
+            <RefreshCw size={14} strokeWidth={1.5} aria-hidden="true" />
             Refresh
           </Button>
         }
@@ -177,113 +184,113 @@ const DispatchIntegrationPage = () => {
         minHeight={300}
       >
         {health.data && (
-          <div className="space-y-5">
-            {outbox && outbox.deadLettered > 0 && (
-              <Alert
-                variant="error"
-                title={`${outbox.deadLettered} outbound messages are dead lettered`}
-              >
-                Downstream systems have not received these dispatch events. Replay them below once
-                the cause has been dealt with; a replay returns the message to the pending queue.
-              </Alert>
+          <>
+            {((outbox && outbox.deadLettered > 0) || (inbox && inbox.rejectedMessages > 0)) && (
+              <PageSection className="space-y-3">
+                {outbox && outbox.deadLettered > 0 && (
+                  <Callout
+                    tone="danger"
+                    title={`${outbox.deadLettered} outbound messages are dead lettered`}
+                  >
+                    Downstream systems have not received these dispatch events. Replay them below
+                    once the cause has been dealt with; a replay returns the message to the pending
+                    queue.
+                  </Callout>
+                )}
+                {inbox && inbox.rejectedMessages > 0 && (
+                  <Callout
+                    tone="warning"
+                    title={`${inbox.rejectedMessages} inbound messages were rejected`}
+                  >
+                    A rejected message failed signature verification or schema validation and was
+                    not applied. The sending system has to correct and re-send it - there is no
+                    replay for inbound.
+                  </Callout>
+                )}
+              </PageSection>
             )}
 
-            {inbox && inbox.rejectedMessages > 0 && (
-              <Alert
-                variant="warning"
-                title={`${inbox.rejectedMessages} inbound messages were rejected`}
-              >
-                A rejected message failed signature verification or schema validation and was not
-                applied. The sending system has to correct and re-send it - there is no replay for
-                inbound.
-              </Alert>
-            )}
+            <PageSection>
+              <MetricCards>
+                <MetricCard
+                  variant="soft"
+                  label="Inbound processed"
+                  value={formatNumber(inbox?.processedMessages ?? 0)}
+                  description="Accepted and applied"
+                />
+                <MetricCard
+                  variant="soft"
+                  label="Inbound rejected"
+                  value={formatNumber(inbox?.rejectedMessages ?? 0)}
+                  description="Signature or payload refused"
+                />
+                <MetricCard
+                  variant="soft"
+                  label="Outbound pending"
+                  value={formatNumber(outbox?.pending ?? 0)}
+                  description={`${formatNumber(outbox?.published ?? 0)} published`}
+                />
+                <MetricCard
+                  variant="soft"
+                  label="Dead lettered"
+                  value={formatNumber(outbox?.deadLettered ?? 0)}
+                  description="Awaiting replay"
+                />
+              </MetricCards>
+            </PageSection>
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard
-                label="Inbound processed"
-                value={formatNumber(inbox?.processedMessages ?? 0)}
-                icon="cloud"
-                caption="Accepted and applied"
-              />
-              <StatCard
-                label="Inbound rejected"
-                value={formatNumber(inbox?.rejectedMessages ?? 0)}
-                icon="alert-circle"
-                tone={(inbox?.rejectedMessages ?? 0) > 0 ? 'caution' : 'neutral'}
-                caption="Signature or payload refused"
-              />
-              <StatCard
-                label="Outbound pending"
-                value={formatNumber(outbox?.pending ?? 0)}
-                icon="inbox"
-                caption={`${formatNumber(outbox?.published ?? 0)} published`}
-              />
-              <StatCard
-                label="Dead lettered"
-                value={formatNumber(outbox?.deadLettered ?? 0)}
-                icon="alert-triangle"
-                tone={(outbox?.deadLettered ?? 0) > 0 ? 'critical' : 'neutral'}
-                caption="Awaiting replay"
-              />
-            </div>
-
-            <SectionCard
+            <Panel
               title="Outbound dead letters"
-              subtitle="Dispatch events downstream systems did not receive"
-              flush
+              description="Dispatch events downstream systems did not receive"
             >
-              <DataState
-                loading={false}
-                empty={(outbox?.recentDeadLetters.length ?? 0) === 0}
-                emptyTitle="Nothing dead lettered"
-                emptyHint="Every dispatch event has been published."
-                minHeight={180}
-              >
-                <DataTable
-                  rows={outbox?.recentDeadLetters ?? []}
+              <Table paramPrefix="deadletters" variant="soft">
+                <TableContent
+                  variant="soft"
                   columns={outboxColumns}
-                  getRowId={(row) => row.id}
-                  caption="Dispatch outbound messages that could not be published, with the recorded failure, attempt count and a control to replay each."
-                  dense
+                  data={outbox?.recentDeadLetters ?? []}
+                  rowKey={(row) => row.id}
+                  aria-label="Dispatch outbound messages that could not be published, with the recorded failure, attempt count and a control to replay each."
+                  emptyContent={
+                    <EmptyState
+                      title="Nothing dead lettered"
+                      description="Every dispatch event has been published."
+                    />
+                  }
                 />
-              </DataState>
-            </SectionCard>
+              </Table>
+            </Panel>
 
-            <SectionCard
+            <Panel
               title="Recent inbound messages"
-              subtitle="Signed scanner and carrier callbacks across the service"
-              flush
+              description="Signed scanner and carrier callbacks across the service"
             >
-              <DataState
-                loading={false}
-                empty={(inbox?.recentMessages.length ?? 0) === 0}
-                emptyTitle="No inbound messages"
-                emptyHint="No scanner or carrier has posted to this service."
-                minHeight={180}
-              >
-                <DataTable
-                  rows={inbox?.recentMessages ?? []}
+              <Table paramPrefix="inbound" variant="soft">
+                <TableContent
+                  variant="soft"
                   columns={messageColumns}
-                  getRowId={(row) => row.id}
-                  caption="Recent inbound integration messages, with their source, site, receipt time, attempt count and status."
-                  dense
+                  data={inbox?.recentMessages ?? []}
+                  rowKey={(row) => row.id}
+                  aria-label="Recent inbound integration messages, with their source, site, receipt time, attempt count and status."
+                  emptyContent={
+                    <EmptyState
+                      title="No inbound messages"
+                      description="No scanner or carrier has posted to this service."
+                    />
+                  }
                 />
-              </DataState>
-              <div className="px-5 pt-2 pb-4">
-                <p className="text-theme-xs text-gray-600">
-                  Checked {formatDateTime(inbox?.checkedAt)}. The inbox is shared across the service
-                  and is not filtered to dispatch or to a site - a message here may belong to another
-                  module.
-                </p>
-              </div>
-            </SectionCard>
+              </Table>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Checked {formatDateTime(inbox?.checkedAt)}. The inbox is shared across the service
+                and is not filtered to dispatch or to a site - a message here may belong to another
+                module.
+              </p>
+            </Panel>
 
-            <SectionCard title="How the feeds behave">
-              <ul className="space-y-3 text-theme-sm text-gray-700">
+            <Panel title="How the feeds behave">
+              <ul className="space-y-3 text-sm text-foreground">
                 <li>
                   <strong>Scanner events</strong> arrive signed, at{' '}
-                  <span className="font-mono text-theme-xs">
+                  <span className="font-mono text-xs">
                     /integrations/scanners/{'{provider}'}/events
                   </span>
                   , and are idempotent on their own signature - a provider that re-sends the same
@@ -291,7 +298,7 @@ const DispatchIntegrationPage = () => {
                 </li>
                 <li>
                   <strong>Carrier status</strong> callbacks arrive at{' '}
-                  <span className="font-mono text-theme-xs">
+                  <span className="font-mono text-xs">
                     /integrations/carriers/{'{carrier}'}/status
                   </span>{' '}
                   and update the consignment they name.
@@ -303,11 +310,11 @@ const DispatchIntegrationPage = () => {
                   is dealt with.
                 </li>
               </ul>
-            </SectionCard>
-          </div>
+            </Panel>
+          </>
         )}
       </DataState>
-    </div>
+    </>
   );
 };
 

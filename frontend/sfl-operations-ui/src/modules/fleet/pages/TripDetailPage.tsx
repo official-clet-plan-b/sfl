@@ -1,4 +1,10 @@
 import { useState } from 'react';
+import { Banner, Button } from '@rfdtech/components';
+import DetailHeader from 'modules/fleet/components/DetailHeader';
+import Panel from 'modules/fleet/components/Panel';
+import StatusBadge from 'modules/fleet/components/StatusBadge';
+import Icon from 'shared/components/Icon';
+import FleetTimeline, { TimelineEntry } from 'modules/fleet/components/FleetTimeline';
 import { Link, useNavigate, useParams } from 'react-router';
 import { TripResponse } from 'modules/fleet/api/dto';
 import { humanise } from 'modules/fleet/api/enums';
@@ -24,15 +30,9 @@ import {
   StartTripDialog,
 } from 'modules/fleet/dialogs/tripDialogs';
 import { useOwnLocationReporting } from 'modules/fleet/hooks/useOwnLocationReporting';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatusChip from 'shared/components/StatusChip';
-import WorkflowTimeline, { TimelineEntry } from 'shared/components/WorkflowTimeline';
 import { formatDateTime, formatNumber, formatOdometer } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fleetPaths } from 'shared/layout/navigation';
@@ -210,7 +210,7 @@ const TripDetailPage = () => {
 
   return (
     <div>
-      <PageHeader
+      <DetailHeader
         title={trip.data?.tripNumber ?? 'Trip'}
         subtitle={
           trip.data
@@ -223,16 +223,17 @@ const TripDetailPage = () => {
           { label: trip.data?.tripNumber ?? '…' },
         ]}
         actions={
-          <Button variant="outline" startIcon="arrow-left" onClick={() => navigate(fleetPaths.trips)}>
+          <Button variant="outline" onClick={() => navigate(fleetPaths.trips)}>
+            <Icon name="arrow-left" size={14} aria-hidden="true" />
             Trip queue
           </Button>
         }
         meta={
           trip.data && (
             <div className="flex flex-wrap items-center gap-2">
-              <StatusChip value={trip.data.status} />
-              <StatusChip value={trip.data.operatingMode} tone="neutral" />
-              <StatusChip value={trip.data.siteCode} label={trip.data.siteCode} tone="neutral" />
+              <StatusBadge value={trip.data.status} />
+              <StatusBadge value={trip.data.operatingMode} tone="neutral" />
+              <StatusBadge value={trip.data.siteCode} label={trip.data.siteCode} tone="neutral" />
             </div>
           )
         }
@@ -247,13 +248,14 @@ const TripDetailPage = () => {
         {trip.data && (
           <div className="space-y-5">
             {answerable(trip.data) && (
-              <SectionCard
+              <Panel
                 title="Your assignment"
-                subtitle="Tell the dispatcher whether you can take this trip"
+                description="Tell the dispatcher whether you can take this trip"
               >
                 {trip.data.acknowledgementState === 'PENDING' ? (
                   <div className="flex flex-wrap items-center gap-2">
-                    <Button variant="primary" startIcon="check-circle" onClick={() => setDialog('confirm')}>
+                    <Button variant="primary" onClick={() => setDialog('confirm')}>
+                      <Icon name="check-circle" size={14} aria-hidden="true" />
                       Confirm
                     </Button>
                     <Button variant="outline" onClick={() => setDialog('defer')}>
@@ -261,16 +263,21 @@ const TripDetailPage = () => {
                     </Button>
                   </div>
                 ) : (
-                  <Alert variant={trip.data.acknowledgementState === 'DEFERRED' ? 'warning' : 'success'}>
-                    {trip.data.acknowledgementState === 'DEFERRED'
-                      ? `You deferred this trip on ${formatDateTime(trip.data.acknowledgedAt)} - ${trip.data.acknowledgementReason}`
-                      : `You confirmed this trip on ${formatDateTime(trip.data.acknowledgedAt)}.`}
-                  </Alert>
+                  <Banner
+                    variant={trip.data.acknowledgementState === 'DEFERRED' ? 'warning' : 'success'}
+                    heading={
+                      <>
+                        {trip.data.acknowledgementState === 'DEFERRED'
+                          ? `You deferred this trip on ${formatDateTime(trip.data.acknowledgedAt)} - ${trip.data.acknowledgementReason}`
+                          : `You confirmed this trip on ${formatDateTime(trip.data.acknowledgedAt)}.`}
+                      </>
+                    }
+                  />
                 )}
-              </SectionCard>
+              </Panel>
             )}
 
-            <SectionCard title="Actions" subtitle="Transitions permitted from the current status">
+            <Panel title="Actions" description="Transitions permitted from the current status">
               <div className="flex flex-wrap items-center gap-2">
                 {permitted(trip.data).assign && tripActions.assign && (
                   <Button variant="primary" onClick={() => setDialog('assign')}>
@@ -278,32 +285,38 @@ const TripDetailPage = () => {
                   </Button>
                 )}
                 {permitted(trip.data).inspect && tripActions.inspect && (
-                  <Button variant="outline" startIcon="clipboard" onClick={() => setDialog('inspection')}>
+                  <Button variant="outline" onClick={() => setDialog('inspection')}>
+                    <Icon name="clipboard" size={14} aria-hidden="true" />
                     Record inspection
                   </Button>
                 )}
                 {permitted(trip.data).start && (tripActions.manage || startableOwn(trip.data)) && (
-                  <Button variant="accent" startIcon="play" onClick={() => setDialog('start')}>
+                  <Button variant="primary" onClick={() => setDialog('start')}>
+                    <Icon name="play" size={14} aria-hidden="true" />
                     Start trip
                   </Button>
                 )}
                 {permitted(trip.data).hold && tripActions.manage && (
-                  <Button variant="outline" startIcon="stop" onClick={() => setDialog('hold')}>
+                  <Button variant="outline" onClick={() => setDialog('hold')}>
+                    <Icon name="stop" size={14} aria-hidden="true" />
                     Place on hold
                   </Button>
                 )}
                 {permitted(trip.data).resume && tripActions.manage && (
-                  <Button variant="outline" startIcon="play" onClick={() => setDialog('resume')}>
+                  <Button variant="outline" onClick={() => setDialog('resume')}>
+                    <Icon name="play" size={14} aria-hidden="true" />
                     Resume
                   </Button>
                 )}
                 {permitted(trip.data).close && tripActions.close && (
-                  <Button variant="primary" startIcon="flag" onClick={() => setDialog('close')}>
+                  <Button variant="primary" onClick={() => setDialog('close')}>
+                    <Icon name="flag" size={14} aria-hidden="true" />
                     Close trip
                   </Button>
                 )}
                 {permitted(trip.data).cancel && tripActions.cancel && (
-                  <Button variant="danger" startIcon="close" onClick={() => setDialog('cancel')}>
+                  <Button variant="destructive" onClick={() => setDialog('cancel')}>
+                    <Icon name="close" size={14} aria-hidden="true" />
                     Cancel trip
                   </Button>
                 )}
@@ -314,23 +327,23 @@ const TripDetailPage = () => {
                   </p>
                 )}
               </div>
-            </SectionCard>
+            </Panel>
 
             {trip.data.vehicleId && !['COMPLETED', 'CANCELLED'].includes(trip.data.status) && (
-              <SectionCard
+              <Panel
                 title="Live route"
-                subtitle={
+                description={
                   reportingOwn(trip.data)
                     ? 'Your position is shared with the fleet office while this trip is in progress'
-                    : 'Planned route, and the vehicle\'s current position once the trip is under way'
+                    : "Planned route, and the vehicle's current position once the trip is under way"
                 }
               >
                 <TripRouteMap trip={trip.data} />
-              </SectionCard>
+              </Panel>
             )}
 
             <div className="grid gap-5 xl:grid-cols-3">
-              <SectionCard title="Trip record" className="xl:col-span-2">
+              <Panel title="Trip record" className="xl:col-span-2">
                 <div className="space-y-5">
                   <KeyValueGrid
                     items={[
@@ -424,10 +437,10 @@ const TripDetailPage = () => {
                     </>
                   )}
                 </div>
-              </SectionCard>
+              </Panel>
 
               <div className="space-y-5">
-                <SectionCard title="Assignment">
+                <Panel title="Assignment">
                   {trip.data.vehicleId || trip.data.driverId ? (
                     <div className="space-y-3">
                       {vehicle.data && (
@@ -456,21 +469,27 @@ const TripDetailPage = () => {
                       )}
                     </div>
                   ) : (
-                    <Alert variant="warning">
-                      No vehicle or driver assigned yet. The trip cannot start until both are set.
-                    </Alert>
+                    <Banner
+                      variant="warning"
+                      heading={
+                        <>
+                          No vehicle or driver assigned yet. The trip cannot start until both are
+                          set.
+                        </>
+                      }
+                    />
                   )}
-                </SectionCard>
+                </Panel>
 
-                <SectionCard title="History">
-                  <WorkflowTimeline entries={timeline} />
-                </SectionCard>
+                <Panel title="History">
+                  <FleetTimeline entries={timeline} />
+                </Panel>
               </div>
             </div>
 
-            <SectionCard
+            <Panel
               title="Inspections"
-              subtitle="Pre-trip and post-trip checks recorded against this trip"
+              description="Pre-trip and post-trip checks recorded against this trip"
             >
               <DataState
                 loading={inspections.initialising}
@@ -490,8 +509,8 @@ const TripDetailPage = () => {
                             <p className="text-theme-sm font-semibold text-gray-800">
                               {humanise(inspection.inspectionType)}
                             </p>
-                            <StatusChip value={inspection.result} />
-                            <StatusChip value={inspection.status} />
+                            <StatusBadge value={inspection.result} />
+                            <StatusBadge value={inspection.status} />
                           </div>
                           <p className="mt-0.5 text-theme-xs text-gray-500">
                             {formatDateTime(inspection.performedAt)} ·{' '}
@@ -501,7 +520,11 @@ const TripDetailPage = () => {
                         </div>
                         {!inspection.permitsUse && (
                           <div className="shrink-0">
-                            <StatusChip value="BLOCKED" label="Blocks vehicle use" tone="blocked" />
+                            <StatusBadge
+                              value="BLOCKED"
+                              label="Blocks vehicle use"
+                              tone="blocked"
+                            />
                           </div>
                         )}
                       </div>
@@ -515,7 +538,7 @@ const TripDetailPage = () => {
                               key={`${inspection.id}-${findingIndex}-${finding.checkCode}`}
                               className="flex flex-wrap items-center gap-2"
                             >
-                              <StatusChip value={finding.severity} />
+                              <StatusBadge value={finding.severity} />
                               <p className="text-theme-sm text-gray-700">
                                 <strong className="font-semibold text-gray-800">
                                   {finding.checkCode}
@@ -523,7 +546,7 @@ const TripDetailPage = () => {
                                 - {finding.description}
                               </p>
                               {finding.resolved && (
-                                <StatusChip value="RESOLVED" label="Resolved" tone="ready" />
+                                <StatusBadge value="RESOLVED" label="Resolved" tone="ready" />
                               )}
                             </div>
                           ))}
@@ -531,10 +554,15 @@ const TripDetailPage = () => {
                       )}
 
                       {inspection.hasOpenCriticalDefect && (
-                        <Alert variant="error" className="mt-3">
-                          An unresolved critical defect is recorded - the vehicle is blocked from
-                          use until it is cleared.
-                        </Alert>
+                        <Banner
+                          variant="danger"
+                          heading={
+                            <>
+                              An unresolved critical defect is recorded - the vehicle is blocked
+                              from use until it is cleared.
+                            </>
+                          }
+                        />
                       )}
 
                       {inspection.notes && (
@@ -544,7 +572,7 @@ const TripDetailPage = () => {
                   ))}
                 </div>
               </DataState>
-            </SectionCard>
+            </Panel>
 
             {/*
              * Each dialog is mounted only while it is open. A dialog that stays mounted keeps the

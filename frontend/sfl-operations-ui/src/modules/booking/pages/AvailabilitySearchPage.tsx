@@ -1,13 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import Button from 'shared/components/Button';
+import {
+  Button,
+  Card,
+  PageSection,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  useBreadcrumbs,
+} from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
-import { DateTimeField } from 'shared/components/DateField';
-import { NumberInput, SelectInput } from 'shared/components/fields';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { permits } from 'shared/layout/actorPermissions';
@@ -28,6 +31,8 @@ import {
   plusHoursLocalInput,
   windowProblem,
 } from '../components/bookingFormat';
+import { DateTimeField, NumberInput, SelectInput } from 'modules/facilities/dialogs/dialogKit';
+import StatusBadge from 'modules/facilities/components/StatusBadge';
 
 /**
  * "What is free?" - SRS-SFL-S159-02, and the way into every booking.
@@ -55,8 +60,9 @@ import {
 const AvailabilitySearchPage = () => {
   const navigate = useNavigate();
   const notify = useNotifier();
+  useBreadcrumbs([{ label: 'Bookings', href: bookingPaths.diary }, { label: 'Find a space' }]);
 
-  const [siteCode, setSiteCode] = useState(defaultSite);
+  const [siteCode, setSiteCode] = useState<string>(defaultSite);
   const [startsLocal, setStartsLocal] = useState(() => nextHourLocalInput());
   const [endsLocal, setEndsLocal] = useState(() => plusHoursLocalInput(nextHourLocalInput(), 2));
   const [purpose, setPurpose] = useState('');
@@ -144,16 +150,18 @@ const AvailabilitySearchPage = () => {
 
   return (
     <>
-      <PageHeader
-        title="Find a space"
-        subtitle="What can take this window, and what cannot - with the reason"
-        crumbs={[
-          { label: 'Bookings', to: bookingPaths.diary },
-          { label: 'Find a space' },
-        ]}
-      />
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Find a space</SectionTitle>
+          <SectionDescription>What can take this window, and what cannot - with the reason</SectionDescription>
+        </SectionHeader>
+      </PageSection>
 
-      <SectionCard title="The window" className="mb-5">
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>The window</SectionTitle>
+        </SectionHeader>
+        <Card bordered>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <SiteSelect
             value={siteCode}
@@ -211,8 +219,10 @@ const AvailabilitySearchPage = () => {
             suffix="people"
           />
         </div>
-      </SectionCard>
+        </Card>
+      </PageSection>
 
+      <PageSection>
       <DataState
         loading={spaces.loading}
         error={spaces.error}
@@ -264,6 +274,7 @@ const AvailabilitySearchPage = () => {
           )}
         </div>
       </DataState>
+      </PageSection>
 
       {booking && window && (
         <RequestBookingDialog
@@ -305,22 +316,27 @@ const SpaceGroup = ({ title, subtitle, spaces, onOpen, onBook }: SpaceGroupProps
     return null;
   }
   return (
-    <SectionCard title={title} subtitle={subtitle}>
-      <ul className="divide-y divide-gray-100">
+    <PageSection>
+      <SectionHeader>
+        <SectionTitle>{title}</SectionTitle>
+        {subtitle && <SectionDescription>{subtitle}</SectionDescription>}
+      </SectionHeader>
+      <Card bordered>
+      <ul className="divide-y divide-border">
         {spaces.map((space) => (
           <li key={space.roomId} className="flex flex-wrap items-center gap-3 py-3 first:pt-0">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-semibold text-gray-900">{space.roomCode}</span>
-                <StatusChip value={space.readinessStatus} tone={readinessTone(space.readinessStatus)} />
+                <span className="font-semibold text-foreground">{space.roomCode}</span>
+                <StatusBadge value={space.readinessStatus} tone={readinessTone(space.readinessStatus)} />
                 {space.capacity !== null && (
-                  <span className="text-theme-xs text-gray-500">Seats {space.capacity}</span>
+                  <span className="text-xs text-muted-foreground">Seats {space.capacity}</span>
                 )}
               </div>
-              {space.name && <p className="truncate text-theme-sm text-gray-600">{space.name}</p>}
+              {space.name && <p className="truncate text-sm text-muted-foreground">{space.name}</p>}
 
               {space.readinessIssue && (
-                <p className="mt-1 text-theme-xs text-warning-800">
+                <p className="mt-1 text-xs text-warning-text">
                   {HOLD_REASON_DESCRIPTIONS[space.readinessIssue]}
                   {space.readinessDetail ? ` ${space.readinessDetail}` : ''}
                 </p>
@@ -332,7 +348,7 @@ const SpaceGroup = ({ title, subtitle, spaces, onOpen, onBook }: SpaceGroupProps
                 frequently is.
               */}
               {space.heldBy.length > 0 && (
-                <p className="mt-1 text-theme-xs text-gray-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Held by{' '}
                   {space.heldBy
                     .map((held) => `${held.bookingReference} (${formatWindow(held.occupiedFrom, held.occupiedTo)})`)
@@ -354,7 +370,8 @@ const SpaceGroup = ({ title, subtitle, spaces, onOpen, onBook }: SpaceGroupProps
           </li>
         ))}
       </ul>
-    </SectionCard>
+      </Card>
+    </PageSection>
   );
 };
 

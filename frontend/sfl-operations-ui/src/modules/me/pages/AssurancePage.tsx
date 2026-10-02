@@ -1,6 +1,8 @@
 import { Link } from 'react-router';
-import Alert from 'shared/components/Alert';
-import PageHeader from 'shared/components/PageHeader';
+import { PageSection } from '@rfdtech/components';
+import PageHeading from 'modules/dispatch/components/PageHeading';
+import Panel from 'modules/dispatch/components/Panel';
+import { Callout } from 'modules/dispatch/components/formKit';
 import { facilitiesPaths, fleetPaths } from 'shared/layout/navigation';
 
 /**
@@ -32,55 +34,58 @@ import { facilitiesPaths, fleetPaths } from 'shared/layout/navigation';
  * again by a director who cannot find the button.
  */
 const AssurancePage = () => (
-  <div className="space-y-8">
-    <PageHeader
+  <>
+    <PageHeading
       title="Audit & evidence"
       subtitle="Chain verification, evidence and denial records across every system"
+      crumbs={[{ label: 'Audit & evidence' }]}
     />
 
-    <Alert variant="info" title="Four chains, not one">
-      Each service hash-chains its own audit log independently. Verifying facilities says nothing
-      about fleet, and there is deliberately no combined check - a single green tick over four
-      separate chains would be a claim this dashboard has no standing to make.
-    </Alert>
+    <PageSection>
+      <Callout tone="info" title="Four chains, not one">
+        Each service hash-chains its own audit log independently. Verifying facilities says nothing
+        about fleet, and there is deliberately no combined check - a single green tick over four
+        separate chains would be a claim this dashboard has no standing to make.
+      </Callout>
+    </PageSection>
 
-    <section className="space-y-3">
-      <h2 className="text-lg font-semibold text-slate-800">Facilities, maintenance and booking</h2>
+    <Panel title="Facilities, maintenance and booking">
       <ul className="space-y-2 text-sm">
         <li>
-          <Link className="text-teal-700 underline" to={facilitiesPaths.audit}>
+          <Link className="text-primary underline" to={facilitiesPaths.audit}>
             Audit &amp; integrity
           </Link>
-          <span className="text-slate-600">
+          <span className="text-muted-foreground">
             {' '}- replay the chain, search records, read authorisation denials. Needs
             {' '}<code>FACILITIES_AUDIT_INTEGRITY_CHECK</code> to run the verification, which
             compliance holds and the facilities director deliberately does not.
           </span>
         </li>
       </ul>
-    </section>
+    </Panel>
 
-    <section className="space-y-3">
-      <h2 className="text-lg font-semibold text-slate-800">Fleet, fuel and dispatch</h2>
+    <Panel title="Fleet, fuel and dispatch">
       <ul className="space-y-2 text-sm">
         <li>
-          <Link className="text-teal-700 underline" to={fleetPaths.evidence}>
+          <Link className="text-primary underline" to={fleetPaths.evidence}>
             Evidence &amp; audit
           </Link>
-          <span className="text-slate-600">
+          <span className="text-muted-foreground">
             {' '}- governed evidence, export requests with a recorded justification and recipient,
             and the fleet chain.
           </span>
         </li>
       </ul>
-    </section>
+    </Panel>
 
-    <Alert variant="warning" title="Evidence export is a separate authorised act">
-      Exporting evidence is not reading it. Each export records who asked, why, and who received it,
-      and that record is itself auditable - so an export made to answer a question becomes part of
-      the trail the next question is asked against.
-    </Alert>
-  </div>
+    <PageSection>
+      <Callout tone="warning" title="Evidence export is a separate authorised act">
+        Exporting evidence is not reading it. Each export records who asked, why, and who received it,
+        and that record is itself auditable - so an export made to answer a question becomes part of
+        the trail the next question is asked against.
+      </Callout>
+    </PageSection>
+  </>
 );
 
 export default AssurancePage;

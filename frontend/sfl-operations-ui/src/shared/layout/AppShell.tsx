@@ -1,55 +1,273 @@
-import { Outlet, useLocation } from 'react-router';
-import { cn } from 'shared/components/cn';
-import Sidebar from './Sidebar';
-import TopBar from './TopBar';
-import { SidebarProvider, useCloseMobileOnNavigate, useSidebar } from './SidebarContext';
+import { lazy, Suspense, useMemo, useState } from 'react';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router';
+import {
+  AppBody,
+  AppHeader,
+  AppHeaderActions,
+  AppHeaderFontSize,
+  AppHeaderSearch,
+  AppHeaderTitle,
+  AppLayout,
+  AppSidebar,
+  ProfilePopover,
+  Sidebar,
+  SidebarBrand,
+  SidebarCollapse,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarLink,
+  SidebarNav,
+  type AppHeaderSearchDataGroup,
+} from '@rfdtech/components';
+import { sflActor } from 'shared/api/config';
+import { readSession } from 'shared/auth/session';
+import { signOut } from 'shared/auth/signIn';
+import { actorOverridden, devToolsEnabled } from 'shared/dev/actorOverride';
+import Icon from 'shared/components/Icon';
+import { entitledSections, type NavItem } from './navigation';
 import { permissionFailure } from './actorPermissions';
+import { portalLabel } from './programmes';
 
-const ShellBody = () => {
-  const { expanded } = useSidebar();
+/**
+ * The development actor switcher, loaded on demand - and only in a development build.
+ *
+ * `import.meta.env.DEV` is written out here rather than the `devToolsEnabled` re-export on purpose.
+ * Vite substitutes that expression with a literal `false` before Rollup runs, so the whole ternary
+ * folds and the dynamic import disappears with it: no chunk is emitted and the panel never reaches a
+ * production bundle. Guarding the *render* is not enough - the `lazy(() => import(...))` at module
+ * scope is a real edge in the module graph whatever the JSX does with the result.
+ */
+const ActorSwitcher = import.meta.env.DEV
+  ? lazy(() => import('shared/dev/ActorSwitcher'))
+  : null;
+
+const initials = (name: string): string =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('') || 'SF';
+
+const words = (code: string): string => code.replace(/_/g, ' ').toLowerCase();
+
+const roles = sflActor.roles
+  .split(',')
+  .map((role) => role.trim())
+  .filter(Boolean);
+
+const sites = sflActor.sites
+  .split(',')
+  .map((site) => site.trim())
+  .filter(Boolean);
+
+/** Whether `item` is the current destination - `matchPrefix` also claims its child routes. */
+const isCurrent = (item: NavItem, pathname: string): boolean =>
+  item.matchPrefix
+    ? pathname === item.to || pathname.startsWith(`${item.to}/`)
+    : pathname === item.to;
+
+/**
+ * The shell every dashboard screen renders inside: the CLET 2.4 layout from `@rfdtech/components` -
+ * a full-height navy rail beside a plain header over the content column.
+ *
+ * **The rail is filtered by programme entitlement.** A fleet operator sees fleet, fuel and dispatch;
+ * they do not see emergency mass notification, which is SSEMP. See `programmes.ts` and ADR 0005 -
+ * and note that this is a usability control, never the enforcement point: every service authorises
+ * every call on its own.
+ */
+const AppShell = () => {
   const { pathname } = useLocation();
-  useCloseMobileOnNavigate(pathname);
+  const navigate = useNavigate();
+  const sections = useMemo(() => entitledSections(), []);
+  /** Null when nobody has signed in - the header-based development actor is then in force. */
+  const session = readSession();
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   /*
     Read once per render rather than held in state: it is decided before the first paint and cannot
     change without a reload, so subscribing to it would be machinery for a value that never moves.
   */
   const permissionsUnavailable = permissionFailure();
 
+  /*
+    Every group starts folded except the one holding the current screen (or the first group when the
+    current screen is in none) - the rail reads as a short list rather than the whole product.
+  */
+  const [expanded, setExpanded] = useState<Set<string>>(() => {
+    const current = sections.find((section) => section.items.some((item) => isCurrent(item, pathname)));
+    const first = current ?? sections[0];
+    return new Set(first ? [first.heading] : []);
+  });
+
+  const toggleGroup = (heading: string, open: boolean) =>
+    setExpanded((previous) => {
+      const next = new Set(previous);
+      if (open) {
+        next.add(heading);
+      } else {
+        next.delete(heading);
+      }
+      return next;
+    });
+
+  const [query, setQuery] = useState('');
+  const searchGroups: AppHeaderSearchDataGroup[] = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) {
+      return [];
+    }
+    return [
+      {
+        heading: 'Pages',
+        items: sections
+          .flatMap((section) => section.items)
+          .filter((item) => item.label.toLowerCase().includes(needle))
+          .map((item) => ({
+            value: item.to,
+            label: item.label,
+            onSelect: () => navigate(item.to),
+          })),
+      },
+    ];
+  }, [navigate, query, sections]);
+
+  const primaryRole = roles[0] ? words(roles[0]) : 'operator';
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/*
-        SC 2.4.1 Bypass Blocks. The rail is eight links before any page content, and a keyboard or
-        screen-reader user should not have to walk them on every navigation.
-      */}
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-999999 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2.5 focus:text-theme-sm focus:font-medium focus:text-brand-900"
-      >
-        Skip to main content
-      </a>
+    <AppLayout>
+      <AppHeader variant="plain">
+        {/* The library paints the system title in its gold secondary-text token; the CLET design shows it
+            in the body text colour, so it is set explicitly here. */}
+        <AppHeaderTitle style={{ color: 'var(--clet-text)' }}>{portalLabel()}</AppHeaderTitle>
+        <AppHeaderActions>
+          <span
+            className="hidden items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-theme-xs font-medium text-gray-800 md:inline-flex"
+            title="Site scope sent on every request (X-SFL-Sites)"
+          >
+            <Icon name="map-pin" size={14} />
+            {sites.length === 1 ? sites[0] : `${sites.length} sites`}
+          </span>
+          <AppHeaderSearch
+            collapsible
+            placeholder="Search pages"
+            data={searchGroups}
+            onSearch={setQuery}
+            showEmpty
+            emptyLabel="No matching pages"
+          />
+          <AppHeaderFontSize />
+          <ProfilePopover
+            variant="full"
+            side="bottom"
+            align="end"
+            user={{
+              name: sflActor.displayName,
+              role: primaryRole,
+              email: sflActor.user,
+              initials: initials(sflActor.displayName),
+            }}
+            hideThemeAction
+            items={
+              devToolsEnabled
+                ? [
+                    {
+                      icon: <Icon name="user" size={20} />,
+                      label: actorOverridden ? 'Change actor (override active)' : 'Change actor',
+                      onClick: () => setSwitcherOpen(true),
+                    },
+                  ]
+                : []
+            }
+            onSignOut={
+              session
+                ? () => {
+                    signOut();
+                    // Full reload for the same reason sign-in does one: entitlement, permissions
+                    // and the landing path are all resolved once at module scope.
+                    window.location.assign(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/login`);
+                  }
+                : undefined
+            }
+            noConfirmSignOut
+          />
+        </AppHeaderActions>
+      </AppHeader>
 
-      <TopBar />
-      <Sidebar />
+      <AppSidebar>
+        <Sidebar variant="brand" mobileHeader={<SidebarBrand />}>
+          <SidebarHeader>
+            <SidebarBrand />
+            <SidebarCollapse />
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarNav aria-label="Sections">
+              {sections.map((section) => (
+                <SidebarGroup
+                  key={section.heading}
+                  collapsible
+                  expanded={expanded.has(section.heading)}
+                  onExpandedChange={(open) => toggleGroup(section.heading, open)}
+                >
+                  <SidebarGroupLabel>{section.heading}</SidebarGroupLabel>
+                  {section.items.map((item) => (
+                    <SidebarLink
+                      key={item.to}
+                      asChild
+                      active={isCurrent(item, pathname)}
+                      icon={<Icon name={item.icon} size={18} />}
+                    >
+                      <Link to={item.to}>{item.label}</Link>
+                    </SidebarLink>
+                  ))}
+                </SidebarGroup>
+              ))}
 
-      <div
-        className={cn(
-          'pt-16 transition-all duration-200 ease-in-out',
-          expanded ? 'lg:pl-[260px]' : 'lg:pl-[76px]',
-        )}
-      >
-        <main
-          id="main-content"
-          tabIndex={-1}
-          className="mx-auto w-full max-w-[1600px] px-5 py-6 focus:outline-none lg:px-7"
+              {/*
+                An empty rail has two causes and they are not the same conversation. "Your roles
+                grant nothing" is about the account; "the service did not answer" is about the
+                deployment. The second used to be indistinguishable from the first, so an operator
+                whose service was simply not running was told their roles were short - and went
+                looking for an administrator instead of for the process.
+              */}
+              {sections.length === 0 && (
+                <div className="px-3 py-4">
+                  <p className="text-theme-sm font-medium text-white/85">
+                    {permissionsUnavailable ? 'Permissions unavailable' : 'No programme assigned'}
+                  </p>
+                  <p className="mt-1 text-theme-xs text-white/60">
+                    {permissionsUnavailable ??
+                      'Your roles do not grant access to any SFL programme, so there is nothing to show here. Ask for the role that covers the work you need to do.'}
+                  </p>
+                </div>
+              )}
+            </SidebarNav>
+          </SidebarContent>
+        </Sidebar>
+      </AppSidebar>
+
+      <AppBody>
+        {/*
+          SC 2.4.1 Bypass Blocks. The rail is a run of links before any page content, and a keyboard
+          or screen-reader user should not have to walk them on every navigation.
+        */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[999999] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2.5 focus:text-theme-sm focus:font-medium focus:text-brand-900"
         >
+          Skip to main content
+        </a>
+        <div id="main-content" tabIndex={-1} className="focus:outline-none">
           {/*
             Permissions could not be loaded, so nothing is being offered.
 
             This exists because the alternative was worse and invisible. The dashboard used to treat
             an unanswered permission lookup as "allow everything", which meant a service being down
-            presented as a driver holding the whole fleet office - and one service being up presented
-            as every other platform's controls silently vanishing. Neither said anything. Failing
-            closed is only defensible if the operator is told, and this is where they are told.
+            presented as a driver holding the whole fleet office - and one service being up
+            presented as every other platform's controls silently vanishing. Neither said anything.
+            Failing closed is only defensible if the operator is told, and this is where they are
+            told.
           */}
           {permissionsUnavailable && (
             <div
@@ -63,17 +281,18 @@ const ShellBody = () => {
             </div>
           )}
           <Outlet />
-        </main>
-      </div>
-    </div>
+        </div>
+      </AppBody>
+
+      {ActorSwitcher && switcherOpen && (
+        // No fallback surface: the chunk is local and the panel is modal, so a spinner behind a
+        // backdrop that has not rendered yet would be the only thing on screen.
+        <Suspense fallback={null}>
+          <ActorSwitcher open onClose={() => setSwitcherOpen(false)} />
+        </Suspense>
+      )}
+    </AppLayout>
   );
 };
-
-/** Product bar + navigation rail + routed content. Every dashboard screen renders inside this. */
-const AppShell = () => (
-  <SidebarProvider>
-    <ShellBody />
-  </SidebarProvider>
-);
 
 export default AppShell;

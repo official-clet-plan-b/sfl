@@ -1,13 +1,27 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import ControlButton from 'shared/components/ControlButton';
+import { Plus } from 'lucide-react';
+import {
+  Card,
+  Dropdown,
+  EmptyState,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  TableFilter,
+  TableFooter,
+  TableHeader,
+  TablePagination,
+  useBreadcrumbs,
+  useTableState,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar from 'shared/components/FilterBar';
-import PageHeader from 'shared/components/PageHeader';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
@@ -27,7 +41,9 @@ import {
   relocateAssetControl,
   retireAssetControl,
 } from '../api/workflow';
+import ControlButton from '../components/ControlButton';
 import RowActions, { EditRowAction, MoveRowAction, RetireRowAction } from '../components/RowActions';
+import StatusBadge from '../components/StatusBadge';
 import { assetStatusTone, formatDate, humaniseCode } from '../components/facilitiesFormat';
 import { LifecycleDialog } from '../dialogs/common';
 import {
@@ -46,15 +62,33 @@ import {
  * Criticality and condition sit next to each other because their combination is what matters: a low
  * asset out of service is a note, a critical one out of service has blocked a hall.
  */
+const pageSizeOptions = [10, 25, 50, 100];
+
 const AssetRegisterPage = () => {
   const navigate = useNavigate();
   const notify = useNotifier();
+  useBreadcrumbs([{ label: 'Facilities', href: facilitiesPaths.dashboard }, { label: 'Assets' }]);
+
+  /*
+    Paging and the filters live in the URL, as the table keeps them. The search endpoint takes one
+    value per axis, so each filter is a single choice: choosing replaces, and clearing the field
+    removes the constraint. Changing a filter returns the table to its first page.
+  */
+  const { filters, page, pageSize } = useTableState({
+    paramPrefix: 'assets',
+    defaultPageSize: 25,
+    pageSizeOptions,
+  });
+  const category = filters.category ?? '';
+  const criticality = filters.criticality ?? '';
+  const status = filters.condition ?? '';
+
+  // The fields hold the operator's choice until the filter is applied; the URL holds what applied.
+  const [categoryValue, setCategoryValue] = useState(category);
+  const [criticalityValue, setCriticalityValue] = useState(criticality);
+  const [statusValue, setStatusValue] = useState(status);
+
   const [siteCode, setSiteCode] = useState<string>(defaultSite);
-  const [category, setCategory] = useState<string>('');
-  const [criticality, setCriticality] = useState<string>('');
-  const [status, setStatus] = useState<string>('');
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(25);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<FacilityAsset | null>(null);
   const [moving, setMoving] = useState<FacilityAsset | null>(null);
@@ -68,57 +102,39 @@ const AssetRegisterPage = () => {
           category: (category as AssetCategory) || undefined,
           criticality: (criticality as AssetCriticality) || undefined,
           operationalStatus: (status as AssetOperationalStatus) || undefined,
-          page,
-          size,
+          // The table counts pages from one, the service from zero.
+          page: page - 1,
+          size: pageSize,
         },
         signal,
       ),
-    [siteCode, category, criticality, status, page, size],
+    [siteCode, category, criticality, status, page, pageSize],
   );
 
-  const changeFilter = (apply: () => void) => {
-    apply();
-    setPage(0);
-  };
-
-  /**
-   * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
-   * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
-   * option already active clears it, same as the dropdown it replaces; toggling a different one while
-   * one is active swaps to the new choice instead of appearing to hold both.
-   */
-  const pickSingle = (current: string, next: string[]): string => {
-    if (next.length === 0) {
-      return '';
-    }
-    return next.find((value) => value !== current) ?? next[0];
-  };
-
-  const columns: Column<FacilityAsset>[] = [
+  const columns: TableColumn<FacilityAsset>[] = [
     {
-      key: 'assetCode',
+      id: 'assetCode',
       header: 'Code',
       width: 140,
-      cell: (asset) => <span className="font-medium text-gray-900">{asset.assetCode}</span>,
+      cell: ({ row }) => <span className="font-medium text-foreground">{row.assetCode}</span>,
     },
-    { key: 'name', header: 'Asset', cell: (asset) => asset.name },
+    { id: 'name', header: 'Asset', accessorKey: 'name' },
     {
-      key: 'category',
+      id: 'category',
       header: 'Category',
-      hideBelowLg: true,
-      cell: (asset) => humaniseCode(asset.category),
+      cell: ({ row }) => humaniseCode(row.category),
     },
     {
-      key: 'criticality',
+      id: 'criticality',
       header: 'Criticality',
       width: 120,
-      cell: (asset) => (
-        <StatusChip
-          value={asset.criticality}
+      cell: ({ row }) => (
+        <StatusBadge
+          value={row.criticality}
           tone={
-            asset.criticality === 'CRITICAL'
+            row.criticality === 'CRITICAL'
               ? 'blocked'
-              : asset.criticality === 'HIGH'
+              : row.criticality === 'HIGH'
                 ? 'caution'
                 : 'neutral'
           }
@@ -126,40 +142,36 @@ const AssetRegisterPage = () => {
       ),
     },
     {
-      key: 'status',
+      id: 'status',
       header: 'Condition',
       width: 160,
-      cell: (asset) => (
-        <StatusChip
-          value={asset.operationalStatus}
-          tone={assetStatusTone(asset.operationalStatus)}
-        />
+      cell: ({ row }) => (
+        <StatusBadge value={row.operationalStatus} tone={assetStatusTone(row.operationalStatus)} />
       ),
     },
     {
-      key: 'serviceDue',
+      id: 'serviceDue',
       header: 'Service due',
       width: 140,
       align: 'right',
-      hideBelowLg: true,
-      cell: (asset) => <span className="text-gray-600">{formatDate(asset.serviceDueOn)}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">{formatDate(row.serviceDueOn)}</span>,
     },
     {
-      key: 'impairs',
+      id: 'impairs',
       header: '',
       width: 130,
       align: 'right',
-      cell: (asset) =>
-        asset.impairsReadiness ? (
-          <StatusChip value="BLOCKING" label="Impairs space" tone="blocked" />
+      cell: ({ row }) =>
+        row.impairsReadiness ? (
+          <StatusBadge value="BLOCKING" label="Impairs space" tone="blocked" />
         ) : null,
     },
     {
-      key: 'actions',
+      id: 'actions',
       header: '',
       width: 150,
       align: 'right',
-      cell: (asset) => (
+      cell: ({ row: asset }) => (
         <RowActions>
           <EditRowAction
             state={editAssetControl(asset)}
@@ -183,71 +195,94 @@ const AssetRegisterPage = () => {
 
   return (
     <>
-      <PageHeader
-        title="Facility assets"
-        subtitle="Fixed plant and equipment, and what its condition does to the estate"
-        actions={
-          <ControlButton
-            state={createAssetControl()}
-            variant="primary"
-            startIcon="plus"
-            onClick={() => setAdding(true)}
-          >
-            Register an asset
-          </ControlButton>
-        }
-      />
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Facility assets</SectionTitle>
+          <SectionDescription>
+            Fixed plant and equipment, and what its condition does to the estate
+          </SectionDescription>
+          <SectionActions>
+            <SiteSelect
+              value={siteCode}
+              onChange={setSiteCode}
+              allowEmpty
+              emptyLabel="All sites"
+            />
+            <ControlButton state={createAssetControl()} variant="primary" onClick={() => setAdding(true)}>
+              <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+              Register an asset
+            </ControlButton>
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      <FilterBar>
-        <SiteSelect
-          value={siteCode}
-          onChange={(v) => changeFilter(() => setSiteCode(v))}
-          allowEmpty
-          emptyLabel="All sites"
-        />
-        <FacetFilter
-          label="Category"
-          selected={category ? [category] : []}
-          onChange={(next) => changeFilter(() => setCategory(pickSingle(category, next)))}
-          options={assetCategories.map((value) => ({ value, label: humaniseCode(value) }))}
-        />
-        <FacetFilter
-          label="Criticality"
-          selected={criticality ? [criticality] : []}
-          onChange={(next) => changeFilter(() => setCriticality(pickSingle(criticality, next)))}
-          options={assetCriticalities.map((value) => ({ value, label: humaniseCode(value) }))}
-        />
-        <FacetFilter
-          label="Condition"
-          selected={status ? [status] : []}
-          onChange={(next) => changeFilter(() => setStatus(pickSingle(status, next)))}
-          options={assetOperationalStatuses.map((value) => ({ value, label: humaniseCode(value) }))}
-        />
-      </FilterBar>
-
-      <DataState
-        loading={loading}
-        error={error}
-        empty={!data || data.items.length === 0}
-        emptyTitle="No assets match these filters"
-        emptyHint="Widen the site, or clear the category and condition filters."
-        onRetry={refetch}
-      >
-        {data && (
-          <DataTable
-            rows={data.items}
-            columns={columns}
-            getRowId={(asset) => asset.id}
-            onRowClick={(asset) => navigate(facilitiesPaths.assetDetail(asset.id))}
-            page={data.page}
-            pageSize={data.size}
-            totalElements={data.totalElements}
-            onPageChange={setPage}
-            onPageSizeChange={(next) => changeFilter(() => setSize(next))}
-            caption="Facility assets"
-          />
-        )}
-      </DataState>
+      <PageSection>
+        <DataState loading={false} error={error} onRetry={refetch}>
+          <Table paramPrefix="assets" variant="soft">
+            <Card bordered>
+              <TableHeader>
+                <TableFilter>
+                  <Dropdown
+                    name="category"
+                    aria-label="Category"
+                    placeholder="All categories"
+                    clearable
+                    value={categoryValue || null}
+                    onValueChange={(next) => setCategoryValue(next ?? '')}
+                    options={assetCategories.map((value) => ({ value, label: humaniseCode(value) }))}
+                  />
+                  <Dropdown
+                    name="criticality"
+                    aria-label="Criticality"
+                    placeholder="All criticalities"
+                    clearable
+                    value={criticalityValue || null}
+                    onValueChange={(next) => setCriticalityValue(next ?? '')}
+                    options={assetCriticalities.map((value) => ({
+                      value,
+                      label: humaniseCode(value),
+                    }))}
+                  />
+                  <Dropdown
+                    name="condition"
+                    aria-label="Condition"
+                    placeholder="All conditions"
+                    clearable
+                    value={statusValue || null}
+                    onValueChange={(next) => setStatusValue(next ?? '')}
+                    options={assetOperationalStatuses.map((value) => ({
+                      value,
+                      label: humaniseCode(value),
+                    }))}
+                  />
+                </TableFilter>
+              </TableHeader>
+              <TableContent
+                variant="soft"
+                columns={columns}
+                data={data?.items ?? []}
+                rowKey={(asset) => asset.id}
+                loading={loading}
+                onRowClick={(asset) => navigate(facilitiesPaths.assetDetail(asset.id))}
+                aria-label="Facility assets"
+                emptyContent={
+                  <EmptyState
+                    title="No assets match these filters"
+                    description="Widen the site, or clear the category and condition filters."
+                  />
+                }
+              />
+            </Card>
+            <TableFooter noBorder>
+              <TablePagination
+                totalPages={Math.max(1, data?.totalPages ?? 1)}
+                totalItems={data?.totalElements ?? 0}
+                pageSizeOptions={pageSizeOptions}
+              />
+            </TableFooter>
+          </Table>
+        </DataState>
+      </PageSection>
 
       {adding && (
         <RegisterAssetDialog

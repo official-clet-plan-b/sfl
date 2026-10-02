@@ -1,4 +1,3 @@
-import type { Tone } from 'shared/components/StatusChip';
 import type {
   AssetOperationalStatus,
   BlockerSeverity,
@@ -9,13 +8,21 @@ import type {
 } from '../api/enums';
 
 /**
+ * The meaning a status badge carries, independent of the colour a badge renders it in.
+ *
+ * `StatusBadge` maps each tone to a library `Badge` variant, so a value is judged here - once, in
+ * the domain's own vocabulary - and styled there.
+ */
+export type Tone = 'ready' | 'caution' | 'blocked' | 'neutral' | 'active' | 'accent';
+
+/**
  * How S152 values are shown.
  *
- * The tones matter more than they look. `StatusChip`'s shared lookup already maps some of these
- * words - `DEGRADED` is a fleet activation mode, `CRITICAL` is not in it at all - so readiness
- * values are given their tone explicitly here rather than left to a lookup that was written for a
- * different vocabulary. A blocked examination hall rendered in a neutral grey would be a genuinely
- * dangerous piece of styling.
+ * The tones matter more than they look. Readiness values are given their tone explicitly here rather
+ * than left to a generic word lookup: `DEGRADED` is a fleet activation mode and `CRITICAL` is not a
+ * readiness word at all, so a lookup written for a different vocabulary would colour them wrongly. A
+ * blocked examination hall rendered in a neutral grey would be a genuinely dangerous piece of
+ * styling.
  */
 
 /** Readiness status → chip tone. */
@@ -61,6 +68,27 @@ export const assetStatusTone = (status: AssetOperationalStatus): Tone => {
       return 'neutral';
   }
 };
+
+/**
+ * How a headline figure is judged, as the colour of the icon beside its caption.
+ *
+ * The value itself stays in the card's own type colour. A KPI row where every number is a different
+ * colour is the loudest thing a dashboard can do, and it makes the two figures that need attention
+ * indistinguishable from the six that do not - so the caption is where a measure says it is in
+ * trouble, in words as well as colour.
+ */
+export type FigureTone = 'good' | 'caution' | 'critical' | 'neutral';
+
+export const figureToneClass: Record<FigureTone, string> = {
+  good: 'text-success-text',
+  caution: 'text-warning-text',
+  critical: 'text-error-text',
+  neutral: 'text-muted-foreground',
+};
+
+/** A status tone, as the figure tone that reads the same way. */
+export const figureTone = (tone: Tone): FigureTone =>
+  tone === 'ready' ? 'good' : tone === 'caution' ? 'caution' : tone === 'blocked' ? 'critical' : 'neutral';
 
 /** A readiness score's tone, on the same thresholds the dashboard uses for its site score. */
 export const scoreTone = (score: number): Tone => {

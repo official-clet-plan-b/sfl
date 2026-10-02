@@ -1,5 +1,17 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate } from 'react-router';
+import { Download, Plus, RefreshCw } from 'lucide-react';
+import {
+  Button,
+  Dropdown,
+  MetricCards,
+  PageSection,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  useTableState,
+  type TableColumn,
+} from '@rfdtech/components';
 import type { NotificationActivation } from 'modules/emergency/api/dto';
 import {
   ACTIVATION_MODES,
@@ -12,25 +24,25 @@ import { activationsApi, emergencyReportsApi } from 'modules/emergency/api/emerg
 import { afterActionOutstanding, canCreateActivations, canExportEmergencyEvidence } from 'modules/emergency/api/workflow';
 import { ActivationStatusChip } from 'modules/emergency/components/EmergencyFields';
 import { formatElapsed } from 'modules/emergency/components/emergencyFormat';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import Panel from 'modules/emergency/components/Panel';
+import RegisterTable, {
+  CellStack,
+  DEFAULT_PAGE_SIZE,
+  PAGE_SIZE_OPTIONS,
+} from 'modules/emergency/components/RegisterTable';
+import StatMetric from 'modules/emergency/components/StatMetric';
+import StatusBadge from 'modules/emergency/components/StatusBadge';
 import { useSiteRecords } from 'modules/emergency/components/useSiteRecords';
 import { ComposeActivationDialog } from 'modules/emergency/dialogs/activationDialogs';
 import { humanise } from 'modules/fleet/api/enums';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar from 'shared/components/FilterBar';
 import Icon from 'shared/components/Icon';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatCard from 'shared/components/StatCard';
-import StatusChip from 'shared/components/StatusChip';
-import { SelectInput, TextInput } from 'shared/components/fields';
 import { formatDateTime, formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
-import { useClampPage, useServerPage } from 'shared/hooks/useServerPage';
+import { useClampPage } from 'shared/hooks/useServerPage';
 import { emergencyPaths } from 'shared/layout/navigation';
 
 const QUEUE_VIEWS = [
@@ -38,20 +50,8 @@ const QUEUE_VIEWS = [
   { value: 'LIVE', label: 'Live now' },
   { value: 'AWAITING_APPROVAL', label: 'Awaiting approval' },
   { value: 'AFTER_ACTION_DUE', label: 'After-action due' },
+  { value: 'ALL', label: 'Everything returned' },
 ];
-
-/**
- * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
- * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
- * option already active clears it, same as the dropdown it replaces; toggling a different one while
- * one is active swaps to the new choice instead of appearing to hold both.
- */
-const pickSingle = <T extends string>(current: T | '', next: string[]): T | '' => {
-  if (next.length === 0) {
-    return '';
-  }
-  return (next.find((value) => value !== current) ?? next[0]) as T;
-};
 
 /**
  * The activation register.
@@ -65,22 +65,33 @@ const pickSingle = <T extends string>(current: T | '', next: string[]): T | '' =
  * `ACTIVATING`, `PARTIALLY_DELIVERED`, `ESCALATED`, `FAILED`, `CANCELLED` and `REOPENED` are set by
  * provider callbacks, by the scheduled sweep, or by nothing at all - but a stored record can hold
  * them, and a filter that cannot find such a record is worse than one that returns nothing.
+ *
+ * Status, mode, priority and the reference search live in the table's own URL state, so a link such
+ * as `?activations.f_status=ACTIVE` opens the register already narrowed.
  */
 const ActivationsPage = () => {
   const navigate = useNavigate();
   const { notifySuccess, notifyError } = useNotifier();
-  const [searchParams] = useSearchParams();
 
   const [siteCode, setSiteCode] = useState(defaultSite);
-  const [status, setStatus] = useState<ActivationStatus | ''>(
-    (searchParams.get('status') as ActivationStatus | null) ?? '',
-  );
   const [view, setView] = useState('OPEN');
-  const [mode, setMode] = useState<ActivationMode | ''>('');
-  const [priority, setPriority] = useState<Priority | ''>('');
-  const [reference, setReference] = useState('');
   const [composing, setComposing] = useState(false);
   const [exporting, setExporting] = useState(false);
+
+  const table = useTableState({
+    paramPrefix: 'activations',
+    defaultPageSize: DEFAULT_PAGE_SIZE,
+    pageSizeOptions: PAGE_SIZE_OPTIONS,
+  });
+  const { page, pageSize, setPage, filters, search } = table;
+  const status = (filters.status ?? '') as ActivationStatus | '';
+  const mode = (filters.mode ?? '') as ActivationMode | '';
+  const priority = (filters.priority ?? '') as Priority | '';
+  const reference = search;
+
+  const [statusField, setStatusField] = useState(status);
+  const [modeField, setModeField] = useState(mode);
+  const [priorityField, setPriorityField] = useState(priority);
 
   /**
    * Each view is a set of server-side predicates, not a pass over what came back.
@@ -100,9 +111,6 @@ const ActivationsPage = () => {
             ? { afterActionOutstanding: true }
             : {};
 
-  const filterKey = `${siteCode}|${status}|${view}|${mode}|${priority}|${reference}`;
-  const paging = useServerPage(filterKey);
-
   const records = useSiteRecords(siteCode);
 
   const query = useApiQuery(
@@ -115,15 +123,15 @@ const ActivationsPage = () => {
           priority: priority || undefined,
           incidentReference: reference.trim() || undefined,
           ...viewParams,
-          page: paging.page,
-          size: paging.size,
+          page: page - 1,
+          size: pageSize,
         },
         signal,
       ),
-    [siteCode, status, mode, priority, reference, view, paging.page, paging.size],
+    [siteCode, status, mode, priority, reference, view, page, pageSize],
   );
 
-  useClampPage(paging.page, query.data?.totalPages, paging.setPage);
+  useClampPage(page - 1, query.data?.totalPages, (clamped) => setPage(clamped + 1));
 
   /**
    * The four header counts, each its own site-wide query.
@@ -148,6 +156,11 @@ const ActivationsPage = () => {
     [siteCode],
   );
 
+  const chooseView = (next: string) => {
+    setView(next);
+    setPage(1);
+  };
+
   const exportReport = async () => {
     setExporting(true);
     try {
@@ -163,13 +176,13 @@ const ActivationsPage = () => {
     }
   };
 
-  const columns = useMemo<Column<NotificationActivation>[]>(
+  const columns = useMemo<TableColumn<NotificationActivation>[]>(
     () => [
       {
-        key: 'activation',
+        id: 'activation',
         header: 'Activation',
         width: 280,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack
             primary={`${row.activationNumber} · ${records.templateName(row.templateId)}`}
             secondary={
@@ -181,17 +194,17 @@ const ActivationsPage = () => {
         ),
       },
       {
-        key: 'mode',
+        id: 'mode',
         header: 'Mode',
         width: 130,
-        cell: (row) => (
+        cell: ({ row }) => (
           <div className="flex items-center gap-1.5">
-            <StatusChip value={row.mode} />
+            <StatusBadge value={row.mode} />
             {afterActionOutstanding(row) && (
               <Icon
                 name="alert-circle"
                 size={14}
-                className="shrink-0 text-error-800"
+                className="shrink-0 text-[var(--clet-error-text)]"
                 aria-label="After-action approval outstanding"
               />
             )}
@@ -199,198 +212,194 @@ const ActivationsPage = () => {
         ),
       },
       {
-        key: 'priority',
+        id: 'priority',
         header: 'Priority',
         width: 110,
-        hideBelowLg: true,
-        cell: (row) => <StatusChip value={row.priority} />,
+        cell: ({ row }) => <StatusBadge value={row.priority} />,
       },
       {
-        key: 'reach',
+        id: 'reach',
         header: 'Reach',
         width: 110,
         align: 'right',
-        hideBelowLg: true,
-        cell: (row) => formatNumber(records.audienceReach(row.audienceGroupIds)),
+        cell: ({ row }) => formatNumber(records.audienceReach(row.audienceGroupIds)),
       },
       {
-        key: 'channels',
+        id: 'channels',
         header: 'Channels',
         width: 90,
         align: 'right',
-        hideBelowLg: true,
-        cell: (row) => formatNumber(row.channels.length),
+        cell: ({ row }) => formatNumber(row.channels.length),
       },
       {
-        key: 'sent',
+        id: 'sent',
         header: 'Time to send',
         width: 120,
         align: 'right',
-        hideBelowLg: true,
-        cell: (row) => formatElapsed(row.fastLaneMillis),
+        cell: ({ row }) => formatElapsed(row.fastLaneMillis),
       },
       {
-        key: 'updated',
+        id: 'updated',
         header: 'Last change',
         width: 160,
-        hideBelowLg: true,
-        cell: (row) => formatDateTime(row.metadata.lastModifiedAt),
+        cell: ({ row }) => formatDateTime(row.metadata.lastModifiedAt),
       },
       {
-        key: 'status',
+        id: 'status',
         header: 'Status',
         width: 170,
         align: 'right',
-        cell: (row) => <ActivationStatusChip status={row.status} />,
+        cell: ({ row }) => <ActivationStatusChip status={row.status} />,
       },
     ],
     [records],
   );
 
-  const filtersApplied = Boolean(status || mode || priority || reference || view !== 'OPEN');
-
   return (
-    <div>
-      <PageHeader
+    <>
+      <PageHeading
         title="Activations"
         subtitle="Every broadcast this site has composed, sent, stood down or closed."
         crumbs={[{ label: 'Emergency', to: emergencyPaths.dashboard }, { label: 'Activations' }]}
         actions={
           <>
+            <SiteSelect
+              label="Site"
+              value={siteCode}
+              onChange={(next) => {
+                setSiteCode(next);
+                setPage(1);
+              }}
+              required
+              className="w-44"
+            />
             {/* Declaring an emergency and exporting the record of one are separate grants. */}
             {canCreateActivations() && (
-              <Button variant="primary" startIcon="plus" onClick={() => setComposing(true)}>
-                Compose activation
+              <Button variant="primary" onClick={() => setComposing(true)}>
+                <Plus size={14} strokeWidth={1.5} aria-hidden /> Compose activation
               </Button>
             )}
             {canExportEmergencyEvidence() && (
-              <Button
-                variant="outline"
-                startIcon="download"
-                loading={exporting}
-                onClick={exportReport}
-              >
-                Export CSV
+              <Button variant="outline" loading={exporting} onClick={exportReport}>
+                <Download size={14} strokeWidth={1.5} aria-hidden /> Export CSV
               </Button>
             )}
-            <Button variant="outline" startIcon="refresh" onClick={query.refetch}>
-              Refresh
+            <Button variant="outline" onClick={query.refetch}>
+              <RefreshCw size={14} strokeWidth={1.5} aria-hidden /> Refresh
             </Button>
           </>
         }
       />
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Live now"
-          value={formatNumber(counts.data?.live ?? 0)}
-          icon="siren"
-          tone={(counts.data?.live ?? 0) > 0 ? 'critical' : 'neutral'}
-          caption="Broadcast out, not stood down"
-          onClick={() => setView('LIVE')}
-        />
-        <StatCard
-          label="Awaiting approval"
-          value={formatNumber(counts.data?.pending ?? 0)}
-          icon="user-plus"
-          tone={(counts.data?.pending ?? 0) > 0 ? 'caution' : 'neutral'}
-          caption="Submitted, nobody has decided"
-          onClick={() => setView('AWAITING_APPROVAL')}
-        />
-        <StatCard
-          label="After-action due"
-          value={formatNumber(counts.data?.afterActionDue ?? 0)}
-          icon="zap"
-          tone={(counts.data?.afterActionDue ?? 0) > 0 ? 'critical' : 'neutral'}
-          caption="Break-glass sends blocking closure"
-          onClick={() => setView('AFTER_ACTION_DUE')}
-        />
-        <StatCard
-          label="Open at this site"
-          value={formatNumber(counts.data?.open ?? 0)}
-          icon="megaphone"
-          caption="Not closed, cancelled or rejected"
-          onClick={() => setView('OPEN')}
-        />
-      </div>
+      <PageSection>
+        <MetricCards>
+          <StatMetric
+            label="Live now"
+            value={formatNumber(counts.data?.live ?? 0)}
+            icon="siren"
+            tone={(counts.data?.live ?? 0) > 0 ? 'critical' : 'neutral'}
+            caption="Broadcast out, not stood down"
+            loading={counts.initialising}
+            onClick={() => chooseView('LIVE')}
+          />
+          <StatMetric
+            label="Awaiting approval"
+            value={formatNumber(counts.data?.pending ?? 0)}
+            icon="user-plus"
+            tone={(counts.data?.pending ?? 0) > 0 ? 'caution' : 'neutral'}
+            caption="Submitted, nobody has decided"
+            loading={counts.initialising}
+            onClick={() => chooseView('AWAITING_APPROVAL')}
+          />
+          <StatMetric
+            label="After-action due"
+            value={formatNumber(counts.data?.afterActionDue ?? 0)}
+            icon="zap"
+            tone={(counts.data?.afterActionDue ?? 0) > 0 ? 'critical' : 'neutral'}
+            caption="Break-glass sends blocking closure"
+            loading={counts.initialising}
+            onClick={() => chooseView('AFTER_ACTION_DUE')}
+          />
+          <StatMetric
+            label="Open at this site"
+            value={formatNumber(counts.data?.open ?? 0)}
+            icon="megaphone"
+            caption="Not closed, cancelled or rejected"
+            loading={counts.initialising}
+            onClick={() => chooseView('OPEN')}
+          />
+        </MetricCards>
+      </PageSection>
 
-      <SectionCard flush>
-        <FilterBar
-          onReset={() => {
-            setStatus('');
-            setView('OPEN');
-            setMode('');
-            setPriority('');
-            setReference('');
-          }}
-          resetDisabled={!filtersApplied}
+      <PageSection>
+        <Panel
+          title="Activation register"
+          subtitle="Server-paginated and scoped to the selected site, view and filters."
         >
-          <SiteSelect value={siteCode} onChange={setSiteCode} required />
-          <FacetFilter
-            label="Status"
-            selected={status ? [status] : []}
-            onChange={(next) => setStatus(pickSingle(status, next))}
-            options={ACTIVATION_STATUSES.map((value) => ({
-              value,
-              label: OPERATOR_REACHABLE_STATUSES.includes(value)
-                ? humanise(value)
-                : `${humanise(value)} (set elsewhere)`,
-            }))}
-          />
-          <SelectInput
-            label="View"
-            value={view}
-            onChange={setView}
-            options={QUEUE_VIEWS}
-            allowEmpty
-            emptyLabel="Everything returned"
-          />
-          <FacetFilter
-            label="Mode"
-            selected={mode ? [mode] : []}
-            onChange={(next) => setMode(pickSingle(mode, next))}
-            options={ACTIVATION_MODES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <FacetFilter
-            label="Priority"
-            selected={priority ? [priority] : []}
-            onChange={(next) => setPriority(pickSingle(priority, next))}
-            options={PRIORITIES.map((value) => ({ value, label: humanise(value) }))}
-          />
-          <TextInput
-            label="Reference"
-            value={reference}
-            onChange={setReference}
-            placeholder="Activation or incident"
-          />
-        </FilterBar>
-      </SectionCard>
-
-      <div className="mt-5">
-        <SectionCard flush>
-          <DataState
-            loading={query.initialising}
-            error={query.error}
-            onRetry={query.refetch}
-            minHeight={300}
-          >
-            <DataTable
-              rows={query.data?.content ?? []}
+          <Tabs variant="pill" value={view} onValueChange={chooseView}>
+            <TabsList>
+              {QUEUE_VIEWS.map((entry) => (
+                <TabsTrigger key={entry.value} value={entry.value}>
+                  {entry.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          <DataState loading={false} error={query.error} onRetry={query.refetch}>
+            <RegisterTable
+              paramPrefix="activations"
+              framed={false}
               columns={columns}
-              getRowId={(row) => row.id}
-              loading={query.loading}
+              rows={query.data?.content ?? []}
+              rowKey={(row) => row.id}
+              loading={query.initialising}
               onRowClick={(row) => navigate(emergencyPaths.activationDetail(row.id))}
-              caption="Activations matching the current filters, with mode, priority, audience reach, channel count, time to send, last change and status."
-              emptyMessage="No activation matches these filters."
-              page={query.data?.page ?? paging.page}
-              pageSize={query.data?.size ?? paging.size}
-              totalElements={query.data?.totalElements ?? 0}
-              onPageChange={paging.setPage}
-              onPageSizeChange={paging.setSize}
+              emptyTitle="No activation matches these filters"
+              emptyDescription="Try another view, or remove a filter or the reference search."
+              searchPlaceholder="Search activation or incident reference"
+              filterCount={3}
+              totalItems={query.data?.totalElements ?? 0}
+              size={pageSize}
+              filters={
+                <>
+                  <Dropdown
+                    name="status"
+                    aria-label="Filter by status"
+                    value={statusField || null}
+                    onValueChange={(next) => setStatusField((next ?? '') as ActivationStatus | '')}
+                    options={ACTIVATION_STATUSES.map((value) => ({
+                      value,
+                      label: OPERATOR_REACHABLE_STATUSES.includes(value)
+                        ? humanise(value)
+                        : `${humanise(value)} (set elsewhere)`,
+                    }))}
+                    placeholder="All statuses"
+                    clearable
+                  />
+                  <Dropdown
+                    name="mode"
+                    aria-label="Filter by mode"
+                    value={modeField || null}
+                    onValueChange={(next) => setModeField((next ?? '') as ActivationMode | '')}
+                    options={ACTIVATION_MODES.map((value) => ({ value, label: humanise(value) }))}
+                    placeholder="All modes"
+                    clearable
+                  />
+                  <Dropdown
+                    name="priority"
+                    aria-label="Filter by priority"
+                    value={priorityField || null}
+                    onValueChange={(next) => setPriorityField((next ?? '') as Priority | '')}
+                    options={PRIORITIES.map((value) => ({ value, label: humanise(value) }))}
+                    placeholder="All priorities"
+                    clearable
+                  />
+                </>
+              }
             />
           </DataState>
-        </SectionCard>
-      </div>
+        </Panel>
+      </PageSection>
 
       {composing && (
         <ComposeActivationDialog
@@ -408,7 +417,7 @@ const ActivationsPage = () => {
           }}
         />
       )}
-    </div>
+    </>
   );
 };
 

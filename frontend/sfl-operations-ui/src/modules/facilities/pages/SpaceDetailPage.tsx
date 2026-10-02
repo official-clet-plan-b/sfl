@@ -1,14 +1,25 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
+import { Calendar, ClipboardCheck, Gauge, ShieldCheck } from 'lucide-react';
+import {
+  Banner,
+  Button,
+  Card,
+  EmptyState,
+  MetricCard,
+  MetricCards,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  useBreadcrumbs,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatCard from 'shared/components/StatCard';
-import StatusChip from 'shared/components/StatusChip';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
@@ -36,10 +47,14 @@ import { LifecycleDialog } from '../dialogs/common';
 import { EditSpaceDialog } from '../dialogs/spaceDialogs';
 import ReadinessBlockerList from '../components/ReadinessBlockerList';
 import { EditRowAction, RetireRowAction } from '../components/RowActions';
+import StatusBadge from '../components/StatusBadge';
+import TitledSection from '../components/TitledSection';
 import ResolveBlockerDialog from '../dialogs/ResolveBlockerDialog';
 import SetReadinessDialog from '../dialogs/SetReadinessDialog';
 import {
   assetStatusTone,
+  figureToneClass,
+  figureTone,
   formatDateTime,
   humaniseCode,
   orDash,
@@ -93,66 +108,67 @@ const SpaceDetailPage = () => {
     }
   };
 
-  const assetColumns: Column<FacilityAsset>[] = [
+  useBreadcrumbs([
+    { label: 'Facilities', href: facilitiesPaths.dashboard },
+    { label: 'Spaces', href: facilitiesPaths.spaces },
+    { label: space.data?.roomCode ?? 'Space' },
+  ]);
+
+  const assetColumns: TableColumn<FacilityAsset>[] = [
     {
-      key: 'assetCode',
+      id: 'assetCode',
       header: 'Code',
       width: 130,
-      cell: (asset) => <span className="font-medium text-gray-900">{asset.assetCode}</span>,
+      cell: ({ row }) => <span className="font-medium text-foreground">{row.assetCode}</span>,
     },
-    { key: 'name', header: 'Asset', cell: (asset) => asset.name },
+    { id: 'name', header: 'Asset', accessorKey: 'name' },
     {
-      key: 'category',
+      id: 'category',
       header: 'Category',
-      hideBelowLg: true,
-      cell: (asset) => humaniseCode(asset.category),
+      cell: ({ row }) => humaniseCode(row.category),
     },
     {
-      key: 'criticality',
+      id: 'criticality',
       header: 'Criticality',
       width: 120,
-      cell: (asset) => <StatusChip value={asset.criticality} />,
+      cell: ({ row }) => <StatusBadge value={row.criticality} />,
     },
     {
-      key: 'status',
+      id: 'status',
       header: 'Condition',
       width: 160,
-      cell: (asset) => (
-        <StatusChip
-          value={asset.operationalStatus}
-          tone={assetStatusTone(asset.operationalStatus)}
-        />
+      cell: ({ row }) => (
+        <StatusBadge value={row.operationalStatus} tone={assetStatusTone(row.operationalStatus)} />
       ),
     },
   ];
 
-  const assessmentColumns: Column<ReadinessAssessment>[] = [
+  const assessmentColumns: TableColumn<ReadinessAssessment>[] = [
     {
-      key: 'assessedAt',
+      id: 'assessedAt',
       header: 'Assessed',
       width: 190,
-      cell: (row) => formatDateTime(row.assessedAt),
+      cell: ({ row }) => formatDateTime(row.assessedAt),
     },
-    { key: 'by', header: 'By', cell: (row) => row.assessedBy },
+    { id: 'by', header: 'By', accessorKey: 'assessedBy' },
     {
-      key: 'checklist',
+      id: 'checklist',
       header: 'Checklist',
-      hideBelowLg: true,
-      cell: (row) => (row.checklistCode ? `${row.checklistCode} v${row.checklistVersion}` : '-'),
+      cell: ({ row }) => (row.checklistCode ? `${row.checklistCode} v${row.checklistVersion}` : '-'),
     },
     {
-      key: 'score',
+      id: 'score',
       header: 'Score',
       align: 'right',
       width: 90,
-      cell: (row) => `${row.score}%`,
+      cell: ({ row }) => `${row.score}%`,
     },
     {
-      key: 'outcome',
+      id: 'outcome',
       header: 'Outcome',
       width: 130,
       align: 'right',
-      cell: (row) => <StatusChip value={row.outcome} tone={readinessTone(row.outcome)} />,
+      cell: ({ row }) => <StatusBadge value={row.outcome} tone={readinessTone(row.outcome)} />,
     },
   ];
 
@@ -167,16 +183,13 @@ const SpaceDetailPage = () => {
       >
         {space.data && (
           <>
-            <PageHeader
-              title={space.data.name}
-              subtitle={`${space.data.roomCode} · ${humaniseCode(space.data.spaceType)} · ${space.data.siteCode}`}
-              crumbs={[
-                { label: 'Facilities', to: facilitiesPaths.dashboard },
-                { label: 'Spaces', to: facilitiesPaths.spaces },
-                { label: space.data.roomCode },
-              ]}
-              actions={
-                <div className="flex flex-wrap gap-2">
+            <PageSection>
+              <SectionHeader>
+                <SectionTitle>{space.data.name}</SectionTitle>
+                <SectionDescription>
+                  {`${space.data.roomCode} · ${humaniseCode(space.data.spaceType)} · ${space.data.siteCode}`}
+                </SectionDescription>
+                <SectionActions>
                   <EditRowAction
                     size="md"
                     state={editSpaceControl(space.data)}
@@ -196,6 +209,7 @@ const SpaceDetailPage = () => {
                         navigate(`${facilitiesPaths.assessments}?roomId=${space.data!.id}`)
                       }
                     >
+                      <ClipboardCheck size={14} strokeWidth={1.5} aria-hidden="true" />
                       Assess readiness
                     </Button>
                   )}
@@ -228,94 +242,127 @@ const SpaceDetailPage = () => {
                       </Button>
                     );
                   })()}
-                </div>
-              }
-            />
+                </SectionActions>
+              </SectionHeader>
+            </PageSection>
 
-            <div className="space-y-5">
-              {space.data.readinessLocked && (
-                <Alert variant="info" title="Locked for examination use">
-                  Locked by {orDash(space.data.readinessLockedBy)} on{' '}
-                  {formatDateTime(space.data.readinessLockedAt)}. Attribute and lifecycle changes are
-                  refused until the lock is released; readiness can still be reassessed.
-                </Alert>
-              )}
+            {space.data.readinessLocked && (
+              <PageSection>
+                <Banner
+                  variant="info"
+                  heading="Locked for examination use"
+                  subtext={`Locked by ${orDash(space.data.readinessLockedBy)} on ${formatDateTime(space.data.readinessLockedAt)}. Attribute and lifecycle changes are refused until the lock is released; readiness can still be reassessed.`}
+                />
+              </PageSection>
+            )}
 
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <StatCard
+            <PageSection>
+              <MetricCards>
+                <MetricCard
+                  variant="soft"
                   label="Readiness"
                   value={humaniseCode(space.data.readinessStatus)}
-                  icon="shield-check"
-                  tone={
-                    space.data.readinessStatus === 'READY'
-                      ? 'good'
-                      : space.data.readinessStatus === 'BLOCKED'
-                        ? 'critical'
-                        : space.data.readinessStatus === 'DEGRADED'
-                          ? 'caution'
-                          : 'neutral'
+                  description={`Assessed ${relativeTime(space.data.readinessUpdatedAt)}`}
+                  descriptionAdornment={
+                    <ShieldCheck
+                      size={16}
+                      strokeWidth={2}
+                      className={
+                        figureToneClass[
+                          space.data.readinessStatus === 'READY'
+                            ? 'good'
+                            : space.data.readinessStatus === 'BLOCKED'
+                              ? 'critical'
+                              : space.data.readinessStatus === 'DEGRADED'
+                                ? 'caution'
+                                : 'neutral'
+                        ]
+                      }
+                      aria-hidden
+                    />
                   }
-                  caption={`Assessed ${relativeTime(space.data.readinessUpdatedAt)}`}
                 />
-                <StatCard
+                <MetricCard
+                  variant="soft"
+                  loading={readiness.loading}
                   label="Score"
                   value={readiness.data ? `${readiness.data.score}%` : '-'}
-                  icon="gauge"
-                  tone={
-                    readiness.data
-                      ? scoreTone(readiness.data.score) === 'ready'
-                        ? 'good'
-                        : scoreTone(readiness.data.score) === 'caution'
-                          ? 'caution'
-                          : 'critical'
-                      : 'neutral'
+                  description="Weighted checklist result"
+                  descriptionAdornment={
+                    <Gauge
+                      size={16}
+                      strokeWidth={2}
+                      className={
+                        figureToneClass[
+                          readiness.data ? figureTone(scoreTone(readiness.data.score)) : 'neutral'
+                        ]
+                      }
+                      aria-hidden
+                    />
                   }
-                  caption="Weighted checklist result"
                 />
-                <StatCard
+                <MetricCard
+                  variant="soft"
                   label="Bookable"
                   value={space.data.availableForBooking ? 'Yes' : 'No'}
-                  icon="calendar"
-                  tone={space.data.availableForBooking ? 'good' : 'caution'}
-                  caption={space.data.bookable ? 'Flagged bookable' : 'Not a bookable space'}
+                  description={space.data.bookable ? 'Flagged bookable' : 'Not a bookable space'}
+                  descriptionAdornment={
+                    <Calendar
+                      size={16}
+                      strokeWidth={2}
+                      className={figureToneClass[space.data.availableForBooking ? 'good' : 'caution']}
+                      aria-hidden
+                    />
+                  }
                 />
-                <StatCard
+                <MetricCard
+                  variant="soft"
                   label="Examination"
                   value={space.data.availableForExamination ? 'Ready' : 'Not ready'}
-                  icon="clipboard"
-                  tone={space.data.availableForExamination ? 'good' : 'critical'}
-                  caption={
+                  description={
                     space.data.examinationCapable
                       ? 'Capable of hosting an examination'
                       : 'Not examination-capable'
                   }
+                  descriptionAdornment={
+                    <ClipboardCheck
+                      size={16}
+                      strokeWidth={2}
+                      className={
+                        figureToneClass[space.data.availableForExamination ? 'good' : 'critical']
+                      }
+                      aria-hidden
+                    />
+                  }
                 />
-              </div>
+              </MetricCards>
+            </PageSection>
 
-              <SectionCard
-                title="Open blockers"
-                subtitle={readiness.data?.summary}
-                actions={
-                  <Button variant="ghost" size="sm" onClick={refreshReadiness}>
-                    Refresh
-                  </Button>
-                }
+            <TitledSection
+              title="Open blockers"
+              description={readiness.data?.summary}
+              actions={
+                <Button variant="ghost" size="sm" onClick={refreshReadiness}>
+                  Refresh
+                </Button>
+              }
+            >
+              <DataState
+                loading={readiness.loading}
+                error={readiness.error}
+                onRetry={readiness.refetch}
+                minHeight={80}
               >
-                <DataState
-                  loading={readiness.loading}
-                  error={readiness.error}
-                  onRetry={readiness.refetch}
-                  minHeight={80}
-                >
-                  <ReadinessBlockerList
-                    blockers={readiness.data?.openBlockers ?? []}
-                    clearMessage="No open blockers. This space is clear."
-                    onResolve={canAssessReadiness() ? setResolving : undefined}
-                  />
-                </DataState>
-              </SectionCard>
+                <ReadinessBlockerList
+                  blockers={readiness.data?.openBlockers ?? []}
+                  clearMessage="No open blockers. This space is clear."
+                  onResolve={canAssessReadiness() ? setResolving : undefined}
+                />
+              </DataState>
+            </TitledSection>
 
-              <SectionCard title="Space record">
+            <TitledSection title="Space record">
+              <Card bordered>
                 <KeyValueGrid
                   items={[
                     { label: 'Code', value: space.data.roomCode },
@@ -335,47 +382,54 @@ const SpaceDetailPage = () => {
                     { label: 'Version', value: String(space.data.metadata.version) },
                   ]}
                 />
-              </SectionCard>
+              </Card>
+            </TitledSection>
 
-              <SectionCard
-                title="Assets in this space"
-                subtitle="Fixed plant whose condition feeds this space's readiness"
+            <TitledSection
+              title="Assets in this space"
+              description="Fixed plant whose condition feeds this space's readiness"
+            >
+              <DataState loading={false} error={assets.error} onRetry={assets.refetch} minHeight={80}>
+                <Table paramPrefix="space-assets" variant="soft">
+                  <Card bordered>
+                    <TableContent
+                      variant="soft"
+                      columns={assetColumns}
+                      data={assets.data?.items ?? []}
+                      rowKey={(asset) => asset.id}
+                      loading={assets.loading}
+                      onRowClick={(asset) => navigate(facilitiesPaths.assetDetail(asset.id))}
+                      aria-label="Assets in this space"
+                      emptyContent={<EmptyState title="No assets are registered in this space." />}
+                    />
+                  </Card>
+                </Table>
+              </DataState>
+            </TitledSection>
+
+            <TitledSection title="Assessment history" description="Most recent first">
+              <DataState
+                loading={false}
+                error={assessments.error}
+                onRetry={assessments.refetch}
+                minHeight={80}
               >
-                <DataState
-                  loading={assets.loading}
-                  error={assets.error}
-                  onRetry={assets.refetch}
-                  minHeight={80}
-                >
-                  <DataTable
-                    rows={assets.data?.items ?? []}
-                    columns={assetColumns}
-                    getRowId={(asset) => asset.id}
-                    onRowClick={(asset) => navigate(facilitiesPaths.assetDetail(asset.id))}
-                    emptyMessage="No assets are registered in this space."
-                    dense
-                  />
-                </DataState>
-              </SectionCard>
-
-              <SectionCard title="Assessment history" subtitle="Most recent first">
-                <DataState
-                  loading={assessments.loading}
-                  error={assessments.error}
-                  onRetry={assessments.refetch}
-                  minHeight={80}
-                >
-                  <DataTable
-                    rows={assessments.data?.items ?? []}
-                    columns={assessmentColumns}
-                    getRowId={(row) => row.id}
-                    onRowClick={(row) => navigate(facilitiesPaths.assessmentDetail(row.id))}
-                    emptyMessage="This space has never been assessed."
-                    dense
-                  />
-                </DataState>
-              </SectionCard>
-            </div>
+                <Table paramPrefix="space-assessments" variant="soft">
+                  <Card bordered>
+                    <TableContent
+                      variant="soft"
+                      columns={assessmentColumns}
+                      data={assessments.data?.items ?? []}
+                      rowKey={(row) => row.id}
+                      loading={assessments.loading}
+                      onRowClick={(row) => navigate(facilitiesPaths.assessmentDetail(row.id))}
+                      aria-label="Assessment history"
+                      emptyContent={<EmptyState title="This space has never been assessed." />}
+                    />
+                  </Card>
+                </Table>
+              </DataState>
+            </TitledSection>
           </>
         )}
       </DataState>

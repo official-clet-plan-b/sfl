@@ -1,12 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatusChip from 'shared/components/StatusChip';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
@@ -15,6 +10,10 @@ import { exportEvidenceAction } from '../api/workflow';
 import ExportEvidenceDialog from '../dialogs/ExportEvidenceDialog';
 import TransitionNoteDialog from '../dialogs/TransitionNoteDialog';
 import { formatDate, formatDateTime, humaniseCode, orDash } from '../components/facilitiesFormat';
+import { Banner, Button } from '@rfdtech/components';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import TitledSection from '../components/TitledSection';
+import StatusBadge from '../components/StatusBadge';
 
 /**
  * One piece of evidence - SRS-SFL-S153-03.
@@ -59,7 +58,7 @@ const EvidenceDetailPage = () => {
       >
         {evidence.data && (
           <>
-            <PageHeader
+            <PageHeading
               title={orDash(evidence.data.fileName) === '-' ? 'Evidence' : evidence.data.fileName!}
               subtitle={`${humaniseCode(evidence.data.evidenceType)} · attached by ${evidence.data.uploadedBy}`}
               crumbs={[
@@ -93,20 +92,14 @@ const EvidenceDetailPage = () => {
 
             <div className="space-y-5">
               {evidence.data.legalHold && (
-                <Alert variant="warning" title="Under legal hold">
-                  Disposal is suspended indefinitely. The retention class below is unchanged and
-                  applies again once the hold is lifted.
-                </Alert>
+                <Banner variant="warning" heading="Under legal hold" subtext="Disposal is suspended indefinitely. The retention class below is unchanged and applies again once the hold is lifted." />
               )}
 
               {!evidence.data.supportsClosure && (
-                <Alert variant="info" title="Does not count towards closure">
-                  An invoice proves money was spent, not that the work was done. Closure evidence
-                  exists to prove the second thing.
-                </Alert>
+                <Banner variant="info" heading="Does not count towards closure" subtext="An invoice proves money was spent, not that the work was done. Closure evidence exists to prove the second thing." />
               )}
 
-              <SectionCard title="Evidence record">
+              <TitledSection title="Evidence record">
                 <KeyValueGrid
                   items={[
                     { label: 'Type', value: humaniseCode(evidence.data.evidenceType) },
@@ -121,7 +114,7 @@ const EvidenceDetailPage = () => {
                     {
                       label: 'Retention',
                       value: (
-                        <StatusChip
+                        <StatusBadge
                           value={humaniseCode(evidence.data.retentionClass)}
                           tone="neutral"
                         />
@@ -143,11 +136,11 @@ const EvidenceDetailPage = () => {
                     {evidence.data.notes}
                   </p>
                 )}
-              </SectionCard>
+              </TitledSection>
 
-              <SectionCard
+              <TitledSection
                 title="Where the file is"
-                subtitle="This service stores the reference and the digest, never the bytes"
+                description="This service stores the reference and the digest, never the bytes"
               >
                 <dl className="space-y-3">
                   <div>
@@ -167,7 +160,7 @@ const EvidenceDetailPage = () => {
                   If the stored object no longer hashes to this value, it changed after CLET accepted
                   it.
                 </p>
-              </SectionCard>
+              </TitledSection>
             </div>
           </>
         )}

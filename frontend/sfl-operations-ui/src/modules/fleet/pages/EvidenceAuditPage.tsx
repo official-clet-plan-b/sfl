@@ -1,9 +1,6 @@
 import { useMemo, useState } from 'react';
-import {
-  AuditEventResponse,
-  EvidenceResponse,
-  EvidenceSearchParams,
-} from 'modules/fleet/api/dto';
+import DataState from 'shared/components/DataState';
+import { AuditEventResponse, EvidenceResponse, EvidenceSearchParams } from 'modules/fleet/api/dto';
 import {
   EVIDENCE_RETENTION_CLASSES,
   EvidenceRetentionClass,
@@ -16,24 +13,37 @@ import {
   VehicleSelect,
 } from 'modules/fleet/components/FleetReferenceSelect';
 
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
-import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import FileField from 'shared/components/FileField';
-import FormDialog from 'shared/components/FormDialog';
+import {
+  Banner,
+  Button,
+  Card,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@rfdtech/components';
+import RegisterHeader from 'modules/fleet/components/RegisterHeader';
+import FleetFormDialog from 'modules/fleet/components/FleetFormDialog';
+import FleetTable, { CellStack, FleetColumn } from 'modules/fleet/components/FleetTable';
+import StatusBadge, { tabLabel } from 'modules/fleet/components/StatusBadge';
+import {
+  EnumSelect,
+  FileInput,
+  TextAreaInput,
+  TextInput,
+} from 'modules/fleet/components/formFields';
+import Icon from 'shared/components/Icon';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
-import Tabs from 'shared/components/Tabs';
-import { EnumSelect, TextAreaInput, TextInput } from 'shared/components/fields';
 import { formatDateTime } from 'shared/components/format';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
-import { fleetPaths } from 'shared/layout/navigation';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { compose, maxLength, required } from 'shared/validation/validators';
 import { canReadAudit, canRequestEvidenceExport, canVerifyAuditChain } from '../api/access';
@@ -66,7 +76,6 @@ interface AuditRow {
   key: string;
   record: AuditEventResponse;
 }
-
 
 /**
  * Evidence and audit governance.
@@ -154,18 +163,25 @@ const EvidenceAuditPage = () => {
   };
 
   const auditRows = useMemo<AuditRow[]>(
-    () => (audit.data ?? []).map((record, index) => ({ key: String(record.id ?? index), record })),
+    () =>
+      (audit.data ?? []).map((record, index) => ({
+        key: String(record.id ?? index),
+        record,
+      })),
     [audit.data],
   );
 
-  const evidenceColumns = useMemo<Column<EvidenceResponse>[]>(
+  const evidenceColumns = useMemo<FleetColumn<EvidenceResponse>[]>(
     () => [
       {
         key: 'file',
         header: 'File',
         width: 320,
         cell: (row) => (
-          <CellStack primary={row.fileName} secondary={`${row.evidenceType} · ${row.contentType}`} />
+          <CellStack
+            primary={row.fileName}
+            secondary={`${row.evidenceType} · ${row.contentType}`}
+          />
         ),
       },
       {
@@ -174,8 +190,12 @@ const EvidenceAuditPage = () => {
         width: 190,
         cell: (row) => (
           <div className="flex flex-wrap items-center gap-1.5">
-            <StatusChip value={row.retentionClass} label={humanise(row.retentionClass)} tone="neutral" />
-            {row.legalHold && <StatusChip value="LEGAL_HOLD" label="Legal hold" tone="blocked" />}
+            <StatusBadge
+              value={row.retentionClass}
+              label={humanise(row.retentionClass)}
+              tone="neutral"
+            />
+            {row.legalHold && <StatusBadge value="LEGAL_HOLD" label="Legal hold" tone="blocked" />}
           </div>
         ),
       },
@@ -185,14 +205,14 @@ const EvidenceAuditPage = () => {
         width: 170,
         align: 'right',
         cell: (row) => (
-          <span className="text-theme-xs text-gray-500">{formatDateTime(row.createdAt)}</span>
+          <span className="text-theme-xs opacity-70">{formatDateTime(row.createdAt)}</span>
         ),
       },
     ],
     [],
   );
 
-  const auditColumns = useMemo<Column<AuditRow>[]>(
+  const auditColumns = useMemo<FleetColumn<AuditRow>[]>(
     () => [
       {
         key: 'action',
@@ -217,7 +237,6 @@ const EvidenceAuditPage = () => {
         key: 'siteCode',
         header: 'Site',
         width: 120,
-        hideBelowLg: true,
         cell: ({ record }) => (record.siteCode ? String(record.siteCode) : '-'),
       },
       {
@@ -226,7 +245,7 @@ const EvidenceAuditPage = () => {
         width: 170,
         align: 'right',
         cell: ({ record }) => (
-          <span className="text-theme-xs text-gray-500">
+          <span className="text-theme-xs opacity-70">
             {formatDateTime(record.occurredAt ?? null)}
           </span>
         ),
@@ -235,260 +254,304 @@ const EvidenceAuditPage = () => {
     [],
   );
 
+  const tabs = [
+    { value: 'evidence' as const, label: tabLabel('Evidence') },
+    ...(canReadAudit()
+      ? [
+          {
+            value: 'audit' as const,
+            label: tabLabel('Audit records', audit.data?.length),
+          },
+        ]
+      : []),
+    ...(canVerifyAuditChain()
+      ? [{ value: 'integrity' as const, label: tabLabel('Chain integrity') }]
+      : []),
+  ];
+
   return (
-    <div>
-      <PageHeader
-        title="Evidence & audit"
-        subtitle="Register evidence references, request exports under approval, and verify the audit hash chain."
-        crumbs={[{ label: 'Fleet', to: fleetPaths.dashboard }, { label: 'Evidence & audit' }]}
+    <>
+      <RegisterHeader
+        title="Evidence and audit"
         actions={
-          <Button variant="accent" startIcon="plus" onClick={() => setRegisterOpen(true)}>
+          <Button variant="primary" onClick={() => setRegisterOpen(true)}>
+            <Icon name="plus" size={14} aria-hidden="true" />
             Register evidence
           </Button>
         }
       />
 
-      <SectionCard flush>
-        {/*
+      <PageSection>
+        <Card bordered>
+          <SectionHeader className="[--clet-section-header-margin-bottom:16px] [--clet-section-header-title-size:20px]">
+            <SectionTitle>Evidence register</SectionTitle>
+            <SectionDescription>
+              Register evidence references, request exports under approval, and verify the audit
+              hash chain.
+            </SectionDescription>
+          </SectionHeader>
+          {/*
           Two of these three tabs are separately granted, and offering them to everyone is how a
           fleet manager ended up reading `FLEET_UNAUTHORIZED_SCOPE` with a correlation id. Replaying
           the hash chain is an auditor's, compliance officer's or administrator's act; reading the
           audit trail is narrower than reading evidence. A tab nobody may open is not shown.
         */}
-        <Tabs
-          items={[
-            { value: 'evidence', label: 'Evidence' },
-            ...(canReadAudit()
-              ? [{ value: 'audit', label: 'Audit records', count: audit.data?.length }]
-              : []),
-            ...(canVerifyAuditChain() ? [{ value: 'integrity', label: 'Chain integrity' }] : []),
-          ]}
-          value={tab}
-          onChange={(value) => setTab(value as TabKey)}
-          variant="pill"
-          className="px-5 pt-5 pb-3"
-        />
+          <Tabs variant="pill" value={tab} onValueChange={(value) => setTab(value as TabKey)}>
+            <TabsList>
+              {tabs.map((entry) => (
+                <TabsTrigger key={entry.value} value={entry.value}>
+                  {entry.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-        <div className="p-5">
-          {tab === 'evidence' && (
-            <div className="space-y-5">
-              <SectionCard
-                title="Find by record"
-                subtitle="What is filed against a trip, an inspection, a compliance document or a workflow item"
-              >
-                {/* A grid rather than a flex row: the type field carries a helper line, and under
+            <TabsContent value="evidence">
+              <div className="flex flex-col gap-5">
+                <Card bordered>
+                  <SectionHeader>
+                    <SectionTitle>Find by record</SectionTitle>
+                    <SectionDescription>
+                      What is filed against a trip, an inspection, a compliance document or a
+                      workflow item
+                    </SectionDescription>
+                  </SectionHeader>
+                  {/* A grid rather than a flex row: the type field carries a helper line, and under
                     `items-end` that line pushes its neighbour out of alignment. */}
-                <div className="grid gap-3 lg:grid-cols-[240px_minmax(0,1fr)_auto] lg:items-start">
-                  <TextInput
-                    label="Related record type"
-                    value={recordType}
-                    onChange={setRecordType}
-                    placeholder="Trip"
-                    helperText="As it was registered - for example Trip or Vehicle inspection."
-                  />
-                  <TextInput
-                    label="Related record ID"
-                    value={recordId}
-                    onChange={setRecordId}
-                    placeholder="The record's UUID"
-                  />
-                  <Button
-                    variant="primary"
-                    startIcon="search"
-                    className="justify-self-start lg:mt-6"
-                    disabled={!recordType.trim() || !recordId.trim()}
-                    onClick={() =>
-                      setCriteria({
-                        relatedRecordType: recordType.trim(),
-                        relatedRecordId: recordId.trim(),
-                      })
-                    }
-                  >
-                    Find evidence
-                  </Button>
-                </div>
-
-                {criteria && (
-                  <div className="mt-4">
-                    <DataState
-                      loading={byRecord.initialising}
-                      error={byRecord.error}
-                      empty={(byRecord.data?.length ?? 0) === 0}
-                      emptyTitle="Nothing filed against this record"
-                      emptyHint="Check the record type spelling - it is stored exactly as it was registered."
-                      onRetry={byRecord.refetch}
-                      minHeight={120}
+                  <div className="mt-4 grid gap-3 lg:grid-cols-[240px_minmax(0,1fr)_auto] lg:items-start">
+                    <TextInput
+                      label="Related record type"
+                      value={recordType}
+                      onChange={setRecordType}
+                      placeholder="Trip"
+                      helperText="As it was registered - for example Trip or Vehicle inspection."
+                    />
+                    <TextInput
+                      label="Related record ID"
+                      value={recordId}
+                      onChange={setRecordId}
+                      placeholder="The record's UUID"
+                    />
+                    <Button
+                      variant="primary"
+                      className="justify-self-start lg:mt-6"
+                      disabled={!recordType.trim() || !recordId.trim()}
+                      onClick={() =>
+                        setCriteria({
+                          relatedRecordType: recordType.trim(),
+                          relatedRecordId: recordId.trim(),
+                        })
+                      }
                     >
-                      <DataTable
+                      <Icon name="search" size={14} aria-hidden="true" />
+                      Find evidence
+                    </Button>
+                  </div>
+
+                  {criteria && (
+                    <div className="mt-4">
+                      <FleetTable
+                        paramPrefix="evidence-by-record"
                         rows={byRecord.data ?? []}
                         columns={evidenceColumns}
                         getRowId={(row) => row.id}
                         loading={byRecord.loading}
+                        error={byRecord.error}
+                        onRetry={byRecord.refetch}
                         onRowClick={(row) => {
                           setEvidence(row);
                           setLookupError(undefined);
                         }}
                         caption="Evidence registered against this record, with its retention class and whether it is under legal hold."
-                        dense
+                        emptyTitle="Nothing filed against this record"
+                        emptyDescription="Check the record type spelling - it is stored exactly as it was registered."
                       />
-                    </DataState>
-                  </div>
-                )}
-              </SectionCard>
-
-              <SectionCard
-                title="Open by identifier"
-                subtitle="When the reference id came from a closure record or an incident note"
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                  <TextInput
-                    label="Evidence reference ID"
-                    value={lookupId}
-                    onChange={setLookupId}
-                    className="sm:max-w-[420px] sm:flex-1"
-                  />
-                  <Button
-                    variant="outline"
-                    loading={lookingUp}
-                    disabled={!lookupId.trim()}
-                    onClick={lookup}
-                  >
-                    {lookingUp ? 'Looking up…' : 'Open evidence'}
-                  </Button>
-                </div>
-              </SectionCard>
-
-              {lookupError && (
-                <Alert
-                  variant={lookupError.isForbidden ? 'warning' : 'error'}
-                  footnote={
-                    lookupError.correlationId
-                      ? `Correlation ID: ${lookupError.correlationId}`
-                      : undefined
-                  }
-                >
-                  {lookupError.message}
-                </Alert>
-              )}
-
-              {evidence && (
-                <SectionCard
-                  title={evidence.fileName}
-                  subtitle={`${evidence.relatedRecordType} ${evidence.relatedRecordId}`}
-                  actions={
-                    <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        loading={recordingAccess}
-                        onClick={recordAccess}
-                      >
-                        Record access
-                      </Button>
-                      {canExportEvidence && (
-                        <Button size="sm" variant="primary" onClick={() => setExportOpen(true)}>
-                          Request export
-                        </Button>
-                      )}
-                    </>
-                  }
-                >
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusChip value={evidence.retentionClass} tone="neutral" />
-                      {evidence.legalHold && (
-                        <StatusChip value="LEGAL_HOLD" label="Legal hold" tone="blocked" />
-                      )}
                     </div>
-                    <KeyValueGrid
-                      items={[
-                        { label: 'Evidence ID', value: evidence.id, span: 2 },
-                        { label: 'Site', value: evidence.siteCode },
-                        { label: 'Evidence type', value: evidence.evidenceType },
-                        { label: 'Content type', value: evidence.contentType },
-                        { label: 'Storage reference', value: evidence.storageReference, span: 2 },
-                        { label: 'SHA-256', value: evidence.sha256Hash, span: 2 },
-                        {
-                          label: 'Retention class',
-                          value: humanise(evidence.retentionClass),
-                        },
-                        {
-                          label: 'Retention expires',
-                          value: formatDateTime(evidence.retentionExpiresAt),
-                        },
-                        { label: 'Registered by', value: evidence.createdBy ?? '-' },
-                        { label: 'Registered at', value: formatDateTime(evidence.createdAt) },
-                        {
-                          label: 'Correlation ID',
-                          value: evidence.auditCorrelationId ?? '-',
-                          span: 2,
-                        },
-                        { label: 'Record version', value: evidence.version },
-                      ]}
-                    />
-                  </div>
-                </SectionCard>
-              )}
-            </div>
-          )}
+                  )}
+                </Card>
 
-          {tab === 'audit' && (
-            <DataState
-              loading={audit.initialising}
-              error={audit.error}
-              empty={auditRows.length === 0}
-              emptyTitle="No audit records"
-              emptyHint="Audit search requires an auditor role and a site scope."
-              onRetry={audit.refetch}
-              minHeight={220}
-            >
-              <DataTable
+                <Card bordered>
+                  <SectionHeader>
+                    <SectionTitle>Open by identifier</SectionTitle>
+                    <SectionDescription>
+                      When the reference id came from a closure record or an incident note
+                    </SectionDescription>
+                  </SectionHeader>
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <TextInput
+                      label="Evidence reference ID"
+                      value={lookupId}
+                      onChange={setLookupId}
+                      className="sm:max-w-[420px] sm:flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      loading={lookingUp}
+                      disabled={!lookupId.trim()}
+                      onClick={lookup}
+                    >
+                      {lookingUp ? 'Looking up…' : 'Open evidence'}
+                    </Button>
+                  </div>
+                </Card>
+
+                {lookupError && (
+                  <Banner
+                    variant={lookupError.isForbidden ? 'warning' : 'danger'}
+                    heading={lookupError.message}
+                    subtext={
+                      lookupError.correlationId
+                        ? `Correlation ID: ${lookupError.correlationId}`
+                        : undefined
+                    }
+                  />
+                )}
+
+                {evidence && (
+                  <Card bordered>
+                    <SectionHeader>
+                      <SectionTitle>{evidence.fileName}</SectionTitle>
+                      <SectionDescription>
+                        {`${evidence.relatedRecordType} ${evidence.relatedRecordId}`}
+                      </SectionDescription>
+                      <SectionActions>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          loading={recordingAccess}
+                          onClick={recordAccess}
+                        >
+                          Record access
+                        </Button>
+                        {canExportEvidence && (
+                          <Button size="sm" variant="primary" onClick={() => setExportOpen(true)}>
+                            Request export
+                          </Button>
+                        )}
+                      </SectionActions>
+                    </SectionHeader>
+                    <div className="mt-4 flex flex-col gap-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StatusBadge value={evidence.retentionClass} tone="neutral" />
+                        {evidence.legalHold && (
+                          <StatusBadge value="LEGAL_HOLD" label="Legal hold" tone="blocked" />
+                        )}
+                      </div>
+                      <KeyValueGrid
+                        items={[
+                          { label: 'Evidence ID', value: evidence.id, span: 2 },
+                          { label: 'Site', value: evidence.siteCode },
+                          {
+                            label: 'Evidence type',
+                            value: evidence.evidenceType,
+                          },
+                          { label: 'Content type', value: evidence.contentType },
+                          {
+                            label: 'Storage reference',
+                            value: evidence.storageReference,
+                            span: 2,
+                          },
+                          {
+                            label: 'SHA-256',
+                            value: evidence.sha256Hash,
+                            span: 2,
+                          },
+                          {
+                            label: 'Retention class',
+                            value: humanise(evidence.retentionClass),
+                          },
+                          {
+                            label: 'Retention expires',
+                            value: formatDateTime(evidence.retentionExpiresAt),
+                          },
+                          {
+                            label: 'Registered by',
+                            value: evidence.createdBy ?? '-',
+                          },
+                          {
+                            label: 'Registered at',
+                            value: formatDateTime(evidence.createdAt),
+                          },
+                          {
+                            label: 'Correlation ID',
+                            value: evidence.auditCorrelationId ?? '-',
+                            span: 2,
+                          },
+                          { label: 'Record version', value: evidence.version },
+                        ]}
+                      />
+                    </div>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="audit">
+              <FleetTable
+                paramPrefix="audit"
                 rows={auditRows}
                 columns={auditColumns}
                 getRowId={(row) => row.key}
                 loading={audit.loading}
-                dense
+                error={audit.error}
+                onRetry={audit.refetch}
+                caption="Audit records"
+                emptyTitle="No audit records"
+                emptyDescription="Audit search requires an auditor role and a site scope."
               />
-            </DataState>
-          )}
+            </TabsContent>
 
-          {tab === 'integrity' && (
-            <DataState
-              loading={integrity.initialising}
-              error={integrity.error}
-              onRetry={integrity.refetch}
-              minHeight={220}
-            >
-              {integrity.data && (
-                <div className="space-y-4">
-                  <Alert variant={integrity.data.intact ? 'success' : 'error'}>
-                    {integrity.data.intact
-                      ? `Audit hash chain is intact across ${integrity.data.recordsChecked} records.`
-                      : 'Audit integrity check failed. Escalate to compliance and security.'}
-                  </Alert>
-                  <KeyValueGrid
-                    items={[
-                      { label: 'Records checked', value: integrity.data.recordsChecked },
-                      {
-                        label: 'First divergent sequence',
-                        value: integrity.data.firstDivergentSequence ?? '-',
-                      },
-                      { label: 'Reason', value: integrity.data.reason ?? '-' },
-                      {
-                        label: 'Expected value',
-                        value: integrity.data.expectedValue ?? '-',
-                        span: 2,
-                      },
-                      { label: 'Actual value', value: integrity.data.actualValue ?? '-', span: 2 },
-                      { label: 'Head hash', value: integrity.data.headHash ?? '-', span: 2 },
-                    ]}
-                  />
-                </div>
-              )}
-            </DataState>
-          )}
-        </div>
-      </SectionCard>
+            <TabsContent value="integrity">
+              <DataState
+                loading={integrity.initialising}
+                error={integrity.error}
+                onRetry={integrity.refetch}
+                minHeight={220}
+              >
+                {integrity.data && (
+                  <div className="flex flex-col gap-4">
+                    <Banner
+                      variant={integrity.data.intact ? 'success' : 'danger'}
+                      heading={
+                        integrity.data.intact
+                          ? `Audit hash chain is intact across ${integrity.data.recordsChecked} records.`
+                          : 'Audit integrity check failed. Escalate to compliance and security.'
+                      }
+                    />
+                    <KeyValueGrid
+                      items={[
+                        {
+                          label: 'Records checked',
+                          value: integrity.data.recordsChecked,
+                        },
+                        {
+                          label: 'First divergent sequence',
+                          value: integrity.data.firstDivergentSequence ?? '-',
+                        },
+                        { label: 'Reason', value: integrity.data.reason ?? '-' },
+                        {
+                          label: 'Expected value',
+                          value: integrity.data.expectedValue ?? '-',
+                          span: 2,
+                        },
+                        {
+                          label: 'Actual value',
+                          value: integrity.data.actualValue ?? '-',
+                          span: 2,
+                        },
+                        {
+                          label: 'Head hash',
+                          value: integrity.data.headHash ?? '-',
+                          span: 2,
+                        },
+                      ]}
+                    />
+                  </div>
+                )}
+              </DataState>
+            </TabsContent>
+          </Tabs>
+        </Card>
+      </PageSection>
 
       {/* Mounted only while open, so a cancelled registration cannot reappear in the next one. */}
       {registerOpen && (
@@ -511,7 +574,7 @@ const EvidenceAuditPage = () => {
           onSaved={() => notifySuccess('Export requested. It needs a separate approver.')}
         />
       )}
-    </div>
+    </>
   );
 };
 
@@ -625,7 +688,7 @@ const RegisterEvidenceDialog = ({
   });
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title="Register an evidence reference"
       description="Choose the file and the dashboard records the filename, content type and SHA-256 hash automatically. This demo stores a metadata reference, not the file content."
@@ -700,7 +763,7 @@ const RegisterEvidenceDialog = ({
           {...form.fieldProps('evidenceType')}
         />
         <div className="sm:col-span-2">
-          <FileField
+          <FileInput
             label="Evidence file"
             required
             value={form.values.evidenceFile}
@@ -713,7 +776,7 @@ const RegisterEvidenceDialog = ({
           />
         </div>
       </div>
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 
@@ -733,7 +796,9 @@ const RequestExportDialog = ({
     initialValues: { reason: '' },
     schema: { reason: compose(required('Reason'), maxLength('Reason', 1000)) },
     onSubmit: async (values) => {
-      await evidenceApi.requestExport(evidenceId, { reason: values.reason.trim() });
+      await evidenceApi.requestExport(evidenceId, {
+        reason: values.reason.trim(),
+      });
       onSaved();
       onClose();
       form.reset();
@@ -741,7 +806,7 @@ const RequestExportDialog = ({
   });
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title="Request an evidence export"
       description="Exports require a recorded reason and approval by someone other than the requester."
@@ -759,7 +824,7 @@ const RequestExportDialog = ({
         onChange={(value) => form.setValue('reason', value)}
         {...form.fieldProps('reason')}
       />
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 

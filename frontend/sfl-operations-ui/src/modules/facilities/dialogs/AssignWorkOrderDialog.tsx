@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import FormDialog from 'shared/components/FormDialog';
-import { SelectInput, TextInput } from 'shared/components/fields';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import type { AssignWorkOrderRequest, WorkOrder } from '../api/dto';
 import { listVendors } from '../api/facilitiesApi';
 import { assignAction } from '../api/workflow';
+import { FormDialog, SelectInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface AssignWorkOrderDialogProps {
   order: WorkOrder;

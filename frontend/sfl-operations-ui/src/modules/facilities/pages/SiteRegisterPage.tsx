@@ -1,10 +1,20 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import ControlButton from 'shared/components/ControlButton';
+import { Plus } from 'lucide-react';
+import {
+  Card,
+  EmptyState,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  useBreadcrumbs,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
-import PageHeader from 'shared/components/PageHeader';
-import StatusChip from 'shared/components/StatusChip';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
@@ -15,7 +25,9 @@ import {
   createSiteControl,
   editSiteControl,
 } from '../api/workflow';
+import ControlButton from '../components/ControlButton';
 import RowActions, { EditRowAction, RetireRowAction } from '../components/RowActions';
+import StatusBadge from '../components/StatusBadge';
 import { formatDateTime, orDash } from '../components/facilitiesFormat';
 import { LifecycleDialog } from '../dialogs/common';
 import { EditSiteDialog, RegisterSiteDialog } from '../dialogs/siteDialogs';
@@ -35,59 +47,58 @@ import { EditSiteDialog, RegisterSiteDialog } from '../dialogs/siteDialogs';
 const SiteRegisterPage = () => {
   const navigate = useNavigate();
   const notify = useNotifier();
+  useBreadcrumbs([{ label: 'Facilities', href: facilitiesPaths.dashboard }, { label: 'Sites' }]);
   const { data, loading, error, refetch } = useApiQuery((signal) => listSites(signal), []);
 
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Site | null>(null);
   const [retiring, setRetiring] = useState<Site | null>(null);
 
-  const columns: Column<Site>[] = [
+  const columns: TableColumn<Site>[] = [
     {
-      key: 'siteCode',
+      id: 'siteCode',
       header: 'Code',
       width: 140,
-      cell: (site) => <span className="font-medium text-gray-900">{site.siteCode}</span>,
+      cell: ({ row }) => <span className="font-medium text-foreground">{row.siteCode}</span>,
     },
-    { key: 'name', header: 'Site', cell: (site) => site.name },
+    { id: 'name', header: 'Site', accessorKey: 'name' },
     {
-      key: 'description',
+      id: 'description',
       header: 'Description',
-      hideBelowLg: true,
-      cell: (site) => <span className="text-gray-600">{orDash(site.description)}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">{orDash(row.description)}</span>,
     },
     {
-      key: 'mode',
+      id: 'mode',
       header: 'Operating mode',
       width: 170,
-      cell: (site) => (
-        <StatusChip
-          value={site.operatingMode}
-          tone={site.operatingMode === 'EXAMINATION' ? 'accent' : 'neutral'}
+      cell: ({ row }) => (
+        <StatusBadge
+          value={row.operatingMode}
+          tone={row.operatingMode === 'EXAMINATION' ? 'accent' : 'neutral'}
         />
       ),
     },
     {
-      key: 'lifecycle',
+      id: 'lifecycle',
       header: 'Lifecycle',
       width: 120,
-      cell: (site) => <StatusChip value={site.lifecycleStatus} />,
+      cell: ({ row }) => <StatusBadge value={row.lifecycleStatus} />,
     },
     {
-      key: 'changed',
+      id: 'changed',
       header: 'Last changed',
       width: 190,
       align: 'right',
-      hideBelowLg: true,
-      cell: (site) => (
-        <span className="text-gray-600">{formatDateTime(site.metadata.lastModifiedAt)}</span>
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">{formatDateTime(row.metadata.lastModifiedAt)}</span>
       ),
     },
     {
-      key: 'actions',
+      id: 'actions',
       header: '',
       width: 150,
       align: 'right',
-      cell: (site) => (
+      cell: ({ row: site }) => (
         <RowActions>
           <EditRowAction
             state={editSiteControl(site)}
@@ -106,39 +117,42 @@ const SiteRegisterPage = () => {
 
   return (
     <>
-      <PageHeader
-        title="Sites"
-        subtitle="CLET centres, and the operating mode each is running under"
-        actions={
-          <ControlButton
-            state={createSiteControl()}
-            variant="primary"
-            startIcon="plus"
-            onClick={() => setAdding(true)}
-          >
-            Add a site
-          </ControlButton>
-        }
-      />
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Sites</SectionTitle>
+          <SectionDescription>CLET centres, and the operating mode each is running under</SectionDescription>
+          <SectionActions>
+            <ControlButton state={createSiteControl()} variant="primary" onClick={() => setAdding(true)}>
+              <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+              Add a site
+            </ControlButton>
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      <DataState
-        loading={loading}
-        error={error}
-        empty={!data || data.length === 0}
-        emptyTitle="No sites in your scope"
-        emptyHint="Your profile is scoped to sites that do not exist yet, or to none at all."
-        onRetry={refetch}
-      >
-        {data && (
-          <DataTable
-            rows={data}
-            columns={columns}
-            getRowId={(site) => site.id}
-            onRowClick={(site) => navigate(facilitiesPaths.siteDetail(site.id))}
-            caption="Sites"
-          />
-        )}
-      </DataState>
+      <PageSection>
+        <DataState loading={false} error={error} onRetry={refetch}>
+          <Table paramPrefix="sites" variant="soft">
+            <Card bordered>
+              <TableContent
+                variant="soft"
+                columns={columns}
+                data={data ?? []}
+                rowKey={(site) => site.id}
+                loading={loading}
+                onRowClick={(site) => navigate(facilitiesPaths.siteDetail(site.id))}
+                aria-label="Sites"
+                emptyContent={
+                  <EmptyState
+                    title="No sites in your scope"
+                    description="Your profile is scoped to sites that do not exist yet, or to none at all."
+                  />
+                }
+              />
+            </Card>
+          </Table>
+        </DataState>
+      </PageSection>
 
       {adding && (
         <RegisterSiteDialog

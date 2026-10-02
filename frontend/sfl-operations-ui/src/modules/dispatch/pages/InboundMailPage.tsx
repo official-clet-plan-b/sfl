@@ -1,33 +1,46 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import {
+  Button,
+  DateRangeSelector,
+  Input,
+  MetricCard,
+  MetricCards,
+  PageSection,
+  type TableColumn,
+} from '@rfdtech/components';
+import { Plus } from 'lucide-react';
 import { CourierItem } from 'modules/dispatch/api/dto';
-import { ITEM_STATUSES, ItemStatus } from 'modules/dispatch/api/enums';
+import { ITEM_STATUSES } from 'modules/dispatch/api/enums';
 import { inboundMailApi } from 'modules/dispatch/api/dispatchApi';
 import { itemDistributable } from 'modules/dispatch/api/workflow';
+import CellStack from 'modules/dispatch/components/CellStack';
+import { Callout } from 'modules/dispatch/components/formKit';
+import PageHeading from 'modules/dispatch/components/PageHeading';
+import Panel from 'modules/dispatch/components/Panel';
+import {
+  FilterDropdown,
+  RegisterTable,
+  emptyRange,
+  rangeToInstants,
+  useClampRegisterPage,
+  useRegisterQuery,
+} from 'modules/dispatch/components/registerTable';
+import StatusBadge from 'modules/dispatch/components/StatusBadge';
 import {
   DistributeInboundDialog,
   RegisterItemDialog,
 } from 'modules/dispatch/dialogs/itemDialogs';
 import { humanise } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar from 'shared/components/FilterBar';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatCard from 'shared/components/StatCard';
-import StatusChip from 'shared/components/StatusChip';
-import { DateTimeField } from 'shared/components/DateField';
-import { TextInput } from 'shared/components/fields';
-import { formatDateTime, formatNumber } from 'shared/components/format';
+import { formatDateTime } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
-import { useClampPage, useServerPage } from 'shared/hooks/useServerPage';
 import { dispatchPaths } from 'shared/layout/navigation';
 import { canRegisterInbound } from 'modules/fleet/api/access';
+
+const PREFIX = 'inbound';
 
 /**
  * The mailroom: inbound registration and acknowledged distribution.
@@ -43,109 +56,93 @@ const InboundMailPage = () => {
   const { notifySuccess } = useNotifier();
 
   const [siteCode, setSiteCode] = useState(defaultSite);
-  const [status, setStatus] = useState<ItemStatus | ''>('');
-  const [handler, setHandler] = useState('');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
+  const [range, setRange] = useState(emptyRange);
   const [registering, setRegistering] = useState(false);
   const [distributing, setDistributing] = useState<CourierItem | null>(null);
 
-  /**
-   * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
-   * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
-   * option already active clears it, same as the dropdown it replaces; toggling a different one while
-   * one is active swaps to the new choice instead of appearing to hold both.
-   */
-  const pickSingle = <T extends string>(current: T | '', next: string[]): T | '' => {
-    if (next.length === 0) {
-      return '';
-    }
-    return (next.find((value) => value !== current) ?? next[0]) as T;
-  };
-
-  const filterKey = `${siteCode}|${status}|${handler}|${from}|${to}`;
-  const paging = useServerPage(filterKey);
+  const table = useRegisterQuery(PREFIX);
+  const { filters } = table;
 
   const query = useApiQuery(
     (signal) =>
       inboundMailApi.search(
         {
           siteCode,
-          status: status || undefined,
-          handler: handler.trim() || undefined,
-          from: from ? new Date(from).toISOString() : undefined,
-          to: to ? new Date(to).toISOString() : undefined,
-          page: paging.page,
-          size: paging.size,
+          status: (filters.status as CourierItem['status']) || undefined,
+          handler: filters.handler?.trim() || undefined,
+          reference: table.search || undefined,
+          ...rangeToInstants(range),
+          page: table.page,
+          size: table.size,
         },
         signal,
       ),
-    [siteCode, status, handler, from, to, paging.page, paging.size],
+    [siteCode, filters.status, filters.handler, table.search, range, table.page, table.size],
   );
 
-  useClampPage(paging.page, query.data?.totalPages, paging.setPage);
+  useClampRegisterPage(table, query.data?.totalPages);
 
   const rows = useMemo(() => query.data?.content ?? [], [query.data]);
   const awaitingDistribution = useMemo(() => rows.filter(itemDistributable), [rows]);
   const acknowledged = useMemo(() => rows.filter((item) => Boolean(item.acknowledgedBy)), [rows]);
 
-  const columns = useMemo<Column<CourierItem>[]>(
+  const columns = useMemo<TableColumn<CourierItem>[]>(
     () => [
       {
-        key: 'item',
+        id: 'item',
         header: 'Item',
-        width: 250,
-        cell: (row) => (
+        minWidth: 220,
+        cell: ({ row }) => (
           <CellStack
-            primary={`${row.itemNumber} · from ${row.sender ?? row.origin}`}
-            secondary={humanise(row.itemType)}
+            primary={row.itemNumber}
+            secondary={`From ${row.sender ?? row.origin} · ${humanise(row.itemType)}`}
           />
         ),
       },
       {
-        key: 'recipient',
+        id: 'recipient',
         header: 'For',
-        width: 170,
-        cell: (row) => row.recipient ?? <span className="text-gray-500">Unaddressed</span>,
+        cell: ({ row }) =>
+          row.recipient ?? <span className="text-muted-foreground">Unaddressed</span>,
       },
       {
-        key: 'sensitivity',
+        id: 'sensitivity',
         header: 'Sensitivity',
-        width: 120,
-        cell: (row) => <StatusChip value={row.sensitivity} />,
+        cell: ({ row }) => <StatusBadge value={row.sensitivity} />,
       },
       {
-        key: 'acknowledged',
-        header: 'Acknowledged',
-        width: 200,
-        cell: (row) =>
+        id: 'received',
+        header: 'Received',
+        cell: ({ row }) => formatDateTime(row.metadata.createdAt),
+      },
+      {
+        id: 'acknowledged',
+        header: 'Acknowledgement',
+        cell: ({ row }) =>
           row.acknowledgedBy ? (
-            <CellStack
-              primary={row.acknowledgedBy}
-              secondary={formatDateTime(row.acknowledgedAt)}
-            />
+            <CellStack primary={row.acknowledgedBy} secondary={formatDateTime(row.acknowledgedAt)} />
           ) : (
-            <span className="text-gray-500">Not yet</span>
+            <span className="text-muted-foreground">Not acknowledged</span>
           ),
       },
       {
-        key: 'status',
+        id: 'status',
         header: 'Status',
-        width: 120,
-        cell: (row) => <StatusChip value={row.status} />,
+        cell: ({ row }) => <StatusBadge value={row.status} />,
       },
       {
-        key: 'action',
-        header: '',
-        width: 150,
+        id: 'action',
+        header: 'Action',
         align: 'right',
-        cell: (row) =>
+        cell: ({ row }) =>
           itemDistributable(row) ? (
             <Button
               size="sm"
               variant="outline"
-              startIcon="check-circle"
-              onClick={() => setDistributing(row)}
+              onClick={(event) => {
+                event.stopPropagation();
+                setDistributing(row);
+              }}
             >
               Distribute
             </Button>
@@ -155,106 +152,105 @@ const InboundMailPage = () => {
     [],
   );
 
-  const filtersApplied = Boolean(status || handler || from || to);
-
   return (
-    <div>
-      <PageHeader
+    <>
+      <PageHeading
         title="Inbound mail"
         subtitle="Registration, and the acknowledgement that closes each item."
         crumbs={[{ label: 'Dispatch', to: dispatchPaths.dashboard }, { label: 'Inbound mail' }]}
         actions={
-          // DISPATCH_INBOUND_REGISTER, which is the mailroom officer's grant.
-          canRegisterInbound() ? (
-            <Button variant="primary" startIcon="plus" onClick={() => setRegistering(true)}>
-              Register inbound item
-            </Button>
-          ) : undefined
+          <>
+            <SiteSelect value={siteCode} onChange={setSiteCode} required />
+            {/* DISPATCH_INBOUND_REGISTER, which is the mailroom officer's grant. */}
+            {canRegisterInbound() && (
+              <Button variant="primary" onClick={() => setRegistering(true)}>
+                <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+                Register inbound item
+              </Button>
+            )}
+          </>
         }
       />
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-3">
-        <StatCard
-          label="Awaiting distribution"
-          value={formatNumber(awaitingDistribution.length)}
-          icon="inbox"
-          tone={awaitingDistribution.length > 0 ? 'caution' : 'neutral'}
-          caption="Received or staged, not yet handed over"
-        />
-        <StatCard
-          label="Acknowledged"
-          value={formatNumber(acknowledged.length)}
-          icon="check-circle"
-          tone="neutral"
-          caption="Distribution recorded with a name"
-        />
-        <StatCard
-          label="Registered in this window"
-          value={formatNumber(query.data?.totalElements ?? 0)}
-          icon="package"
-          caption="Inbound items matching the filters, site-wide"
-        />
-      </div>
-
-      <SectionCard flush>
-        <FilterBar
-          onReset={() => {
-            setStatus('');
-            setHandler('');
-            setFrom('');
-            setTo('');
-          }}
-          resetDisabled={!filtersApplied}
-        >
-          <SiteSelect value={siteCode} onChange={setSiteCode} required />
-          <FacetFilter
-            label="Status"
-            selected={status ? [status] : []}
-            onChange={(next) => setStatus(pickSingle(status, next))}
-            options={ITEM_STATUSES.map((value) => ({ value, label: humanise(value) }))}
+      <PageSection>
+        <MetricCards>
+          <MetricCard
+            variant="soft"
+            loading={query.initialising}
+            label="Awaiting distribution"
+            value={awaitingDistribution.length}
+            description="Received, not yet handed over"
           />
-          <TextInput
-            label="Handler"
-            value={handler}
-            onChange={setHandler}
-            placeholder="Exact handler name"
+          <MetricCard
+            variant="soft"
+            loading={query.initialising}
+            label="Acknowledged"
+            value={acknowledged.length}
+            description="Handed over with a name"
           />
-          <DateTimeField label="From" value={from} onChange={setFrom} />
-          <DateTimeField label="To" value={to} onChange={setTo} />
-        </FilterBar>
-      </SectionCard>
+          <MetricCard
+            variant="soft"
+            loading={query.initialising}
+            label="Registered in this window"
+            value={query.data?.totalElements ?? 0}
+            description="Inbound items matching the filters, site-wide"
+          />
+        </MetricCards>
+      </PageSection>
 
-      <div className="mt-5 space-y-5">
-        <Alert variant="info" title="Distribution is the record that matters">
+      <PageSection>
+        <Callout tone="info" title="Distribution is the record that matters">
           An acknowledgement names who physically took the item. Without it there is nothing to show
           that the mail reached its recipient, so the signature reference is worth capturing even
           though the service treats it as optional.
-        </Alert>
+        </Callout>
+      </PageSection>
 
-        <SectionCard flush>
-          <DataState
-            loading={query.initialising}
-            error={query.error}
-            onRetry={query.refetch}
-            minHeight={300}
-          >
-            <DataTable
-              rows={rows}
-              columns={columns}
-              getRowId={(row) => row.id}
-              loading={query.loading}
-              onRowClick={(row) => navigate(dispatchPaths.itemDetail(row.id))}
-              caption="Inbound mail at this site, with the recipient, sensitivity, whether distribution has been acknowledged, and status."
-              emptyMessage="No inbound item matches these filters."
-              page={query.data?.page ?? paging.page}
-              pageSize={query.data?.size ?? paging.size}
-              totalElements={query.data?.totalElements ?? 0}
-              onPageChange={paging.setPage}
-              onPageSizeChange={paging.setSize}
-            />
-          </DataState>
-        </SectionCard>
-      </div>
+      <Panel
+        title="Inbound items"
+        description={`Registered at the ${siteCode} mailroom and closed by the recipient acknowledgement`}
+      >
+        <DataState loading={false} error={query.error} onRetry={query.refetch}>
+          <RegisterTable
+            paramPrefix={PREFIX}
+            caption="Inbound mail at this site, with the recipient, sensitivity, whether distribution has been acknowledged, and status."
+            columns={columns}
+            rows={rows}
+            rowKey={(row) => row.id}
+            loading={query.loading}
+            totalPages={query.data?.totalPages ?? 1}
+            totalItems={query.data?.totalElements ?? 0}
+            onRowClick={(row) => navigate(dispatchPaths.itemDetail(row.id))}
+            searchPlaceholder="Search item, sender or recipient"
+            filters={
+              <>
+                <FilterDropdown
+                  paramPrefix={PREFIX}
+                  name="status"
+                  label="Status"
+                  options={ITEM_STATUSES.map((value) => ({ value, label: humanise(value) }))}
+                />
+                <Input
+                  name="handler"
+                  aria-label="Handler"
+                  placeholder="Handler: exact name"
+                  defaultValue={filters.handler ?? ''}
+                />
+              </>
+            }
+            actions={
+              <DateRangeSelector
+                aria-label="Received between"
+                placeholder="Received: any time"
+                value={range}
+                onChange={setRange}
+              />
+            }
+            emptyTitle="Nothing waiting"
+            emptyDescription="No inbound item matches these filters."
+          />
+        </DataState>
+      </Panel>
 
       {registering && (
         <RegisterItemDialog
@@ -280,7 +276,7 @@ const InboundMailPage = () => {
           }}
         />
       )}
-    </div>
+    </>
   );
 };
 

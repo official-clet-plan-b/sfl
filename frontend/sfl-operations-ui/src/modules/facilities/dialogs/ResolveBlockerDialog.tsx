@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import FormDialog from 'shared/components/FormDialog';
-import StatusChip from 'shared/components/StatusChip';
-import { TextAreaInput } from 'shared/components/fields';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import type { ReadinessBlocker } from '../api/dto';
 import { humaniseCode, relativeTime, severityTone } from '../components/facilitiesFormat';
+import { FormDialog, TextAreaInput } from 'modules/facilities/dialogs/dialogKit';
+import StatusBadge from 'modules/facilities/components/StatusBadge';
 
 interface ResolveBlockerDialogProps {
   blocker: ReadinessBlocker;
@@ -63,15 +62,15 @@ const ResolveBlockerDialog = ({ blocker, onClose, onResolved }: ResolveBlockerDi
       onSubmit={submit}
     >
       <div className="space-y-4">
-        <div className="rounded-lg bg-gray-50 p-3">
+        <div className="rounded-lg bg-surface-muted/20 p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusChip value={blocker.severity} tone={severityTone(blocker.severity)} />
-            <span className="text-theme-xs text-gray-500">
+            <StatusBadge value={blocker.severity} tone={severityTone(blocker.severity)} />
+            <span className="text-xs text-muted-foreground">
               {humaniseCode(blocker.source)} · raised {relativeTime(blocker.raisedAt)} by{' '}
               {blocker.raisedBy}
             </span>
           </div>
-          <p className="mt-1.5 text-theme-sm text-gray-800">{blocker.description}</p>
+          <p className="mt-1.5 text-sm text-foreground">{blocker.description}</p>
         </div>
 
         <TextAreaInput

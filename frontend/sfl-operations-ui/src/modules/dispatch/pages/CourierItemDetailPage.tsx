@@ -1,5 +1,18 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { Button, PageSection } from '@rfdtech/components';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Inbox,
+  Lock,
+  RefreshCw,
+  Route,
+  Truck,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import { ItemAction, courierItemsApi } from 'modules/dispatch/api/dispatchApi';
 import {
   ITEM_RULES,
@@ -14,15 +27,13 @@ import {
 } from 'modules/dispatch/dialogs/itemDialogs';
 import { siteOf } from 'modules/fuel/components/fuelFormat';
 import { humanise } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
+import { Callout } from 'modules/dispatch/components/formKit';
+import PageHeading from 'modules/dispatch/components/PageHeading';
+import Panel from 'modules/dispatch/components/Panel';
+import StatusBadge from 'modules/dispatch/components/StatusBadge';
 import DataState from 'shared/components/DataState';
-import Icon from 'shared/components/Icon';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatusChip from 'shared/components/StatusChip';
 import { formatDateTime } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { dispatchPaths } from 'shared/layout/navigation';
@@ -76,8 +87,8 @@ const CourierItemDetailPage = () => {
   const record = item.data;
 
   return (
-    <div>
-      <PageHeader
+    <>
+      <PageHeading
         title={record?.itemNumber ?? 'Courier item'}
         subtitle={record ? `${record.origin} → ${record.destination}` : undefined}
         crumbs={[
@@ -86,25 +97,22 @@ const CourierItemDetailPage = () => {
           { label: record?.itemNumber ?? '…' },
         ]}
         actions={
-          <Button
-            variant="outline"
-            startIcon="arrow-left"
-            onClick={() => navigate(dispatchPaths.items)}
-          >
+          <Button variant="outline" onClick={() => navigate(dispatchPaths.items)}>
+            <ArrowLeft size={14} strokeWidth={1.5} aria-hidden="true" />
             Register
           </Button>
         }
         meta={
           record && (
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusChip value={record.status} />
-              <StatusChip value={record.direction} />
-              <StatusChip value={record.sensitivity} />
-              <StatusChip value={record.itemType} tone="neutral" />
+            <>
+              <StatusBadge value={record.status} />
+              <StatusBadge value={record.direction} />
+              <StatusBadge value={record.sensitivity} />
+              <StatusBadge value={record.itemType} tone="neutral" />
               {record.chainOfCustodyRequired && (
-                <StatusChip value="SECRET" label="Chain of custody required" tone="blocked" />
+                <StatusBadge value="SECRET" label="Chain of custody required" tone="blocked" />
               )}
-            </div>
+            </>
           )
         }
       />
@@ -116,74 +124,78 @@ const CourierItemDetailPage = () => {
         minHeight={300}
       >
         {record && (
-          <div className="space-y-5">
-            {record.undelivered && (
-              <Alert variant="error" title="This item is undelivered">
-                It was dispatched and never confirmed as delivered.{' '}
-                {record.exceptionReason ?? 'No reason was recorded.'}
-              </Alert>
-            )}
-            {record.status === 'EXCEPTION' && (
-              <Alert variant="error" title="This item is in exception">
-                {record.exceptionReason ?? 'No reason was recorded.'}
-              </Alert>
-            )}
-            {record.misrouteReason && (
-              <Alert variant="warning" title="A misroute was recorded against this item">
-                {record.misrouteReason}
-              </Alert>
-            )}
-            {record.acknowledgedBy && (
-              <Alert variant="success" title="Distribution acknowledged">
-                Taken by {record.acknowledgedBy} on {formatDateTime(record.acknowledgedAt)}
-                {record.distributionReference ? ` · ${record.distributionReference}` : ''}.
-              </Alert>
+          <>
+            {(record.undelivered ||
+              record.status === 'EXCEPTION' ||
+              record.misrouteReason ||
+              record.acknowledgedBy) && (
+              <PageSection className="space-y-3">
+                {record.undelivered && (
+                  <Callout tone="danger" title="This item is undelivered">
+                    It was dispatched and never confirmed as delivered.{' '}
+                    {record.exceptionReason ?? 'No reason was recorded.'}
+                  </Callout>
+                )}
+                {record.status === 'EXCEPTION' && (
+                  <Callout tone="danger" title="This item is in exception">
+                    {record.exceptionReason ?? 'No reason was recorded.'}
+                  </Callout>
+                )}
+                {record.misrouteReason && (
+                  <Callout tone="warning" title="A misroute was recorded against this item">
+                    {record.misrouteReason}
+                  </Callout>
+                )}
+                {record.acknowledgedBy && (
+                  <Callout tone="success" title="Distribution acknowledged">
+                    Taken by {record.acknowledgedBy} on {formatDateTime(record.acknowledgedAt)}
+                    {record.distributionReference ? ` · ${record.distributionReference}` : ''}.
+                  </Callout>
+                )}
+              </PageSection>
             )}
 
-            <SectionCard title="Actions">
+            <Panel title="Actions">
               <div className="flex flex-wrap items-center gap-2">
-                {ACTION_ORDER.filter((action) => itemActionAllowed(record, action)).map((action) => (
-                  <Button
-                    key={action}
-                    variant={action === 'close' ? 'accent' : 'primary'}
-                    startIcon={buttonIcon(action)}
-                    loading={working === action}
-                    disabled={working !== null}
-                    onClick={() => advance(action)}
-                  >
-                    {ITEM_RULES[action].label}
-                  </Button>
-                ))}
+                {ACTION_ORDER.filter((action) => itemActionAllowed(record, action)).map((action) => {
+                  const ActionIcon = buttonIcon(action);
+                  return (
+                    <Button
+                      key={action}
+                      variant={action === 'close' ? 'secondary' : 'primary'}
+                      loading={working === action}
+                      disabled={working !== null}
+                      onClick={() => advance(action)}
+                    >
+                      <ActionIcon size={14} strokeWidth={1.5} aria-hidden="true" />
+                      {ITEM_RULES[action].label}
+                    </Button>
+                  );
+                })}
                 {itemDistributable(record) && (
-                  <Button
-                    variant="accent"
-                    startIcon="check-circle"
-                    onClick={() => setDialog('distribute')}
-                  >
+                  <Button variant="secondary" onClick={() => setDialog('distribute')}>
+                    <CheckCircle2 size={14} strokeWidth={1.5} aria-hidden="true" />
                     Record distribution
                   </Button>
                 )}
                 {itemMisroutable(record) && (
-                  <Button
-                    variant="outline"
-                    startIcon="alert-triangle"
-                    onClick={() => setDialog('misroute')}
-                  >
+                  <Button variant="outline" onClick={() => setDialog('misroute')}>
+                    <AlertTriangle size={14} strokeWidth={1.5} aria-hidden="true" />
                     Record misroute
                   </Button>
                 )}
               </div>
 
               {!itemLive(record) && (
-                <p className="mt-3 flex items-center gap-1.5 text-theme-sm text-gray-600">
-                  <Icon name="lock" size={14} className="shrink-0 text-gray-600" />
+                <p className="mt-3 flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Lock size={14} className="shrink-0" aria-hidden="true" />
                   This item is {humanise(record.status).toLowerCase()}. No further move is offered.
                 </p>
               )}
-            </SectionCard>
+            </Panel>
 
-            <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
-              <SectionCard title="Item">
+            <div className="mt-6 grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+              <Panel title="Item">
                 <KeyValueGrid
                   items={[
                     { label: 'Item number', value: record.itemNumber },
@@ -213,10 +225,10 @@ const CourierItemDetailPage = () => {
                     { label: 'Exception reason', value: record.exceptionReason ?? '-', span: 2 },
                   ]}
                 />
-              </SectionCard>
+              </Panel>
 
-              <div className="space-y-5">
-                <SectionCard title="Provenance">
+              <div className="space-y-6">
+                <Panel title="Provenance">
                   <KeyValueGrid
                     columns={2}
                     items={[
@@ -236,39 +248,40 @@ const CourierItemDetailPage = () => {
                       },
                     ]}
                   />
-                  <p className="mt-3 text-theme-xs text-gray-600">
+                  <p className="mt-3 text-xs text-muted-foreground">
                     The dispatch module exposes no per-record transition history, so this is the
                     record’s own provenance rather than its audit trail.
                   </p>
-                </SectionCard>
+                </Panel>
 
-                <SectionCard title="Where this can go next">
+                <Panel title="Where this can go next">
                   <ul className="space-y-2.5">
                     {ACTION_ORDER.map((action) => {
                       const allowed = itemActionAllowed(record, action);
                       const rule = ITEM_RULES[action];
+                      const MarkIcon = allowed ? CheckCircle2 : X;
                       return (
                         <li key={action} className="flex items-start gap-2.5">
-                          <Icon
-                            name={allowed ? 'check-circle' : 'close'}
+                          <MarkIcon
                             size={15}
                             className={
                               allowed
-                                ? 'mt-0.5 shrink-0 text-success-700'
-                                : 'mt-0.5 shrink-0 text-gray-400'
+                                ? 'mt-0.5 shrink-0 text-success'
+                                : 'mt-0.5 shrink-0 text-muted-foreground'
                             }
+                            aria-hidden="true"
                           />
                           <div className="min-w-0">
                             <p
                               className={
                                 allowed
-                                  ? 'text-theme-sm font-medium text-gray-900'
-                                  : 'text-theme-sm text-gray-500'
+                                  ? 'text-sm font-medium text-foreground'
+                                  : 'text-sm text-muted-foreground'
                               }
                             >
                               {rule.label}
                             </p>
-                            <p className="text-theme-xs text-gray-600">
+                            <p className="text-xs text-muted-foreground">
                               {allowed
                                 ? `Needs ${rule.permission}.`
                                 : `From ${rule.from.map((s) => humanise(s).toLowerCase()).join(', ')}.`}
@@ -278,7 +291,7 @@ const CourierItemDetailPage = () => {
                       );
                     })}
                   </ul>
-                </SectionCard>
+                </Panel>
               </div>
             </div>
 
@@ -304,27 +317,27 @@ const CourierItemDetailPage = () => {
                 }}
               />
             )}
-          </div>
+          </>
         )}
       </DataState>
-    </div>
+    </>
   );
 };
 
-const buttonIcon = (action: ItemAction) => {
+const buttonIcon = (action: ItemAction): LucideIcon => {
   switch (action) {
     case 'stage':
-      return 'inbox' as const;
+      return Inbox;
     case 'dispatch':
-      return 'truck' as const;
+      return Truck;
     case 'in-transit':
-      return 'route' as const;
+      return Route;
     case 'deliver':
-      return 'check-circle' as const;
+      return CheckCircle2;
     case 'return':
-      return 'refresh' as const;
+      return RefreshCw;
     default:
-      return 'lock' as const;
+      return Lock;
   }
 };
 

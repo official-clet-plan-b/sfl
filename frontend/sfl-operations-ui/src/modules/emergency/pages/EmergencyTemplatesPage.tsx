@@ -9,23 +9,22 @@ import {
   CreateScenarioDialog,
   CreateTemplateDialog,
 } from 'modules/emergency/dialogs/recordDialogs';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
 import Icon from 'shared/components/Icon';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
-import Tabs from 'shared/components/Tabs';
-import { EnumSelect, TextInput } from 'shared/components/fields';
 import { formatDateTime } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { useClampPage, useServerPage } from 'shared/hooks/useServerPage';
 import { emergencyPaths } from 'shared/layout/navigation';
 import { canManageScenarios, canManageTemplates } from 'modules/emergency/api/workflow';
+import { Button, Banner, Tabs, TabsList, TabsTrigger, type TableColumn } from '@rfdtech/components';
+import RegisterTable from 'modules/emergency/components/RegisterTable';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import Panel from 'modules/emergency/components/Panel';
+import StatusBadge from 'modules/emergency/components/StatusBadge';
+import { TextField, EnumField } from 'modules/emergency/components/FormFields';
+import { CellStack } from 'modules/emergency/components/RegisterTable';
 
 /**
  * What gets sent: notification templates and the scenarios that cite them.
@@ -133,60 +132,58 @@ const EmergencyTemplatesPage = () => {
     records.refetch();
   };
 
-  const templateColumns = useMemo<Column<NotificationTemplate>[]>(
+  const templateColumns = useMemo<TableColumn<NotificationTemplate>[]>(
     () => [
       {
-        key: 'template',
+        id: 'template',
         header: 'Template',
         width: 300,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack primary={`${row.templateCode} · ${row.title}`} secondary={row.body} />
         ),
       },
       {
-        key: 'channels',
+        id: 'channels',
         header: 'Channels',
         width: 220,
-        cell: (row) => listChannels(row.channels),
+        cell: ({ row }) => listChannels(row.channels),
       },
       {
-        key: 'breakGlass',
+        id: 'breakGlass',
         header: 'Break glass',
         width: 140,
         align: 'center',
-        cell: (row) =>
+        cell: ({ row }) =>
           row.breakGlassEligible ? (
-            <StatusChip value="BREAK_GLASS" label="Eligible" tone="blocked" />
+            <StatusBadge value="BREAK_GLASS" label="Eligible" tone="blocked" />
           ) : (
             <span className="text-gray-500">-</span>
           ),
       },
       {
-        key: 'lifecycle',
+        id: 'lifecycle',
         header: 'Lifecycle',
         width: 120,
-        hideBelowLg: true,
-        cell: (row) => <StatusChip value={row.lifecycle} />,
+        cell: ({ row }) => <StatusBadge value={row.lifecycle} />,
       },
       {
-        key: 'created',
+        id: 'created',
         header: 'Created',
         width: 160,
         align: 'right',
-        hideBelowLg: true,
-        cell: (row) => formatDateTime(row.metadata.createdAt),
+        cell: ({ row }) => formatDateTime(row.metadata.createdAt),
       },
     ],
     [],
   );
 
-  const scenarioColumns = useMemo<Column<EmergencyScenario>[]>(
+  const scenarioColumns = useMemo<TableColumn<EmergencyScenario>[]>(
     () => [
       {
-        key: 'scenario',
+        id: 'scenario',
         header: 'Scenario',
         width: 300,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack
             primary={`${row.scenarioCode} · ${row.name}`}
             secondary={
@@ -198,37 +195,35 @@ const EmergencyTemplatesPage = () => {
         ),
       },
       {
-        key: 'priority',
+        id: 'priority',
         header: 'Priority',
         width: 120,
-        cell: (row) => <StatusChip value={row.priority} />,
+        cell: ({ row }) => <StatusBadge value={row.priority} />,
       },
       {
-        key: 'breakGlass',
+        id: 'breakGlass',
         header: 'Break glass',
         width: 140,
         align: 'center',
-        cell: (row) =>
+        cell: ({ row }) =>
           row.breakGlassEligible ? (
-            <StatusChip value="BREAK_GLASS" label="Eligible" tone="blocked" />
+            <StatusBadge value="BREAK_GLASS" label="Eligible" tone="blocked" />
           ) : (
             <span className="text-gray-500">-</span>
           ),
       },
       {
-        key: 'lifecycle',
+        id: 'lifecycle',
         header: 'Lifecycle',
         width: 120,
-        hideBelowLg: true,
-        cell: (row) => <StatusChip value={row.lifecycle} />,
+        cell: ({ row }) => <StatusBadge value={row.lifecycle} />,
       },
       {
-        key: 'created',
+        id: 'created',
         header: 'Created',
         width: 160,
         align: 'right',
-        hideBelowLg: true,
-        cell: (row) => formatDateTime(row.metadata.createdAt),
+        cell: ({ row }) => formatDateTime(row.metadata.createdAt),
       },
     ],
     [records],
@@ -236,7 +231,7 @@ const EmergencyTemplatesPage = () => {
 
   return (
     <div>
-      <PageHeader
+      <PageHeading
         title="Templates and scenarios"
         subtitle="What a broadcast says, and the declared situations that cite it."
         crumbs={[
@@ -247,16 +242,16 @@ const EmergencyTemplatesPage = () => {
           <>
             {/* A template and a scenario are separately granted - one is wording, one is a plan. */}
             {canManageTemplates() && (
-              <Button variant="primary" startIcon="plus" onClick={() => setCreatingTemplate(true)}>
+              <Button variant="primary" onClick={() => setCreatingTemplate(true)}><Icon name="plus" size={14} aria-hidden="true" />
                 Create template
               </Button>
             )}
             {canManageScenarios() && (
-              <Button variant="outline" startIcon="plus" onClick={() => setCreatingScenario(true)}>
+              <Button variant="outline" onClick={() => setCreatingScenario(true)}><Icon name="plus" size={14} aria-hidden="true" />
                 Create scenario
               </Button>
             )}
-            <Button variant="outline" startIcon="refresh" onClick={refreshAll}>
+            <Button variant="outline" onClick={refreshAll}><Icon name="refresh" size={14} aria-hidden="true" />
               Refresh
             </Button>
           </>
@@ -264,17 +259,17 @@ const EmergencyTemplatesPage = () => {
       />
 
       <div className="mb-5">
-        <SectionCard>
+        <Panel>
           <div className="grid gap-4 sm:grid-cols-2 lg:max-w-3xl lg:grid-cols-3">
             <SiteSelect value={siteCode} onChange={setSiteCode} required />
-            <TextInput
+            <TextField
               label="Search"
               value={search}
               onChange={setSearch}
               placeholder="Code, title or message text"
               helperText="Searched by the service across both registers."
             />
-            <EnumSelect
+            <EnumField
               label="Lifecycle"
               value={lifecycle}
               options={RECORD_LIFECYCLES}
@@ -282,39 +277,27 @@ const EmergencyTemplatesPage = () => {
               allowEmpty
             />
           </div>
-        </SectionCard>
+        </Panel>
       </div>
 
       {(breakGlassTemplateCount > 0 || breakGlassScenarioCount > 0) && (
-        <Alert
+        <Banner
           variant="warning"
-          title={`${breakGlassTemplateCount} template${breakGlassTemplateCount === 1 ? '' : 's'} and ${breakGlassScenarioCount} scenario${breakGlassScenarioCount === 1 ? '' : 's'} can bypass approval`}
+          heading={`${breakGlassTemplateCount} template${breakGlassTemplateCount === 1 ? '' : 's'} and ${breakGlassScenarioCount} scenario${breakGlassScenarioCount === 1 ? '' : 's'} can bypass approval`}
           className="mb-5"
-        >
-          A break-glass send is allowed when the template <strong>or</strong> the scenario is
+  subtext={<>A break-glass send is allowed when the template <strong>or</strong> the scenario is
           eligible. Every combination that pairs one of these with anything else is a broadcast that
-          can go out to this site with nobody approving it.
-        </Alert>
+          can go out to this site with nobody approving it.</>} />
       )}
 
-      <SectionCard flush>
+      <Panel>
         <div className="px-5 pt-4">
-          <Tabs
-            value={tab}
-            onChange={setTab}
-            items={[
-              {
-                value: 'templates',
-                label: 'Templates',
-                count: templateQuery.data?.totalElements,
-              },
-              {
-                value: 'scenarios',
-                label: 'Scenarios',
-                count: scenarioQuery.data?.totalElements,
-              },
-            ]}
-          />
+          <Tabs value={tab} onValueChange={setTab} variant="pill">
+            <TabsList>
+              <TabsTrigger value="templates">Templates</TabsTrigger>
+              <TabsTrigger value="scenarios">Scenarios</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         <DataState
@@ -324,33 +307,29 @@ const EmergencyTemplatesPage = () => {
           minHeight={300}
         >
           {tab === 'templates' ? (
-            <DataTable
+            <RegisterTable
+              paramPrefix="emergency-templates"
               rows={templateQuery.data?.content ?? []}
               columns={templateColumns}
-              getRowId={(row) => row.id}
+              rowKey={(row) => row.id}
               loading={templateQuery.loading}
               onRowClick={(row) => navigate(emergencyPaths.templateDetail(row.id))}
-              caption="Notification templates at this site, with their channels, break-glass eligibility, lifecycle and creation time."
-              emptyMessage="No template matches this search."
-              page={templateQuery.data?.page ?? paging.page}
-              pageSize={templateQuery.data?.size ?? paging.size}
-              totalElements={templateQuery.data?.totalElements ?? 0}
-              onPageChange={paging.setPage}
-              onPageSizeChange={paging.setSize}
+              emptyTitle="No template matches this search."
+              totalItems={templateQuery.data?.totalElements ?? 0}
+              size={templateQuery.data?.size ?? paging.size}
+              framed={false}
             />
           ) : (
-            <DataTable
+            <RegisterTable
+              paramPrefix="emergency-scenarios"
               rows={scenarioQuery.data?.content ?? []}
               columns={scenarioColumns}
-              getRowId={(row) => row.id}
+              rowKey={(row) => row.id}
               loading={scenarioQuery.loading}
-              caption="Emergency scenarios at this site, with their default template, priority, break-glass eligibility, lifecycle and creation time."
-              emptyMessage="No scenario matches this search."
-              page={scenarioQuery.data?.page ?? paging.page}
-              pageSize={scenarioQuery.data?.size ?? paging.size}
-              totalElements={scenarioQuery.data?.totalElements ?? 0}
-              onPageChange={paging.setPage}
-              onPageSizeChange={paging.setSize}
+              emptyTitle="No scenario matches this search."
+              totalItems={scenarioQuery.data?.totalElements ?? 0}
+              size={scenarioQuery.data?.size ?? paging.size}
+              framed={false}
             />
           )}
         </DataState>
@@ -363,7 +342,7 @@ const EmergencyTemplatesPage = () => {
               : 'A scenario cannot be edited or retired either. Both registers are create-and-read, so an obsolete record stays visible and selectable.'}
           </span>
         </div>
-      </SectionCard>
+      </Panel>
 
       {creatingTemplate && (
         <CreateTemplateDialog

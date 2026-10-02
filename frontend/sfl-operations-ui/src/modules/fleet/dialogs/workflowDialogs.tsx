@@ -1,3 +1,4 @@
+import { Banner } from '@rfdtech/components';
 import { WorkflowItemResponse } from 'modules/fleet/api/dto';
 import {
   FLEET_WORKFLOW_TYPES,
@@ -11,10 +12,9 @@ import {
 } from 'modules/fleet/api/enums';
 import { workflowApi } from 'modules/fleet/api/fleetApi';
 import { EvidenceSelect } from 'shared/components/EvidenceSelect';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
+import FleetFormDialog from 'modules/fleet/components/FleetFormDialog';
 import SiteSelect from 'shared/components/SiteSelect';
-import { EnumSelect, TextAreaInput, TextInput } from 'shared/components/fields';
+import { EnumSelect, TextAreaInput, TextInput } from 'modules/fleet/components/formFields';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { compose, maxLength, required } from 'shared/validation/validators';
 import { searchEvidenceChoices } from 'modules/fleet/api/fleetApi';
@@ -80,7 +80,7 @@ export const RaiseWorkflowItemDialog = ({
   });
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title="Raise a workflow item"
       description="Priority and severity drive the SLA target the service applies."
@@ -153,7 +153,7 @@ export const RaiseWorkflowItemDialog = ({
         onChange={(value) => form.setValue('description', value)}
         {...form.fieldProps('description')}
       />
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 
@@ -182,7 +182,7 @@ export const AssignWorkflowItemDialog = ({
   });
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title={item.assignee ? 'Reassign item' : 'Assign item'}
       description={`${item.workflowNumber} · ${item.title}`}
@@ -205,7 +205,7 @@ export const AssignWorkflowItemDialog = ({
         onChange={(value) => form.setValue('reason', value)}
         {...form.fieldProps('reason')}
       />
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 
@@ -234,7 +234,7 @@ export const CloseWorkflowItemDialog = ({
   });
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title="Close workflow item"
       description="Closure reason and evidence are both mandatory."
@@ -244,10 +244,15 @@ export const CloseWorkflowItemDialog = ({
       onClose={onClose}
       onSubmit={form.submit}
     >
-      <Alert variant="info">
-        Evidence is required to close this item. Register one under Evidence &amp; audit first if
-        none is listed below.
-      </Alert>
+      <Banner
+        variant="info"
+        heading={
+          <>
+            Evidence is required to close this item. Register one under Evidence &amp; audit first
+            if none is listed below.
+          </>
+        }
+      />
       <EvidenceSelect
         label="Closure evidence"
         required
@@ -266,7 +271,7 @@ export const CloseWorkflowItemDialog = ({
         onChange={(value) => form.setValue('closureReason', value)}
         {...form.fieldProps('closureReason')}
       />
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 
@@ -334,7 +339,7 @@ export const ReasonTransitionDialog = ({
   });
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title={labels[transition].title}
       description={`${item.workflowNumber} · ${item.title}`}
@@ -345,7 +350,9 @@ export const ReasonTransitionDialog = ({
       onClose={onClose}
       onSubmit={form.submit}
     >
-      {labels[transition].note && <Alert variant="info">{labels[transition].note}</Alert>}
+      {labels[transition].note && (
+        <Banner variant="info" heading={<>{labels[transition].note}</>} />
+      )}
       <TextAreaInput
         label="Reason"
         required={!optionalReason}
@@ -354,7 +361,7 @@ export const ReasonTransitionDialog = ({
         onChange={(value) => form.setValue('reason', value)}
         {...form.fieldProps('reason')}
       />
-    </FormDialog>
+    </FleetFormDialog>
   );
 };
 
@@ -377,7 +384,7 @@ export const AddCommentDialog = ({
   });
 
   return (
-    <FormDialog
+    <FleetFormDialog
       open={open}
       title="Add a comment"
       description="Comments are immutable once recorded."
@@ -395,6 +402,6 @@ export const AddCommentDialog = ({
         onChange={(value) => form.setValue('body', value)}
         {...form.fieldProps('body')}
       />
-    </FormDialog>
+    </FleetFormDialog>
   );
 };

@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
-import { TextAreaInput } from 'shared/components/fields';
+import { Notice } from '@rfdtech/components';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import type { CloseWorkOrderRequest, WorkOrder } from '../api/dto';
 import { closeAction, completeAction } from '../api/workflow';
 import { evidenceGap } from '../components/facilitiesFormat';
+import { FormDialog, TextAreaInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface CloseWorkOrderDialogProps {
   order: WorkOrder;
@@ -106,25 +105,25 @@ const CloseWorkOrderDialog = ({
         />
 
         {closing && order.evidenceRequired > 0 && (
-          <Alert
+          <Notice
             variant={canClose.allowed ? 'success' : 'error'}
             title={canClose.allowed ? 'Evidence attached' : 'Evidence missing'}
           >
-            <p className="text-theme-sm">
+            <p className="text-sm">
               {canClose.allowed
                 ? `${attachedEvidence} item(s) attached, ${order.evidenceRequired} required.`
                 : `${shortfall}. Attach the shortfall on the work order before closing - the service refuses closure without it.`}
             </p>
-          </Alert>
+          </Notice>
         )}
 
         {!closing && (
-          <Alert variant="info" title="Not closed yet">
-            <p className="text-theme-sm">
+          <Notice variant="info" title="Not closed yet">
+            <p className="text-sm">
               Marking complete tells a supervisor the work is done. They accept it and close it,
               which is where the evidence requirement is checked.
             </p>
-          </Alert>
+          </Notice>
         )}
       </div>
     </FormDialog>

@@ -1,15 +1,14 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
-import StatusChip from 'shared/components/StatusChip';
-import { NumberInput, SelectInput, TextAreaInput, TextInput } from 'shared/components/fields';
+import { Notice } from '@rfdtech/components';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
-import { humaniseCode } from 'modules/facilities/components/facilitiesFormat';
+import { humaniseCode, readinessTone } from 'modules/facilities/components/facilitiesFormat';
 import type { RequestBookingBody, ResourceAvailability, SpaceAvailability } from '../api/dto';
 import { BOOKING_PURPOSES, HOLD_REASON_DESCRIPTIONS } from '../api/enums';
 import type { BookingPurpose } from '../api/enums';
 import { canOverrideReadiness } from '../api/workflow';
 import { formatWindow } from '../components/bookingFormat';
+import { FormDialog, NumberInput, SelectInput, TextAreaInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
+import StatusBadge from 'modules/facilities/components/StatusBadge';
 
 interface RequestBookingDialogProps {
   space: SpaceAvailability;
@@ -186,11 +185,11 @@ const RequestBookingDialog = ({
         />
 
         {resources.length > 0 && (
-          <fieldset className="rounded-lg border border-gray-200 p-4">
-            <legend className="px-1 text-theme-sm font-medium text-gray-800">
+          <fieldset className="rounded-lg border border-border p-4">
+            <legend className="px-1 text-sm font-medium text-foreground">
               Resources for this window
             </legend>
-            <p className="mb-3 text-theme-xs text-gray-500">
+            <p className="mb-3 text-xs text-muted-foreground">
               Free counts are for this window and are not reserved until the booking is made. A
               resource that needs setting up raises a turnaround task automatically.
             </p>
@@ -198,8 +197,8 @@ const RequestBookingDialog = ({
               {resources.map((resource) => (
                 <div key={resource.resourceId} className="flex items-end gap-3">
                   <div className="min-w-0 flex-1 pb-1">
-                    <p className="truncate text-theme-sm font-medium text-gray-900">{resource.name}</p>
-                    <p className="text-theme-xs text-gray-500">
+                    <p className="truncate text-sm font-medium text-foreground">{resource.name}</p>
+                    <p className="text-xs text-muted-foreground">
                       {humaniseCode(resource.category)} · {resource.free} of {resource.quantity} free
                     </p>
                   </div>
@@ -224,17 +223,17 @@ const RequestBookingDialog = ({
 
         {needsOverride && mayOverride && (
           <>
-            <Alert variant="warning" title="Readiness would refuse this space">
-              <p className="text-theme-sm">
+            <Notice variant="warning" title="Readiness would refuse this space">
+              <p className="text-sm">
                 {space.readinessIssue ? HOLD_REASON_DESCRIPTIONS[space.readinessIssue] : null}{' '}
                 {space.readinessDetail}
               </p>
-              <p className="mt-2 text-theme-sm">
+              <p className="mt-2 text-sm">
                 Current readiness{' '}
-                <StatusChip value={space.readinessStatus} />. You may book into it anyway; the reason
+                <StatusBadge value={space.readinessStatus} tone={readinessTone(space.readinessStatus)} />. You may book into it anyway; the reason
                 below is recorded against the booking and is what an auditor reads.
               </p>
-            </Alert>
+            </Notice>
             <TextAreaInput
               label="Why this override is justified"
               value={overrideReason}

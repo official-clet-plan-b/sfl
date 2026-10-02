@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
-import StatusChip from 'shared/components/StatusChip';
-import { SelectInput, TextAreaInput } from 'shared/components/fields';
+import { Button, Notice } from '@rfdtech/components';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import type { ReadinessChecklist, Space, SubmitAssessmentRequest } from '../api/dto';
 import { humaniseCode, severityTone } from '../components/facilitiesFormat';
+import { FormDialog, SelectInput, TextAreaInput } from 'modules/facilities/dialogs/dialogKit';
+import StatusBadge from 'modules/facilities/components/StatusBadge';
 
 interface SubmitAssessmentDialogProps {
   space: Space;
@@ -93,10 +92,10 @@ const SubmitAssessmentDialog = ({
     >
       <div className="space-y-4">
         {applicable.length === 0 ? (
-          <Alert variant="warning" title="No checklist applies to this space">
+          <Notice variant="warning" title="No checklist applies to this space">
             No active readiness checklist covers a {humaniseCode(space.spaceType).toLowerCase()} at
             this site. Create one before assessing, or the assessment records no answers.
-          </Alert>
+          </Notice>
         ) : (
           <SelectInput
             label="Checklist"
@@ -122,20 +121,20 @@ const SubmitAssessmentDialog = ({
               return (
                 <div
                   key={item.itemCode}
-                  className="rounded-lg border border-gray-200 p-3"
+                  className="rounded-lg border border-border p-3"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <p className="text-theme-sm font-medium text-gray-900">{item.description}</p>
+                      <p className="text-sm font-medium text-foreground">{item.description}</p>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <span className="text-theme-xs text-gray-500">{item.itemCode}</span>
-                        <StatusChip
+                        <span className="text-xs text-muted-foreground">{item.itemCode}</span>
+                        <StatusBadge
                           value={item.severityIfFailed}
                           tone={severityTone(item.severityIfFailed)}
                           label={`${humaniseCode(item.severityIfFailed)} if failed`}
                         />
                         {item.mandatory && (
-                          <span className="text-theme-xs text-gray-500">Mandatory</span>
+                          <span className="text-xs text-muted-foreground">Mandatory</span>
                         )}
                       </div>
                     </div>
@@ -145,32 +144,26 @@ const SubmitAssessmentDialog = ({
                       different answers on a fire-egress check.
                     */}
                     <div className="flex shrink-0 gap-1.5">
-                      <button
-                        type="button"
+                      <Button
+                        size="sm"
+                        variant={answer === true ? 'success' : 'outline'}
+                        aria-pressed={answer === true}
                         onClick={() =>
                           setAnswers((prev) => ({ ...prev, [item.itemCode]: true }))
                         }
-                        className={`rounded-md px-3 py-1.5 text-theme-xs font-medium ${
-                          answer === true
-                            ? 'bg-success-700 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
                       >
                         Pass
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={answer === false ? 'primary-destructive' : 'outline'}
+                        aria-pressed={answer === false}
                         onClick={() =>
                           setAnswers((prev) => ({ ...prev, [item.itemCode]: false }))
                         }
-                        className={`rounded-md px-3 py-1.5 text-theme-xs font-medium ${
-                          answer === false
-                            ? 'bg-error-800 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
                       >
                         Fail
-                      </button>
+                      </Button>
                     </div>
                   </div>
 
@@ -194,20 +187,20 @@ const SubmitAssessmentDialog = ({
         )}
 
         {unanswered.length > 0 && items.length > 0 && (
-          <Alert variant="info">
+          <Notice variant="info">
             {unanswered.length} item{unanswered.length === 1 ? '' : 's'} still to answer. An
             unanswered item counts as failed, so every one must be answered before submitting.
-          </Alert>
+          </Notice>
         )}
 
         {criticalFailing.length > 0 && (
-          <Alert
+          <Notice
             variant="error"
             title={`This will block ${space.roomCode}`}
           >
             {criticalFailing.length} critical check{criticalFailing.length === 1 ? '' : 's'} failing.
             The space will be marked BLOCKED and cannot be used until the blockers are resolved.
-          </Alert>
+          </Notice>
         )}
 
         <TextAreaInput

@@ -1,5 +1,5 @@
-import { allowed as controlAllowed, disabled as controlDisabled, hidden as controlHidden } from 'shared/components/ControlButton';
-import type { ControlState } from 'shared/components/ControlButton';
+import { allowed as controlAllowed, disabled as controlDisabled, hidden as controlHidden } from 'shared/layout/controlState';
+import type { ControlState } from 'shared/layout/controlState';
 import { permits } from 'shared/layout/actorPermissions';
 import type {
   DeviceReference,
@@ -410,7 +410,7 @@ const humanStatus = (status: WorkOrderStatus): string =>
 // These return `ControlState` rather than {@link Action}, because a register control has a third
 // answer the older type cannot express. `Action` collapses "you will never be allowed to" and "not
 // while this record is archived" into one disabled button, and the first of those is clutter that
-// never goes away. The distinction and the reasoning are in `shared/components/ControlButton`.
+// never goes away. The distinction and the reasoning are in the shared control state model.
 //
 // The two are left side by side deliberately rather than converted in one sweep: every existing
 // caller of `Action` still behaves exactly as it did, and the S153 screens that use it are outside

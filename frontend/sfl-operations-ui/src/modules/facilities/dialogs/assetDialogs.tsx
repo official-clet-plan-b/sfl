@@ -1,8 +1,5 @@
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
 import SiteSelect from 'shared/components/SiteSelect';
-import { DateField } from 'shared/components/DateField';
-import { NumberInput, SelectInput, TextInput } from 'shared/components/fields';
+import { Notice } from '@rfdtech/components';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { compose, integerAtLeast, maxLength, required } from 'shared/validation/validators';
 import type { FacilityAsset, RegisterAssetRequest, RelocateAssetRequest, UpdateAssetRequest } from '../api/dto';
@@ -11,6 +8,7 @@ import type { AssetCategory, AssetCriticality } from '../api/enums';
 import { SpacePicker } from '../components/estatePickers';
 import { humaniseCode } from '../components/facilitiesFormat';
 import { StaleWriteNotice } from './common';
+import { DateField, FormDialog, NumberInput, SelectInput, TextInput } from 'modules/facilities/dialogs/dialogKit';
 
 /**
  * Registering, editing and moving a facility asset.
@@ -308,13 +306,13 @@ export const EditAssetDialog = ({ asset, onClose, onSubmit }: EditAssetDialogPro
         </div>
 
         {raisingCriticality && asset.impairsReadiness && (
-          <Alert variant="warning" title="This asset is already impairing its space">
-            <p className="text-theme-sm">
+          <Notice variant="warning" title="This asset is already impairing its space">
+            <p className="text-sm">
               Raising its criticality raises the severity of the blocker it is holding open, and a
               critical one is what forbids the space being ready. The change takes effect the next
               time its readiness is evaluated.
             </p>
-          </Alert>
+          </Notice>
         )}
 
         <div className="grid gap-4 sm:grid-cols-3">
@@ -419,13 +417,13 @@ export const RelocateAssetDialog = ({ asset, onClose, onSubmit }: RelocateAssetD
         />
 
         {asset.impairsReadiness && (
-          <Alert variant="warning" title="This asset is impairing its current space">
-            <p className="text-theme-sm">
+          <Notice variant="warning" title="This asset is impairing its current space">
+            <p className="text-sm">
               Moving it clears the blocker it is holding on {asset.roomId ? 'that space' : 'its site'}{' '}
               and raises the equivalent one wherever it lands. Both spaces are re-evaluated as part of
               this change.
             </p>
-          </Alert>
+          </Notice>
         )}
 
         <StaleWriteNotice error={form.formError} />

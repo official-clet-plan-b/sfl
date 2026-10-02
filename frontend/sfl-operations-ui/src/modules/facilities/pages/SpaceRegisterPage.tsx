@@ -1,13 +1,27 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import ControlButton from 'shared/components/ControlButton';
+import { Plus } from 'lucide-react';
+import {
+  Card,
+  Dropdown,
+  EmptyState,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+  Table,
+  TableContent,
+  TableFilter,
+  TableFooter,
+  TableHeader,
+  TablePagination,
+  useBreadcrumbs,
+  useTableState,
+} from '@rfdtech/components';
+import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar, { ActiveFilter } from 'shared/components/FilterBar';
-import PageHeader from 'shared/components/PageHeader';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatusChip from 'shared/components/StatusChip';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
@@ -20,7 +34,9 @@ import {
   createSpaceControl,
   editSpaceControl,
 } from '../api/workflow';
+import ControlButton from '../components/ControlButton';
 import RowActions, { EditRowAction, RetireRowAction } from '../components/RowActions';
+import StatusBadge from '../components/StatusBadge';
 import {
   humaniseCode,
   orDash,
@@ -38,14 +54,31 @@ import { CreateSpaceDialog, EditSpaceDialog } from '../dialogs/spaceDialogs';
  * search rather than a list - an estate of any size is not browsable - and it leads with readiness,
  * which is the column an operator is actually scanning for.
  */
+const pageSizeOptions = [10, 25, 50, 100];
+
 const SpaceRegisterPage = () => {
   const navigate = useNavigate();
   const notify = useNotifier();
+  useBreadcrumbs([{ label: 'Facilities', href: facilitiesPaths.dashboard }, { label: 'Spaces' }]);
+
+  /*
+    Paging and the filters live in the URL, as the table keeps them. The search endpoint takes one
+    value per axis, so each filter is a single choice: choosing replaces, and clearing the field
+    removes the constraint. Changing a filter returns the table to its first page - page 4 of a new
+    filter is meaningless.
+  */
+  const { filters, page, pageSize } = useTableState({
+    paramPrefix: 'spaces',
+    defaultPageSize: 25,
+    pageSizeOptions,
+  });
+  const spaceType = filters.type ?? '';
+  const readiness = filters.readiness ?? '';
+
+  const [spaceTypeValue, setSpaceTypeValue] = useState(spaceType);
+  const [readinessValue, setReadinessValue] = useState(readiness);
+
   const [siteCode, setSiteCode] = useState<string>(defaultSite);
-  const [spaceType, setSpaceType] = useState<string>('');
-  const [readiness, setReadiness] = useState<string>('');
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(25);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Space | null>(null);
   const [retiring, setRetiring] = useState<Space | null>(null);
@@ -57,123 +90,57 @@ const SpaceRegisterPage = () => {
           siteCode: siteCode || undefined,
           spaceType: (spaceType as SpaceType) || undefined,
           readinessStatus: (readiness as LocationReadinessStatus) || undefined,
-          page,
-          size,
+          // The table counts pages from one, the service from zero.
+          page: page - 1,
+          size: pageSize,
         },
         signal,
       ),
-    [siteCode, spaceType, readiness, page, size],
+    [siteCode, spaceType, readiness, page, pageSize],
   );
 
-  /** Any filter change returns to the first page - page 4 of a new filter is meaningless. */
-  const changeFilter = (apply: () => void) => {
-    apply();
-    setPage(0);
-  };
-
-  /**
-   * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
-   * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
-   * option already active clears it, same as the dropdown it replaces; toggling a different one while
-   * one is active swaps to the new choice instead of appearing to hold both.
-   */
-  const pickSingle = (current: string, next: string[]): string => {
-    if (next.length === 0) {
-      return '';
-    }
-    return next.find((value) => value !== current) ?? next[0];
-  };
-
-  const resetFilters = () =>
-    changeFilter(() => {
-      setSiteCode(defaultSite);
-      setSpaceType('');
-      setReadiness('');
-    });
-
-  /*
-    The site is a chip only when it has been moved off the actor's default. It is always set and it
-    is already named in the app bar, so a permanent "Site: CLET-HQ" would be the one chip that never
-    says anything - and a row where most chips are noise is a row nobody reads.
-  */
-  const activeFilters: ActiveFilter[] = [
-    ...(siteCode !== defaultSite
-      ? [
-          {
-            key: 'siteCode',
-            label: 'Site',
-            value: siteCode === '' ? 'All sites' : siteCode,
-            onClear: () => changeFilter(() => setSiteCode(defaultSite)),
-          },
-        ]
-      : []),
-    ...(spaceType
-      ? [
-          {
-            key: 'spaceType',
-            label: 'Type',
-            value: humaniseCode(spaceType),
-            onClear: () => changeFilter(() => setSpaceType('')),
-          },
-        ]
-      : []),
-    ...(readiness
-      ? [
-          {
-            key: 'readiness',
-            label: 'Readiness',
-            value: humaniseCode(readiness),
-            onClear: () => changeFilter(() => setReadiness('')),
-          },
-        ]
-      : []),
-  ];
-
-  const columns: Column<Space>[] = [
+  const columns: TableColumn<Space>[] = [
     {
-      key: 'roomCode',
+      id: 'roomCode',
       header: 'Code',
       width: 140,
-      cell: (space) => <span className="font-medium text-gray-900">{space.roomCode}</span>,
+      cell: ({ row }) => <span className="font-medium text-foreground">{row.roomCode}</span>,
     },
-    { key: 'name', header: 'Name', cell: (space) => space.name },
+    { id: 'name', header: 'Name', accessorKey: 'name' },
     {
-      key: 'spaceType',
+      id: 'spaceType',
       header: 'Type',
-      hideBelowLg: true,
-      cell: (space) => humaniseCode(space.spaceType),
+      cell: ({ row }) => humaniseCode(row.spaceType),
     },
     {
-      key: 'capacity',
+      id: 'capacity',
       header: 'Capacity',
       align: 'right',
       width: 100,
-      hideBelowLg: true,
-      cell: (space) => orDash(space.capacity),
+      cell: ({ row }) => orDash(row.capacity),
     },
     {
-      key: 'readiness',
+      id: 'readiness',
       header: 'Readiness',
       width: 130,
-      cell: (space) => (
-        <StatusChip value={space.readinessStatus} tone={readinessTone(space.readinessStatus)} />
+      cell: ({ row }) => (
+        <StatusBadge value={row.readinessStatus} tone={readinessTone(row.readinessStatus)} />
       ),
     },
     {
-      key: 'assessed',
+      id: 'assessed',
       header: 'Assessed',
       width: 140,
-      hideBelowLg: true,
-      cell: (space) => (
-        <span className="text-gray-600">{relativeTime(space.readinessUpdatedAt)}</span>
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">{relativeTime(row.readinessUpdatedAt)}</span>
       ),
     },
     {
-      key: 'availability',
+      id: 'availability',
       header: 'Available for',
       align: 'right',
       width: 190,
-      cell: (space) => (
+      cell: ({ row: space }) => (
         <div className="flex flex-wrap justify-end gap-1">
           {/*
             Both flags are derived by the service. Showing "capable but not available" as two
@@ -181,29 +148,29 @@ const SpaceRegisterPage = () => {
             and an operator planning an examination needs to see which.
           */}
           {space.bookable && (
-            <StatusChip
+            <StatusBadge
               value="BOOKING"
               label="Booking"
               tone={space.availableForBooking ? 'ready' : 'blocked'}
             />
           )}
           {space.examinationCapable && (
-            <StatusChip
+            <StatusBadge
               value="EXAM"
               label="Exam"
               tone={space.availableForExamination ? 'ready' : 'blocked'}
             />
           )}
-          {space.readinessLocked && <StatusChip value="LOCKED" tone="accent" label="Locked" />}
+          {space.readinessLocked && <StatusBadge value="LOCKED" tone="accent" label="Locked" />}
         </div>
       ),
     },
     {
-      key: 'actions',
+      id: 'actions',
       header: '',
       width: 150,
       align: 'right',
-      cell: (space) => (
+      cell: ({ row: space }) => (
         <RowActions>
           <EditRowAction
             state={editSpaceControl(space)}
@@ -222,68 +189,81 @@ const SpaceRegisterPage = () => {
 
   return (
     <>
-      <PageHeader
-        title="Spaces"
-        subtitle="Rooms, halls and courtrooms, with the readiness of each"
-        actions={
-          <ControlButton
-            state={createSpaceControl()}
-            variant="primary"
-            startIcon="plus"
-            onClick={() => setAdding(true)}
-          >
-            Add a space
-          </ControlButton>
-        }
-      />
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Spaces</SectionTitle>
+          <SectionDescription>Rooms, halls and courtrooms, with the readiness of each</SectionDescription>
+          <SectionActions>
+            <SiteSelect
+              value={siteCode}
+              onChange={setSiteCode}
+              allowEmpty
+              emptyLabel="All sites"
+            />
+            <ControlButton state={createSpaceControl()} variant="primary" onClick={() => setAdding(true)}>
+              <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+              Add a space
+            </ControlButton>
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      <FilterBar active={activeFilters} onReset={resetFilters}>
-        <SiteSelect
-          value={siteCode}
-          onChange={(v) => changeFilter(() => setSiteCode(v))}
-          allowEmpty
-          emptyLabel="All sites"
-        />
-        <FacetFilter
-          label="Space type"
-          selected={spaceType ? [spaceType] : []}
-          onChange={(next) => changeFilter(() => setSpaceType(pickSingle(spaceType, next)))}
-          options={spaceTypes.map((type) => ({ value: type, label: humaniseCode(type) }))}
-        />
-        <FacetFilter
-          label="Readiness"
-          selected={readiness ? [readiness] : []}
-          onChange={(next) => changeFilter(() => setReadiness(pickSingle(readiness, next)))}
-          options={readinessStatuses.map((status) => ({
-            value: status,
-            label: humaniseCode(status),
-          }))}
-        />
-      </FilterBar>
-
-      <DataState
-        loading={loading}
-        error={error}
-        empty={!data || data.items.length === 0}
-        emptyTitle="No spaces match these filters"
-        emptyHint="Widen the site or clear the type and readiness filters."
-        onRetry={refetch}
-      >
-        {data && (
-          <DataTable
-            rows={data.items}
-            columns={columns}
-            getRowId={(space) => space.id}
-            onRowClick={(space) => navigate(facilitiesPaths.spaceDetail(space.id))}
-            page={data.page}
-            pageSize={data.size}
-            totalElements={data.totalElements}
-            onPageChange={setPage}
-            onPageSizeChange={(next) => changeFilter(() => setSize(next))}
-            caption="Spaces"
-          />
-        )}
-      </DataState>
+      <PageSection>
+        <DataState loading={false} error={error} onRetry={refetch}>
+          <Table paramPrefix="spaces" variant="soft">
+            <Card bordered>
+              <TableHeader>
+                <TableFilter variant="spread">
+                  <Dropdown
+                    name="type"
+                    aria-label="Space type"
+                    placeholder="All space types"
+                    clearable
+                    value={spaceTypeValue || null}
+                    onValueChange={(next) => setSpaceTypeValue(next ?? '')}
+                    options={spaceTypes.map((type) => ({ value: type, label: humaniseCode(type) }))}
+                  />
+                  <Dropdown
+                    name="readiness"
+                    aria-label="Readiness"
+                    placeholder="All readiness"
+                    clearable
+                    value={readinessValue || null}
+                    onValueChange={(next) => setReadinessValue(next ?? '')}
+                    options={readinessStatuses.map((status) => ({
+                      value: status,
+                      label: humaniseCode(status),
+                    }))}
+                  />
+                </TableFilter>
+              </TableHeader>
+              <TableContent
+                variant="soft"
+                columns={columns}
+                data={data?.items ?? []}
+                rowKey={(space) => space.id}
+                loading={loading}
+                onRowClick={(space) => navigate(facilitiesPaths.spaceDetail(space.id))}
+                aria-label="Spaces"
+                emptyContent={
+                  <EmptyState
+                    title="No spaces match these filters"
+                    description="Widen the site or clear the type and readiness filters."
+                  />
+                }
+              />
+            </Card>
+            <TableFooter noBorder>
+              <TablePagination
+                totalPages={Math.max(1, data?.totalPages ?? 1)}
+                totalItems={data?.totalElements ?? 0}
+                pageSizeOptions={pageSizeOptions}
+                defaultPageSize={25}
+              />
+            </TableFooter>
+          </Table>
+        </DataState>
+      </PageSection>
 
       {adding && (
         <CreateSpaceDialog

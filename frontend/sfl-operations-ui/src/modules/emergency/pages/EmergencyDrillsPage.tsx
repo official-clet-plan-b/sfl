@@ -6,21 +6,22 @@ import { formatElapsed, percentOf, percentValue } from 'modules/emergency/compon
 import { useSiteRecords } from 'modules/emergency/components/useSiteRecords';
 import { CompleteDrillDialog, StartDrillDialog } from 'modules/emergency/dialogs/drillDialogs';
 import { DerivedNote } from 'modules/fuel/components/Provenance';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import StatCard from 'shared/components/StatCard';
-import StatusChip from 'shared/components/StatusChip';
 import { formatDateTime, formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { useClampPage, useServerPage } from 'shared/hooks/useServerPage';
 import { emergencyPaths } from 'shared/layout/navigation';
 import { canManageScenarios } from 'modules/emergency/api/workflow';
+import { Button, Banner, type TableColumn } from '@rfdtech/components';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import Panel from 'modules/emergency/components/Panel';
+import StatMetric from 'modules/emergency/components/StatMetric';
+import StatusBadge from 'modules/emergency/components/StatusBadge';
+import { CellStack } from 'modules/emergency/components/RegisterTable';
+import RegisterTable from 'modules/emergency/components/RegisterTable';
+import Icon from 'shared/components/Icon';
 
 /**
  * Notification drills and what they revealed.
@@ -85,13 +86,13 @@ const EmergencyDrillsPage = () => {
     undefined,
   );
 
-  const columns = useMemo<Column<DrillRun>[]>(
+  const columns = useMemo<TableColumn<DrillRun>[]>(
     () => [
       {
-        key: 'drill',
+        id: 'drill',
         header: 'Drill',
         width: 280,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack
             primary={row.drillNumber}
             secondary={
@@ -101,18 +102,18 @@ const EmergencyDrillsPage = () => {
         ),
       },
       {
-        key: 'target',
+        id: 'target',
         header: 'Target',
         width: 100,
         align: 'right',
-        cell: (row) => formatNumber(row.targetRecipients),
+        cell: ({ row }) => formatNumber(row.targetRecipients),
       },
       {
-        key: 'reached',
+        id: 'reached',
         header: 'Reached',
         width: 130,
         align: 'right',
-        cell: (row) =>
+        cell: ({ row }) =>
           row.status === 'RUNNING' ? (
             <span className="text-gray-500">-</span>
           ) : (
@@ -120,11 +121,11 @@ const EmergencyDrillsPage = () => {
           ),
       },
       {
-        key: 'acknowledged',
+        id: 'acknowledged',
         header: 'Acknowledged',
         width: 150,
         align: 'right',
-        cell: (row) => {
+        cell: ({ row }) => {
           if (row.status === 'RUNNING') {
             return <span className="text-gray-500">-</span>;
           }
@@ -137,39 +138,37 @@ const EmergencyDrillsPage = () => {
         },
       },
       {
-        key: 'elapsed',
+        id: 'elapsed',
         header: 'Elapsed',
         width: 110,
         align: 'right',
-        hideBelowLg: true,
-        cell: (row) => formatElapsed(row.activationMillis),
+        cell: ({ row }) => formatElapsed(row.activationMillis),
       },
       {
-        key: 'started',
+        id: 'started',
         header: 'Started',
         width: 170,
-        hideBelowLg: true,
-        cell: (row) => formatDateTime(row.startedAt),
+        cell: ({ row }) => formatDateTime(row.startedAt),
       },
       {
-        key: 'status',
+        id: 'status',
         header: 'Status',
         width: 130,
-        cell: (row) => <StatusChip value={row.status} />,
+        cell: ({ row }) => <StatusBadge value={row.status} />,
       },
       {
-        key: 'action',
+        id: 'action',
         header: '',
         width: 140,
         align: 'right',
-        cell: (row) =>
+        cell: ({ row }) =>
           row.status === 'RUNNING' ? (
             <Button
               size="sm"
               variant="outline"
-              startIcon="check-circle"
+             
               onClick={() => setCompleting(row)}
-            >
+            ><Icon name="check-circle" size={14} aria-hidden="true" />
               Complete
             </Button>
           ) : null,
@@ -180,7 +179,7 @@ const EmergencyDrillsPage = () => {
 
   return (
     <div>
-      <PageHeader
+      <PageHeading
         title="Notification drills"
         subtitle="Rehearsals of the activation path, and what each one revealed."
         crumbs={[{ label: 'Emergency', to: emergencyPaths.dashboard }, { label: 'Drills' }]}
@@ -188,11 +187,11 @@ const EmergencyDrillsPage = () => {
           <>
             {/* A drill is a scenario exercised, so it follows the scenario grant. */}
             {canManageScenarios() && (
-              <Button variant="primary" startIcon="target" onClick={() => setStarting(true)}>
+              <Button variant="primary" onClick={() => setStarting(true)}><Icon name="target" size={14} aria-hidden="true" />
                 Start drill
               </Button>
             )}
-            <Button variant="outline" startIcon="refresh" onClick={query.refetch}>
+            <Button variant="outline" onClick={query.refetch}><Icon name="refresh" size={14} aria-hidden="true" />
               Refresh
             </Button>
           </>
@@ -200,11 +199,11 @@ const EmergencyDrillsPage = () => {
       />
 
       <div className="mb-5">
-        <SectionCard>
+        <Panel>
           <div className="max-w-xs">
             <SiteSelect value={siteCode} onChange={setSiteCode} required />
           </div>
-        </SectionCard>
+        </Panel>
       </div>
 
       <DataState
@@ -215,37 +214,34 @@ const EmergencyDrillsPage = () => {
       >
         <div className="space-y-5">
           {running.length > 0 && (
-            <Alert
+            <Banner
               variant="info"
-              title={`${running.length} drill${running.length === 1 ? ' is' : 's are'} still running`}
-            >
-              A drill records nothing until it is completed. Complete it from its row with the
-              figures observed, or it contributes nothing to the performance record.
-            </Alert>
+              heading={`${running.length} drill${running.length === 1 ? ' is' : 's are'} still running`}
+  subtext={<>A drill records nothing until it is completed. Complete it from its row with the
+              figures observed, or it contributes nothing to the performance record.</>} />
           )}
 
           {completed.length === 0 && running.length === 0 && (
-            <Alert variant="warning" title="This site has never rehearsed its notification path">
-              Every figure elsewhere in this module describes a broadcast that was sent. A drill is
-              the only thing that tests whether one would arrive.
-            </Alert>
+            <Banner variant="warning" heading="This site has never rehearsed its notification path"
+  subtext={<>Every figure elsewhere in this module describes a broadcast that was sent. A drill is
+              the only thing that tests whether one would arrive.</>} />
           )}
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard
+            <StatMetric
               label="Drills completed"
               value={formatNumber(completed.length)}
               icon="target"
               caption={running.length > 0 ? `${running.length} still running` : 'All figures filed'}
             />
-            <StatCard
+            <StatMetric
               label="Average acknowledgement"
               value={completed.length ? `${averageAck}%` : '-'}
               icon="check-circle"
               tone={completed.length && averageAck < 80 ? 'caution' : 'neutral'}
               caption="Against target, across every completed drill"
             />
-            <StatCard
+            <StatMetric
               label="Last drill"
               value={
                 latest ? percentOf(latest.acknowledgedRecipients, latest.targetRecipients) : '-'
@@ -257,7 +253,7 @@ const EmergencyDrillsPage = () => {
                   : 'None completed'
               }
             />
-            <StatCard
+            <StatMetric
               label="Slowest activation"
               value={formatElapsed(slowest?.activationMillis)}
               icon="clock"
@@ -267,7 +263,7 @@ const EmergencyDrillsPage = () => {
           </div>
 
           {bars.length > 0 && (
-            <SectionCard
+            <Panel
               title="What each drill reached"
               subtitle="Every bar is its own target - the green segment is the part that closed"
             >
@@ -277,17 +273,19 @@ const EmergencyDrillsPage = () => {
                 service, never-reached is the target less those reached. The last eight completed
                 drills are shown.
               </DerivedNote>
-            </SectionCard>
+            </Panel>
           )}
 
-          <SectionCard title="Drill register" flush>
-            <DataTable
+          <Panel title="Drill register">
+            <RegisterTable
+              paramPrefix="emergency-drills"
               rows={[...running, ...[...completed].reverse()]}
               columns={columns}
-              getRowId={(row) => row.id}
+              rowKey={(row) => row.id}
               loading={query.loading}
-              caption="Drills at this site, with target, reached and acknowledged counts, elapsed time, start time and status."
-              emptyMessage="No drill has been run at this site."
+              emptyTitle="No drill has been run at this site."
+              emptyDescription="Run a drill to measure the notification path."
+              framed={false}
             />
             <div className="px-5 pt-2 pb-4">
               <DerivedNote>
@@ -296,7 +294,7 @@ const EmergencyDrillsPage = () => {
                 per cent - that is the honest reading, because the other half was never told.
               </DerivedNote>
             </div>
-          </SectionCard>
+          </Panel>
         </div>
       </DataState>
 

@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
-import { TextAreaInput } from 'shared/components/fields';
+import { Notice } from '@rfdtech/components';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
 import type { Booking, CancelBookingBody } from '../api/dto';
 import { isOwnBooking } from '../api/workflow';
+import { FormDialog, TextAreaInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface CancelBookingDialogProps {
   booking: Booking;
@@ -73,12 +72,12 @@ const CancelBookingDialog = ({ booking, onClose, onSubmit }: CancelBookingDialog
         />
 
         {!own && (
-          <Alert variant="warning" title="This is somebody else’s booking">
-            <p className="text-theme-sm">
+          <Notice variant="warning" title="This is somebody else’s booking">
+            <p className="text-sm">
               {booking.requestedBy} requested it. Cancelling takes the room out of their diary, and
               your reason is what they will read.
             </p>
-          </Alert>
+          </Notice>
         )}
 
       </div>

@@ -2,7 +2,7 @@ import L from 'leaflet';
 import { useEffect, useRef, useState } from 'react';
 import { tripsApi } from 'modules/fleet/api/fleetApi';
 import { TripResponse } from 'modules/fleet/api/dto';
-import Alert from 'shared/components/Alert';
+import { Banner } from '@rfdtech/components';
 import { formatDateTime } from 'shared/components/format';
 import { geocodeAddress } from 'shared/places/openStreetMapPlaces';
 import { fetchDrivingRoute, Route } from 'shared/maps/osrmRouting';
@@ -66,9 +66,11 @@ const TripRouteMap = ({ trip }: TripRouteMapProps) => {
 
   const [route, setRoute] = useState<Route | null>(null);
   const [routeUnavailable, setRouteUnavailable] = useState(false);
-  const [lastPosition, setLastPosition] = useState<{ latitude: number; longitude: number; recordedAt: string } | null>(
-    null,
-  );
+  const [lastPosition, setLastPosition] = useState<{
+    latitude: number;
+    longitude: number;
+    recordedAt: string;
+  } | null>(null);
 
   // The map itself: created once per mount, destroyed on unmount. Re-running this for every prop
   // change would tear down and rebuild the tile layer on every poll tick.
@@ -76,7 +78,10 @@ const TripRouteMap = ({ trip }: TripRouteMapProps) => {
     if (!containerRef.current || mapRef.current) {
       return undefined;
     }
-    const map = L.map(containerRef.current, { scrollWheelZoom: false }).setView([5.6037, -0.187], 7);
+    const map = L.map(containerRef.current, { scrollWheelZoom: false }).setView(
+      [5.6037, -0.187],
+      7,
+    );
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19,
@@ -122,7 +127,9 @@ const TripRouteMap = ({ trip }: TripRouteMapProps) => {
         return;
       }
       L.marker([from.latitude, from.longitude]).addTo(map).bindPopup(`Origin: ${trip.origin}`);
-      L.marker([to.latitude, to.longitude]).addTo(map).bindPopup(`Destination: ${trip.destination}`);
+      L.marker([to.latitude, to.longitude])
+        .addTo(map)
+        .bindPopup(`Destination: ${trip.destination}`);
       const line = L.polyline(
         computed.points.map((point) => [point.latitude, point.longitude]),
         { color: '#465fff', weight: 4 },
@@ -166,7 +173,10 @@ const TripRouteMap = ({ trip }: TripRouteMapProps) => {
       if (vehicleMarkerRef.current) {
         vehicleMarkerRef.current.setLatLng(position);
       } else {
-        vehicleMarkerRef.current = L.marker(position, { icon: vehicleIcon, zIndexOffset: 1000 }).addTo(map);
+        vehicleMarkerRef.current = L.marker(position, {
+          icon: vehicleIcon,
+          zIndexOffset: 1000,
+        }).addTo(map);
       }
     };
 
@@ -181,19 +191,29 @@ const TripRouteMap = ({ trip }: TripRouteMapProps) => {
   return (
     <div className="space-y-3">
       {trip.status === 'PLANNED' && (
-        <Alert variant="info">A route will show once a vehicle and driver are assigned.</Alert>
+        <Banner
+          variant="info"
+          heading={<>A route will show once a vehicle and driver are assigned.</>}
+        />
       )}
       {routeUnavailable && (
-        <Alert variant="warning">
-          The planned route could not be drawn right now. This does not affect the trip itself.
-        </Alert>
+        <Banner
+          variant="warning"
+          heading={
+            <>
+              The planned route could not be drawn right now. This does not affect the trip itself.
+            </>
+          }
+        />
       )}
-      <div ref={containerRef} className="h-80 w-full overflow-hidden rounded-xl border border-gray-200" />
+      <div
+        ref={containerRef}
+        className="h-80 w-full overflow-hidden rounded-xl border border-gray-200"
+      />
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-theme-xs text-gray-500">
         {route && (
           <span>
-            Planned route: {(route.distanceMetres / 1000).toFixed(1)} km,
-            {' '}
+            Planned route: {(route.distanceMetres / 1000).toFixed(1)} km,{' '}
             {Math.round(route.durationSeconds / 60)} min
           </span>
         )}

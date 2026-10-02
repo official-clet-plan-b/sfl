@@ -1,7 +1,17 @@
 import { useMemo } from 'react';
 import { FuelAuditEvent } from 'modules/fuel/api/dto';
 import { humanise } from 'modules/fleet/api/enums';
-import WorkflowTimeline, { TimelineEntry } from 'shared/components/WorkflowTimeline';
+import { Timeline, TimelineData, TimelineFooter, TimelineItem, TimelineTitle } from '@rfdtech/components';
+import { formatDateTime } from 'shared/components/format';
+
+interface TimelineEntry {
+  id: string;
+  title: string;
+  detail?: string;
+  actor?: string | null;
+  occurredAt: string;
+  tone?: 'default' | 'accent' | 'danger';
+}
 
 /**
  * A fuel record's real transition history, read from the hash-chained audit log.
@@ -70,11 +80,26 @@ const HistoryTimeline = ({ events, recordNoun }: HistoryTimelineProps) => {
     });
   }, [events]);
 
+  if (entries.length === 0) {
+    return <p className="text-theme-sm text-gray-600">No recorded activity for this {recordNoun} yet.</p>;
+  }
+
   return (
-    <WorkflowTimeline
-      entries={entries}
-      emptyMessage={`No recorded activity for this ${recordNoun} yet.`}
-    />
+    <Timeline>
+      {entries.map((entry, index) => (
+        <TimelineItem
+          key={entry.id}
+          isLast={index === entries.length - 1}
+          mode={entry.tone === 'danger' ? 'error' : entry.tone === 'accent' ? 'warning' : 'primary'}
+        >
+          <TimelineTitle as="h3">{entry.title}</TimelineTitle>
+          <TimelineData>{entry.detail}</TimelineData>
+          <TimelineFooter>
+            {formatDateTime(entry.occurredAt)}{entry.actor ? ` · by ${entry.actor}` : ''}
+          </TimelineFooter>
+        </TimelineItem>
+      ))}
+    </Timeline>
   );
 };
 

@@ -6,11 +6,16 @@ import {
   TripSelect,
   VehicleSelect,
 } from 'modules/fleet/components/FleetReferenceSelect';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
 import SiteSelect from 'shared/components/SiteSelect';
-import { NumberInput, SelectInput, TextAreaInput, TextInput } from 'shared/components/fields';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
+import {
+  Callout,
+  FormModal,
+  NumberField,
+  SelectField,
+  TextAreaField,
+  TextField,
+} from 'modules/dispatch/components/formKit';
 import { useFleetForm } from 'shared/validation/useFleetForm';
 import { compose, integerAtLeast, maxLength, required } from 'shared/validation/validators';
 
@@ -74,7 +79,7 @@ export const CreateManifestDialog = ({
   });
 
   return (
-    <FormDialog
+    <FormModal
       open={open}
       title="Create a manifest"
       description="Created as a draft. Items can only be added before it is sealed."
@@ -94,33 +99,33 @@ export const CreateManifestDialog = ({
           }
           {...form.fieldProps('siteCode')}
         />
-        <TextInput
+        <TextField
           label="Manifest number"
           value={form.values.manifestNumber}
           onChange={(value) => form.setValue('manifestNumber', value)}
           {...form.fieldProps('manifestNumber', 'Leave blank and the service allocates one.')}
         />
-        <TextInput
+        <TextField
           label="Route"
           required
           value={form.values.route}
           onChange={(value) => form.setValue('route', value)}
           {...form.fieldProps('route')}
         />
-        <TextInput
+        <TextField
           label="Handler"
           required
           value={form.values.assignedHandler}
           onChange={(value) => form.setValue('assignedHandler', value)}
           {...form.fieldProps('assignedHandler', 'Accountable for the consignment.')}
         />
-        <TextInput
+        <TextField
           label="Destination centre"
           value={form.values.destinationCentre}
           onChange={(value) => form.setValue('destinationCentre', value)}
           {...form.fieldProps('destinationCentre')}
         />
-        <TextInput
+        <TextField
           label="Examination context"
           value={form.values.examinationContext}
           onChange={(value) => form.setValue('examinationContext', value)}
@@ -128,10 +133,10 @@ export const CreateManifestDialog = ({
         />
       </div>
 
-      <Alert variant="info" title="Movement assignment is optional now">
+      <Callout tone="info" title="Movement assignment is optional now">
         A manifest is usually assembled before the trip carrying it is chosen. Trip, vehicle and
         driver can be assigned later, up to the point the manifest is dispatched.
-      </Alert>
+      </Callout>
 
       <div className={twoColumn}>
         <TripSelect
@@ -157,7 +162,7 @@ export const CreateManifestDialog = ({
           {...form.fieldProps('driverId')}
         />
       </div>
-    </FormDialog>
+    </FormModal>
   );
 };
 
@@ -233,7 +238,7 @@ export const AddManifestItemDialog = ({
   });
 
   return (
-    <FormDialog
+    <FormModal
       open={open}
       title="Add an item to the manifest"
       description={`${manifest.manifestNumber} · ${manifest.route}`}
@@ -245,13 +250,13 @@ export const AddManifestItemDialog = ({
       onSubmit={form.submit}
     >
       {!items.loading && options.length === 0 && (
-        <Alert variant="warning" title="No item is available to add">
+        <Callout tone="warning" title="No item is available to add">
           Every outbound item at {site} is either already on this manifest or past the point where it
           can be consigned. Register the item first, or check whether it is on another manifest.
-        </Alert>
+        </Callout>
       )}
 
-      <SelectInput
+      <SelectField
         label="Courier item"
         required
         value={form.values.courierItemId}
@@ -265,13 +270,13 @@ export const AddManifestItemDialog = ({
       />
 
       <div className={twoColumn}>
-        <TextInput
+        <TextField
           label="Expected seal"
           value={form.values.expectedSealId}
           onChange={(value) => form.setValue('expectedSealId', value)}
           {...form.fieldProps('expectedSealId', 'The seal this line should carry, if sealed.')}
         />
-        <NumberInput
+        <NumberField
           label="Expected quantity"
           required
           min={0}
@@ -280,7 +285,7 @@ export const AddManifestItemDialog = ({
           {...form.fieldProps('expectedQuantity', 'Counted against the receipt at the destination.')}
         />
       </div>
-    </FormDialog>
+    </FormModal>
   );
 };
 
@@ -327,7 +332,7 @@ export const SealManifestDialog = ({
     .filter(Boolean);
 
   return (
-    <FormDialog
+    <FormModal
       open={open}
       title="Seal the manifest"
       description={`${manifest.manifestNumber} · ${itemCount} item${itemCount === 1 ? '' : 's'}`}
@@ -339,18 +344,18 @@ export const SealManifestDialog = ({
       onSubmit={form.submit}
     >
       {itemCount === 0 && (
-        <Alert variant="error" title="There is nothing to seal">
+        <Callout tone="danger" title="There is nothing to seal">
           Add at least one item before sealing. A sealed manifest cannot be reopened to add one.
-        </Alert>
+        </Callout>
       )}
 
-      <Alert variant="warning" title="Sealing cannot be undone">
+      <Callout tone="warning" title="Sealing cannot be undone">
         The contents freeze at this point - no item can be added or removed afterwards. Every custody
         handover and the destination receipt are checked against these identifiers, so a seal typed
         wrongly here surfaces later as a broken-seal exception.
-      </Alert>
+      </Callout>
 
-      <TextAreaInput
+      <TextAreaField
         label="Seal identifiers"
         required
         rows={4}
@@ -363,7 +368,7 @@ export const SealManifestDialog = ({
             : 'One per line, or comma separated.',
         )}
       />
-    </FormDialog>
+    </FormModal>
   );
 };
 
@@ -395,7 +400,7 @@ export const AssignTripDialog = ({ open, onClose, onSaved, manifest }: AssignTri
   });
 
   return (
-    <FormDialog
+    <FormModal
       open={open}
       title="Assign the movement"
       description={`${manifest.manifestNumber} · ${manifest.route}`}
@@ -405,10 +410,10 @@ export const AssignTripDialog = ({ open, onClose, onSaved, manifest }: AssignTri
       onClose={onClose}
       onSubmit={form.submit}
     >
-      <Alert variant="info">
+      <Callout tone="info">
         Assignable while the manifest is a draft or sealed. All three are optional - a consignment
         can be dispatched without a fleet movement recorded against it.
-      </Alert>
+      </Callout>
       <TripSelect
         siteCode={site}
         value={form.values.tripId}
@@ -431,7 +436,7 @@ export const AssignTripDialog = ({ open, onClose, onSaved, manifest }: AssignTri
         emptyLabel="No driver"
         {...form.fieldProps('driverId')}
       />
-    </FormDialog>
+    </FormModal>
   );
 };
 
@@ -468,7 +473,7 @@ export const CloseManifestDialog = ({
   });
 
   return (
-    <FormDialog
+    <FormModal
       open={open}
       title="Close the manifest"
       description={manifest.manifestNumber}
@@ -480,19 +485,19 @@ export const CloseManifestDialog = ({
       onSubmit={form.submit}
     >
       {blockers.length > 0 ? (
-        <Alert variant="error" title="The service will refuse this closure">
+        <Callout tone="danger" title="The service will refuse this closure">
           <ul className="mt-1 list-disc space-y-1 pl-4">
             {blockers.map((blocker) => (
               <li key={blocker}>{blocker}</li>
             ))}
           </ul>
-        </Alert>
+        </Callout>
       ) : (
-        <Alert variant="success">
+        <Callout tone="success">
           No exception case is open and the custody chain is complete. Closure will be accepted.
-        </Alert>
+        </Callout>
       )}
-      <TextAreaInput
+      <TextAreaField
         label="Closure reason"
         required
         rows={3}
@@ -500,6 +505,6 @@ export const CloseManifestDialog = ({
         onChange={(value) => form.setValue('reason', value)}
         {...form.fieldProps('reason')}
       />
-    </FormDialog>
+    </FormModal>
   );
 };

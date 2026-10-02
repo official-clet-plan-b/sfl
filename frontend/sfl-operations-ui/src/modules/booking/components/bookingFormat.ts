@@ -1,4 +1,4 @@
-import type { Tone } from 'shared/components/StatusChip';
+import type { Tone } from 'modules/facilities/components/facilitiesFormat';
 import type { Booking } from '../api/dto';
 import type { BookingStatus, SetupTaskStatus } from '../api/enums';
 

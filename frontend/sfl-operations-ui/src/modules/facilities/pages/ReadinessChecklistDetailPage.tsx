@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useParams } from 'react-router';
 import DataState from 'shared/components/DataState';
-import DataTable, { Column } from 'shared/components/DataTable';
+import DataTable, { FacilitiesColumn as Column } from '../components/FacilitiesDataTable';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatusChip from 'shared/components/StatusChip';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import TitledSection from '../components/TitledSection';
+import StatusBadge from '../components/StatusBadge';
 import { useNotifier } from 'shared/components/Notifier';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
@@ -46,7 +46,7 @@ const ReadinessChecklistDetailPage = () => {
       header: 'If failed',
       width: 140,
       cell: (item) => (
-        <StatusChip value={item.severityIfFailed} tone={severityTone(item.severityIfFailed)} />
+        <StatusBadge value={item.severityIfFailed} tone={severityTone(item.severityIfFailed)} />
       ),
     },
     {
@@ -54,7 +54,7 @@ const ReadinessChecklistDetailPage = () => {
       header: 'Mandatory',
       width: 110,
       cell: (item) =>
-        item.mandatory ? <StatusChip value="YES" label="Yes" tone="active" /> : <span className="text-gray-500">No</span>,
+        item.mandatory ? <StatusBadge value="YES" label="Yes" tone="active" /> : <span className="text-gray-500">No</span>,
     },
     {
       key: 'weight',
@@ -75,7 +75,7 @@ const ReadinessChecklistDetailPage = () => {
     >
       {data && (
         <>
-          <PageHeader
+          <PageHeading
             title={data.name}
             subtitle={`${data.checklistCode} · version ${data.version} · ${data.siteCode}`}
             crumbs={[
@@ -94,7 +94,7 @@ const ReadinessChecklistDetailPage = () => {
           />
 
           <div className="space-y-5">
-            <SectionCard title="Applicability">
+            <TitledSection title="Applicability">
               <KeyValueGrid
                 items={[
                   {
@@ -104,7 +104,7 @@ const ReadinessChecklistDetailPage = () => {
                   {
                     label: 'Operating mode',
                     value: data.operatingMode ? (
-                      <StatusChip
+                      <StatusBadge
                         value={data.operatingMode}
                         tone={data.operatingMode === 'EXAMINATION' ? 'accent' : 'neutral'}
                       />
@@ -122,9 +122,9 @@ const ReadinessChecklistDetailPage = () => {
                   },
                 ]}
               />
-            </SectionCard>
+            </TitledSection>
 
-            <SectionCard
+            <TitledSection
               title="Questions"
               subtitle="A failure raises a blocker at the severity declared here"
             >
@@ -135,7 +135,7 @@ const ReadinessChecklistDetailPage = () => {
                 emptyMessage="This checklist has no questions."
                 dense
               />
-            </SectionCard>
+            </TitledSection>
           </div>
 
           {editing && (

@@ -1,7 +1,6 @@
 import { BlockerResponse } from 'modules/fleet/api/dto';
 import { humanise } from 'modules/fleet/api/enums';
-import Alert from './Alert';
-import StatusChip from './StatusChip';
+import { Badge, Notice } from '@rfdtech/components';
 
 interface BlockerListProps {
   blockers: BlockerResponse[];
@@ -21,7 +20,7 @@ const BlockerList = ({
   clearMessage = 'No blockers. This assignment can proceed.',
 }: BlockerListProps) => {
   if (blockers.length === 0) {
-    return <Alert variant="success">{clearMessage}</Alert>;
+    return <Notice variant="success">{clearMessage}</Notice>;
   }
 
   const blocking = blockers.filter((blocker) => blocker.severity === 'BLOCKING');
@@ -30,7 +29,7 @@ const BlockerList = ({
   return (
     <div className="space-y-2.5">
       {blocking.length > 0 && (
-        <Alert
+        <Notice
           variant="error"
           title={`${blocking.length} blocking ${
             blocking.length === 1 ? 'issue' : 'issues'
@@ -39,28 +38,28 @@ const BlockerList = ({
           <ul className="mt-1.5 space-y-2">
             {blocking.map((blocker) => (
               <li key={`${blocker.code}-${blocker.message}`}>
-                <StatusChip value={blocker.severity} label={humanise(blocker.code)} tone="blocked" />
-                <p className="mt-1 text-theme-sm text-gray-700">{blocker.message}</p>
+                <Badge variant="error">{humanise(blocker.code)}</Badge>
+                <p className="mt-1 text-sm text-foreground">{blocker.message}</p>
               </li>
             ))}
           </ul>
-        </Alert>
+        </Notice>
       )}
 
       {warnings.length > 0 && (
-        <Alert
+        <Notice
           variant="warning"
           title={`${warnings.length} advisory ${warnings.length === 1 ? 'warning' : 'warnings'}`}
         >
           <ul className="mt-1.5 space-y-2">
             {warnings.map((blocker) => (
               <li key={`${blocker.code}-${blocker.message}`}>
-                <StatusChip value={blocker.severity} label={humanise(blocker.code)} tone="caution" />
-                <p className="mt-1 text-theme-sm text-gray-700">{blocker.message}</p>
+                <Badge variant="warning">{humanise(blocker.code)}</Badge>
+                <p className="mt-1 text-sm text-foreground">{blocker.message}</p>
               </li>
             ))}
           </ul>
-        </Alert>
+        </Notice>
       )}
     </div>
   );

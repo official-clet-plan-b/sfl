@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import Alert from 'shared/components/Alert';
-import FormDialog from 'shared/components/FormDialog';
-import { TextAreaInput } from 'shared/components/fields';
+import { Notice } from '@rfdtech/components';
 import { FleetApiError, isFleetApiError } from 'shared/errors/FleetApiError';
+import { FormDialog, TextAreaInput } from 'modules/facilities/dialogs/dialogKit';
 
 interface TransitionNoteDialogProps {
   title: string;
@@ -92,9 +91,9 @@ const TransitionNoteDialog = ({
           }
         />
         {note && (
-          <Alert variant={destructive ? 'warning' : 'info'} title="Worth knowing">
-            <p className="text-theme-sm">{note}</p>
-          </Alert>
+          <Notice variant={destructive ? 'warning' : 'info'} title="Worth knowing">
+            <p className="text-sm">{note}</p>
+          </Notice>
         )}
       </div>
     </FormDialog>

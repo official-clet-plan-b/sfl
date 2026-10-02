@@ -6,21 +6,32 @@ import {
   humanise,
 } from 'modules/fleet/api/enums';
 import { integrationsApi } from 'modules/fleet/api/fleetApi';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
+import {
+  Banner,
+  Button,
+  Card,
+  Input,
+  MetricCard,
+  MetricCards,
+  PageSection,
+  SectionActions,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+} from '@rfdtech/components';
+import FleetTable, {
+  CellStack,
+  FilterDropdown,
+  FleetColumn,
+  useRegisterState,
+} from 'modules/fleet/components/FleetTable';
+import StatusBadge from 'modules/fleet/components/StatusBadge';
+import { TextInput } from 'modules/fleet/components/formFields';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import FacetFilter from 'shared/components/FacetFilter';
-import FilterBar from 'shared/components/FilterBar';
+import Icon from 'shared/components/Icon';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatCard from 'shared/components/StatCard';
-import StatusChip from 'shared/components/StatusChip';
-import { FieldLabelSpacer, TextInput } from 'shared/components/fields';
 import { formatDateTime } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
-import { fleetPaths } from 'shared/layout/navigation';
 import { canReplayIntegration } from '../api/access';
 
 /** How many messages the inbox search asks for. The service clamps at 500. */
@@ -45,25 +56,14 @@ const SEARCH_LIMIT = 100;
 const IntegrationHealthPage = () => {
   const { notifyError, notifySuccess } = useNotifier();
   const canReplay = canReplayIntegration();
-  const [sourceSystem, setSourceSystem] = useState('');
-  const [status, setStatus] = useState<IntegrationMessageStatus | ''>('');
-  const [eventType, setEventType] = useState('');
+  const state = useRegisterState('integration-messages');
+  const { filters, setFilter } = state;
+  const sourceSystem = filters.source ?? '';
+  const status = (filters.status ?? '') as IntegrationMessageStatus | '';
+  const eventType = filters.event ?? '';
   const [replayId, setReplayId] = useState('');
   const [replaying, setReplaying] = useState<string | null>(null);
   const filtered = Boolean(sourceSystem || status || eventType);
-
-  /**
-   * `FacetFilter` is built for a union the operator composes themselves - the search endpoint takes
-   * one value per axis, not several, so "select" here always replaces rather than adds. Toggling the
-   * option already active clears it, same as the dropdown it replaces; toggling a different one while
-   * one is active swaps to the new choice instead of appearing to hold both.
-   */
-  const pickSingle = <T extends string>(current: T | '', next: string[]): T | '' => {
-    if (next.length === 0) {
-      return '';
-    }
-    return (next.find((value) => value !== current) ?? next[0]) as T;
-  };
 
   const health = useApiQuery((signal) => integrationsApi.health(signal), []);
 
@@ -118,7 +118,7 @@ const IntegrationHealthPage = () => {
     [refreshAll, notifyError, notifySuccess],
   );
 
-  const columns = useMemo<Column<InboxMessageResponse>[]>(
+  const columns = useMemo<FleetColumn<InboxMessageResponse>[]>(
     () => [
       {
         key: 'message',
@@ -131,7 +131,7 @@ const IntegrationHealthPage = () => {
               secondary={`Received ${formatDateTime(row.receivedAt)}`}
             />
             {row.failureReason && (
-              <div className="mt-1 text-theme-xs text-error-600">{row.failureReason}</div>
+              <div className="mt-1 text-theme-xs text-error-700">{row.failureReason}</div>
             )}
           </div>
         ),
@@ -142,10 +142,10 @@ const IntegrationHealthPage = () => {
         width: 140,
         cell: (row) => (
           <div>
-            <StatusChip value={row.status} />
+            <StatusBadge value={row.status} />
             {/* Attempts only tell a story once there has been more than one. */}
             {row.attempts > 1 && (
-              <div className="mt-1 text-theme-xs text-gray-500">{row.attempts} attempts</div>
+              <div className="mt-1 text-theme-xs opacity-70">{row.attempts} attempts</div>
             )}
           </div>
         ),
@@ -154,37 +154,32 @@ const IntegrationHealthPage = () => {
         key: 'site',
         header: 'Site',
         width: 100,
-        hideBelowLg: true,
-        cell: (row) => (
-          <span className="text-theme-xs text-gray-600">{row.siteCode ?? '-'}</span>
-        ),
+        cell: (row) => <span className="text-theme-xs opacity-70">{row.siteCode ?? '-'}</span>,
       },
       {
         key: 'processedAt',
         header: 'Processed',
         width: 170,
-        hideBelowLg: true,
         cell: (row) =>
           row.processedAt ? (
-            <span className="text-theme-xs text-gray-600">{formatDateTime(row.processedAt)}</span>
+            <span className="text-theme-xs opacity-70">{formatDateTime(row.processedAt)}</span>
           ) : (
-            <span className="text-theme-xs text-gray-500">Not processed</span>
+            <span className="text-theme-xs opacity-70">Not processed</span>
           ),
       },
       {
         key: 'correlation',
         header: 'Correlation',
         width: 130,
-        hideBelowLg: true,
         cell: (row) => (
-          <span className="font-mono text-theme-xs text-gray-600">
+          <span className="font-mono text-theme-xs opacity-70">
             {row.correlationId ? row.correlationId.slice(0, 8) : '-'}
           </span>
         ),
       },
       {
         key: 'actions',
-        header: <span className="sr-only">Actions</span>,
+        header: 'Actions',
         width: 110,
         align: 'right',
         cell: (row) =>
@@ -192,10 +187,13 @@ const IntegrationHealthPage = () => {
             <Button
               size="sm"
               variant="ghost"
-              startIcon="refresh"
               loading={replaying === row.id}
-              onClick={() => void replay(row.id)}
+              onClick={(event) => {
+                event.stopPropagation();
+                void replay(row.id);
+              }}
             >
+              <Icon name="refresh" size={14} aria-hidden="true" />
               Replay
             </Button>
           ),
@@ -206,185 +204,173 @@ const IntegrationHealthPage = () => {
   );
 
   return (
-    <div>
-      <PageHeader
-        title="Integration health"
-        crumbs={[{ label: 'Fleet', to: fleetPaths.dashboard }, { label: 'Integration health' }]}
-        actions={
-          <Button variant="outline" startIcon="refresh" onClick={refreshAll}>
-            Refresh
-          </Button>
-        }
-        meta={
-          health.data && (
-            <p className="text-theme-xs text-gray-500">
-              Checked {formatDateTime(health.data.checkedAt)}
-            </p>
-          )
-        }
-      />
+    <>
+      <PageSection>
+        <SectionHeader>
+          <SectionTitle>Integration health</SectionTitle>
+          {health.data && (
+            <SectionDescription>Checked {formatDateTime(health.data.checkedAt)}</SectionDescription>
+          )}
+          <SectionActions>
+            <Button variant="outline" onClick={refreshAll}>
+              <Icon name="refresh" size={14} aria-hidden="true" />
+              Refresh
+            </Button>
+          </SectionActions>
+        </SectionHeader>
+      </PageSection>
 
-      <DataState
-        loading={health.initialising}
-        error={health.error}
-        onRetry={health.refetch}
-        minHeight={280}
-      >
-        {health.data && (
-          <div className="space-y-5">
-            {health.data.deadLetterMessages > 0 && (
-              <Alert variant="error">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <span>
-                    {health.data.deadLetterMessages} message
-                    {health.data.deadLetterMessages === 1 ? '' : 's'} require replay or operator
-                    review. Until they are cleared, vehicle movement data may be stale.
-                  </span>
-                  {canReplay && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setStatus('DEAD_LETTER')}
-                      disabled={status === 'DEAD_LETTER'}
-                    >
-                      Show them
-                    </Button>
-                  )}
-                </div>
-              </Alert>
-            )}
+      <DataState loading={false} error={health.error} onRetry={health.refetch} minHeight={280}>
+        {health.data && health.data.deadLetterMessages > 0 && (
+          <PageSection>
+            <Banner
+              variant="danger"
+              heading={`${health.data.deadLetterMessages} message${
+                health.data.deadLetterMessages === 1 ? '' : 's'
+              } require replay or operator review.`}
+              subtext="Until they are cleared, vehicle movement data may be stale."
+              action={
+                canReplay ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setFilter('status', 'DEAD_LETTER')}
+                    disabled={status === 'DEAD_LETTER'}
+                  >
+                    Show them
+                  </Button>
+                ) : undefined
+              }
+            />
+          </PageSection>
+        )}
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <StatCard
-                label="Processed"
-                value={health.data.processedMessages}
-                icon="check-circle"
-                tone="good"
-                caption="Accepted and applied"
-              />
-              <StatCard
-                label="Rejected"
-                value={health.data.rejectedMessages}
-                icon="alert-circle"
-                tone={health.data.rejectedMessages > 0 ? 'caution' : 'good'}
-                caption="Signature, allowlist or schema"
-              />
-              <StatCard
-                label="Dead letters"
-                value={health.data.deadLetterMessages}
-                icon="alert-triangle"
-                tone={health.data.deadLetterMessages > 0 ? 'critical' : 'good'}
-                caption="Awaiting replay"
-              />
-            </div>
+        <PageSection>
+          <MetricCards>
+            <MetricCard
+              variant="soft"
+              loading={health.initialising}
+              label="Processed"
+              value={health.data?.processedMessages ?? 0}
+              description="Accepted and applied"
+            />
+            <MetricCard
+              variant="soft"
+              loading={health.initialising}
+              label="Rejected"
+              value={health.data?.rejectedMessages ?? 0}
+              description="Signature, allowlist or schema"
+            />
+            <MetricCard
+              variant="soft"
+              loading={health.initialising}
+              label="Dead letters"
+              value={health.data?.deadLetterMessages ?? 0}
+              description="Awaiting replay"
+            />
+          </MetricCards>
+        </PageSection>
 
-            {/*
-              Nothing stands in for the inbox and replay controls when the role cannot use them.
-              A card explaining the absence was more prominent than the counters the page is for,
-              and it told the reader about permissions rather than about the integration.
-            */}
-            {canReplay && (
-              <>
-                <SectionCard title="Inbound messages" subtitle="Newest first" flush>
-              <FilterBar
-                onReset={() => {
-                  setSourceSystem('');
-                  setStatus('');
-                  setEventType('');
-                }}
-                resetDisabled={!filtered}
-              >
-                <TextInput
-                  label="Source system"
-                  value={sourceSystem}
-                  onChange={setSourceSystem}
-                  helperText="Matches on part of the name."
-                />
-                <FacetFilter
-                  label="Status"
-                  selected={status ? [status] : []}
-                  onChange={(next) => setStatus(pickSingle(status, next))}
-                  options={INTEGRATION_MESSAGE_STATUSES.map((value) => ({
-                    value,
-                    label: humanise(value),
-                  }))}
-                />
-                <TextInput
-                  label="Event type"
-                  value={eventType}
-                  onChange={setEventType}
-                  helperText="For example, vehicle.location."
-                />
-              </FilterBar>
-
-              <DataState
-                loading={messages.initialising}
+        {/*
+          Nothing stands in for the inbox and replay controls when the role cannot use them.
+          A card explaining the absence was more prominent than the counters the page is for,
+          and it told the reader about permissions rather than about the integration.
+        */}
+        {canReplay && (
+          <>
+            <PageSection>
+              <SectionHeader>
+                <SectionTitle>Inbound messages</SectionTitle>
+                <SectionDescription>Newest first</SectionDescription>
+              </SectionHeader>
+              <FleetTable
+                paramPrefix="integration-messages"
+                rows={messages.data ?? []}
+                columns={columns}
+                getRowId={(row) => row.id}
+                loading={messages.loading}
                 error={messages.error}
-                empty={(messages.data?.length ?? 0) === 0}
+                onRetry={messages.refetch}
+                caption="Inbound integration messages"
+                filters={
+                  <>
+                    <Input
+                      name="source"
+                      aria-label="Source system"
+                      placeholder="Source system"
+                      defaultValue={sourceSystem}
+                    />
+                    <FilterDropdown
+                      name="status"
+                      label="Status"
+                      value={status}
+                      onChange={(value) => setFilter('status', value)}
+                      options={INTEGRATION_MESSAGE_STATUSES.map((value) => ({
+                        value,
+                        label: humanise(value),
+                      }))}
+                    />
+                    <Input
+                      name="event"
+                      aria-label="Event type"
+                      placeholder="Event type, for example vehicle.location"
+                      defaultValue={eventType}
+                    />
+                  </>
+                }
                 emptyTitle={filtered ? 'No messages match these filters' : 'No inbound messages'}
-                emptyHint={
+                emptyDescription={
                   filtered
                     ? 'Adjust the filters, or reset them to see the whole inbox.'
                     : 'Nothing has arrived through the signed intake endpoint yet.'
                 }
-                onRetry={messages.refetch}
-                minHeight={200}
-              >
-                <DataTable
-                  rows={messages.data ?? []}
-                  columns={columns}
-                  getRowId={(row) => row.id}
-                  loading={messages.loading}
-                  dense
-                />
-                {(messages.data?.length ?? 0) >= SEARCH_LIMIT && (
-                  <p className="px-5 pt-3 pb-1 text-theme-xs text-gray-500">
-                    The most recent {SEARCH_LIMIT} messages. Filter by status or source system to see
-                    further back.
-                  </p>
-                )}
-              </DataState>
-                </SectionCard>
+              />
+              {(messages.data?.length ?? 0) >= SEARCH_LIMIT && (
+                <p className="mt-3 text-theme-xs opacity-70">
+                  The most recent {SEARCH_LIMIT} messages. Filter by status or source system to see
+                  further back.
+                </p>
+              )}
+            </PageSection>
 
-                <SectionCard
-              title="Replay by message identifier"
-              subtitle="For an identifier that came from a log or an incident note rather than the list above"
-            >
-              {/*
-                Top-aligned, because the field carries a helper line and the button does not: under
-                `items-end` that line pushed the input up and left the two on different rows. The
-                button reserves the label's height instead, which puts it on the control line.
-              */}
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                <TextInput
-                  label="Integration message ID"
-                  value={replayId}
-                  onChange={setReplayId}
-                  className="sm:max-w-[420px] sm:flex-1"
-                  helperText="Privileged and idempotent - replaying the same message twice is safe."
-                />
-                <div className="shrink-0">
-                  <span className="hidden sm:block">
-                    <FieldLabelSpacer />
-                  </span>
+            <PageSection>
+              <SectionHeader>
+                <SectionTitle>Replay by message identifier</SectionTitle>
+                <SectionDescription>
+                  For an identifier that came from a log or an incident note rather than the list
+                  above
+                </SectionDescription>
+              </SectionHeader>
+              <Card bordered>
+                {/*
+                  Top-aligned, because the field carries a helper line and the button does not: under
+                  `items-end` that line pushed the input up and left the two on different rows.
+                */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                  <TextInput
+                    label="Integration message ID"
+                    value={replayId}
+                    onChange={setReplayId}
+                    className="sm:max-w-[420px] sm:flex-1"
+                    helperText="Privileged and idempotent - replaying the same message twice is safe."
+                  />
                   <Button
                     variant="primary"
-                    startIcon="refresh"
+                    className="sm:mt-6"
                     loading={replaying === replayId.trim()}
                     disabled={!replayId.trim()}
                     onClick={() => void replay(replayId.trim(), () => setReplayId(''))}
                   >
+                    <Icon name="refresh" size={14} aria-hidden="true" />
                     Replay
                   </Button>
                 </div>
-              </div>
-                </SectionCard>
-              </>
-            )}
-          </div>
+              </Card>
+            </PageSection>
+          </>
         )}
       </DataState>
-    </div>
+    </>
   );
 };
 
