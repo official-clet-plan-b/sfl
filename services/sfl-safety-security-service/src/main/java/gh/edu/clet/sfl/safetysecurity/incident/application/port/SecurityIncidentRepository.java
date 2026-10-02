@@ -5,6 +5,7 @@ import gh.edu.clet.sfl.safetysecurity.incident.domain.model.IncidentEvidence;
 import gh.edu.clet.sfl.safetysecurity.incident.domain.model.IncidentStatus;
 import gh.edu.clet.sfl.safetysecurity.incident.domain.model.SecurityIncident;
 import gh.edu.clet.sfl.safetysecurity.incident.domain.model.Severity;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -35,6 +36,13 @@ public interface SecurityIncidentRepository {
     Map<IncidentStatus, Long> countByStatus(String siteCode);
 
     Map<Severity, Long> countBySeverity(String siteCode);
+
+    /** @param ageing open actions by days since raised: 0-30, 31-60, 61-90, over 90 */
+    record CapaCounts(long open, long overdue, long verified, long cancelled, List<Long> ageing) {
+    }
+
+    /** Corrective-action counts for the HSE dashboard's shared incidents-and-drills panel. Overdue is as of today. */
+    CapaCounts capaCounts(String siteCode, LocalDate today);
 
     record IncidentQuery(String siteCode, IncidentStatus status, Severity severity, int limit) {
     }

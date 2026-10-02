@@ -6,6 +6,7 @@ import gh.edu.clet.sfl.safetysecurity.incident.domain.model.IncidentEvidence;
 import gh.edu.clet.sfl.safetysecurity.incident.domain.model.IncidentStatus;
 import gh.edu.clet.sfl.safetysecurity.incident.domain.model.SecurityIncident;
 import gh.edu.clet.sfl.safetysecurity.incident.domain.model.Severity;
+import java.time.LocalDate;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -110,6 +111,16 @@ public class SecurityIncidentRepositoryAdapter implements SecurityIncidentReposi
             counts.put((Severity) row[0], (Long) row[1]);
         }
         return counts;
+    }
+
+    @Override
+    public CapaCounts capaCounts(String siteCode, LocalDate today) {
+        Object[] row = correctiveActions.capaCounts(siteCode, today).get(0);
+        long[] n = new long[row.length];
+        for (int i = 0; i < row.length; i++) {
+            n[i] = ((Number) row[i]).longValue();
+        }
+        return new CapaCounts(n[0], n[1], n[2], n[3], List.of(n[4], n[5], n[6], n[7]));
     }
 
     private static PageRequest page(int limit) {
