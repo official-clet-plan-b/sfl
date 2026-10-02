@@ -21,6 +21,7 @@ import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.NotificationActivat
 import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.NotificationChannel;
 import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.NotificationTemplate;
 import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.Priority;
+import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.RecordLifecycle;
 import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.RecordMetadata;
 import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.RetentionClass;
 import gh.edu.clet.sfl.safetysecurity.emergency.domain.model.SiteCode;
@@ -455,21 +456,44 @@ public class ActivationService implements EmergencyDrillTrigger {
     // ---- drill mode (Phase 2 S175-01) ------------------------------------------------------------
 
     @Override
-    @Transactional
-    public DrillNotification trigger(DrillNotificationRequest request, ActorContext actor) {
-        SiteCode site = requireSite(request.siteCode());
-        NotificationTemplate template = request.templateId() == null ? null
-                : repository.findTemplate(request.templateId()).orElseThrow(
-                        () -> EmergencyException.notFound("NotificationTemplate", request.templateId()));
-        if (template == null) {
+    @Transactional(readOnly = true)
+    public List<DrillTemplate> drillTemplates(String siteCode) {
+        SiteCode site = requireSite(siteCode);
+        return repository.findTemplates(new EmergencyRepository.RecordQuery(List.of(site.value()), null,
+                        RecordLifecycle.ACTIVE, Boolean.FALSE,
+                        new EmergencyRepository.Paging(0, EmergencyRepository.Paging.MAX_SIZE, "title")))
+                .content().stream().filter(NotificationTemplate::drill)
+                .map(t -> new DrillTemplate(t.id(), t.templateCode(), t.title(),
+                        t.channels().stream().map(Enum::name).toList()))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void requireDrillTemplate(String siteCode, UUID templateId) {
+        drillTemplate(requireSite(siteCode), templateId);
+    }
+
+    private NotificationTemplate drillTemplate(SiteCode site, UUID templateId) {
+        if (templateId == null) {
             throw new EmergencyException(EmergencyErrorCode.EMERGENCY_TEST_REAL_AMBIGUITY,
                     Map.of("reason", "A drill is only sent with a drill template."));
         }
+        NotificationTemplate template = repository.findTemplate(templateId)
+                .orElseThrow(() -> EmergencyException.notFound("NotificationTemplate", templateId));
         DrillSeparationPolicy.requireDrillTemplate(template);
         if (!template.siteCode().equals(site) || !template.active()) {
             throw new EmergencyException(EmergencyErrorCode.EMERGENCY_VALIDATION_FAILED,
                     Map.of("reason", "The drill template must be active and belong to " + site.value() + "."));
         }
+        return template;
+    }
+
+    @Override
+    @Transactional
+    public DrillNotification trigger(DrillNotificationRequest request, ActorContext actor) {
+        SiteCode site = requireSite(request.siteCode());
+        NotificationTemplate template = drillTemplate(site, request.templateId());
         List<ChannelType> channels = request.channels() == null || request.channels().isEmpty() ? template.channels()
                 : request.channels().stream().map(ChannelType::valueOf).toList();
         SourceChannel channel = SourceChannel.API;
