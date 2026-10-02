@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { TripResponse } from 'modules/fleet/api/dto';
 import { tripsApi } from 'modules/fleet/api/fleetApi';
-import { SelectInput, type SelectOption } from 'shared/components/fields';
+import { SelectField, type SelectOption } from 'modules/fuel/components/fuelFields';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 
 /**
@@ -93,7 +93,7 @@ export const ActiveTripSelect = ({
   );
 
   return (
-    <SelectInput
+    <SelectField
       {...rest}
       label="Trip"
       options={options}

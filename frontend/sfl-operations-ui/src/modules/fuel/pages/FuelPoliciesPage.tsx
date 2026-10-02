@@ -6,21 +6,16 @@ import { CreatePolicyDialog } from 'modules/fuel/dialogs/policyDialogs';
 import { useClampPage, useServerPage } from 'shared/hooks/useServerPage';
 import PostedPricePanel from 'modules/fuel/components/PostedPricePanel';
 import { siteOf } from 'modules/fuel/components/fuelFormat';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
-import DataTable, { CellStack, Column } from 'shared/components/DataTable';
-import FilterBar from 'shared/components/FilterBar';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
-import { FieldLabelSpacer } from 'shared/components/fields';
-import StatusChip from 'shared/components/StatusChip';
 import { formatDate, formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fuelPaths } from 'shared/layout/navigation';
 import { canManageFuelPolicies } from 'modules/fleet/api/access';
+import { Banner, Button, type TableColumn } from '@rfdtech/components';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import { FuelBadge, Panel, RegisterTable, CellStack } from 'modules/fuel/components/fuelUi';
 
 /** A policy covers `now` when it is ACTIVE and now falls inside its effective period. */
 const inForce = (policy: FuelPolicy, at = Date.now()): boolean =>
@@ -74,13 +69,13 @@ const FuelPoliciesPage = () => {
 
   const currentlyInForce = useMemo(() => inForceNow.data?.content ?? [], [inForceNow.data]);
 
-  const columns = useMemo<Column<FuelPolicy>[]>(
+  const columns = useMemo<TableColumn<FuelPolicy>[]>(
     () => [
       {
-        key: 'policy',
+        id: 'policy',
         header: 'Policy',
         width: 260,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack
             primary={`${row.name} · version ${row.policyVersion}`}
             secondary={
@@ -94,10 +89,10 @@ const FuelPoliciesPage = () => {
         ),
       },
       {
-        key: 'period',
+        id: 'period',
         header: 'Effective period',
         width: 220,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack
             primary={formatDate(row.effectiveFrom)}
             secondary={row.effectiveTo ? `to ${formatDate(row.effectiveTo)}` : 'no end date'}
@@ -105,18 +100,17 @@ const FuelPoliciesPage = () => {
         ),
       },
       {
-        key: 'max',
+        id: 'max',
         header: 'Max per transaction',
         width: 150,
         align: 'right',
-        cell: (row) => formatNumber(row.maxPerTransaction),
+        cell: ({ row }) => formatNumber(row.maxPerTransaction),
       },
       {
-        key: 'rolling',
+        id: 'rolling',
         header: 'Rolling limits',
         width: 180,
-        hideBelowLg: true,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack
             primary={`Daily ${row.dailyLimit === null ? 'not set' : formatNumber(row.dailyLimit)}`}
             secondary={`Monthly ${row.monthlyLimit === null ? 'not set' : formatNumber(row.monthlyLimit)}`}
@@ -124,11 +118,10 @@ const FuelPoliciesPage = () => {
         ),
       },
       {
-        key: 'pattern',
+        id: 'pattern',
         header: 'Pattern threshold',
         width: 170,
-        hideBelowLg: true,
-        cell: (row) => (
+        cell: ({ row }) => (
           <CellStack
             primary={`${row.repeatedPatternThreshold} cases`}
             secondary={`${row.repeatedPatternWindowHours}h window`}
@@ -136,35 +129,33 @@ const FuelPoliciesPage = () => {
         ),
       },
       {
-        key: 'sla',
+        id: 'sla',
         header: 'Anomaly SLA',
         width: 120,
         align: 'right',
-        hideBelowLg: true,
-        cell: (row) => `${row.anomalySlaHours} hrs`,
+        cell: ({ row }) => `${row.anomalySlaHours} hrs`,
       },
       {
-        key: 'receipt',
+        id: 'receipt',
         header: 'Receipt',
         width: 140,
-        hideBelowLg: true,
-        cell: (row) =>
+        cell: ({ row }) =>
           row.receiptRequired ? (
-            <StatusChip
+            <FuelBadge
               value="ACTIVE"
               label={`Required · ${row.receiptGraceHours}h grace`}
               tone="active"
             />
           ) : (
-            <StatusChip value="INACTIVE" label="Not required" tone="neutral" />
+            <FuelBadge value="INACTIVE" label="Not required" tone="neutral" />
           ),
       },
       {
-        key: 'status',
+        id: 'status',
         header: 'Status',
         width: 150,
         align: 'right',
-        cell: (row) => <StatusChip value={row.status} />,
+        cell: ({ row }) => <FuelBadge value={row.status} />,
       },
     ],
     [],
@@ -172,7 +163,7 @@ const FuelPoliciesPage = () => {
 
   return (
     <div>
-      <PageHeader
+      <PageHeading
         title="Fuel policies"
         subtitle="The effective-dated limits every reconciliation is read from."
         crumbs={[{ label: 'Fuel', to: fuelPaths.dashboard }, { label: 'Fuel policies' }]}
@@ -180,15 +171,15 @@ const FuelPoliciesPage = () => {
           // A policy is the rule set every reconciliation is judged against; writing one is a fleet
           // manager's act, not a reader's.
           canManageFuelPolicies() ? (
-            <Button variant="primary" startIcon="plus" onClick={() => setCreating(true)}>
+            <Button variant="primary" onClick={() => setCreating(true)}>
               Create policy
             </Button>
           ) : undefined
         }
       />
 
-      <SectionCard flush>
-        <FilterBar onReset={() => setActiveOnly(false)} resetDisabled={!activeOnly}>
+      <Panel title="Policy register filters">
+        <div className="flex flex-wrap items-end gap-3">
           <SiteSelect value={siteCode} onChange={setSiteCode} required />
           {/*
             `items-end pb-1` here was compensating for the bar aligning at the bottom - it nudged a
@@ -196,28 +187,21 @@ const FuelPoliciesPage = () => {
             the reserved label line does the same job without a tuned padding that only held for
             one field height.
           */}
-          <div>
-            <FieldLabelSpacer />
             <Button
               variant={activeOnly ? 'primary' : 'outline'}
-              startIcon="filter"
               onClick={() => setActiveOnly((current) => !current)}
             >
               Active only
             </Button>
-          </div>
-        </FilterBar>
-      </SectionCard>
+        </div>
+      </Panel>
 
       <div className="mt-5 space-y-5">
         {query.data && currentlyInForce.length === 0 && (
-          <Alert variant="warning" title="No policy is in force at this site right now">
-            Reconciliation resolves the policy covering a transaction’s own timestamp and refuses the
-            run when it finds none. Transactions can still be captured; they cannot be reconciled.
-          </Alert>
+          <Banner variant="warning" heading="No policy is in force at this site right now" subtext="Reconciliation resolves the policy covering a transaction’s own timestamp and refuses the run when it finds none. Transactions can still be captured; they cannot be reconciled." />
         )}
 
-        <SectionCard flush>
+        <Panel title="Policy register">
           <DataState
             loading={query.initialising}
             error={query.error}
@@ -227,21 +211,21 @@ const FuelPoliciesPage = () => {
             onRetry={query.refetch}
             minHeight={280}
           >
-            <DataTable
+            <RegisterTable
+              paramPrefix="fuel-policies"
               rows={policies}
               columns={columns}
-              getRowId={(row) => row.id}
+              rowKey={(row) => row.id}
               loading={query.loading}
               onRowClick={(row) => navigate(fuelPaths.policyDetail(row.id))}
-              caption="Fuel policies at this site, with their effective period, per-transaction limit, anomaly SLA, receipt rule and status."
-              page={query.data?.page ?? paging.page}
+              empty={{ title: 'No fuel policy at this site', description: 'Create one before capturing transactions.', filteredTitle: 'No fuel policies match the filter' }}
+              filtersApplied={activeOnly}
+              totalPages={query.data?.totalPages ?? 0}
+              totalItems={query.data?.totalElements ?? 0}
               pageSize={query.data?.size ?? paging.size}
-              totalElements={query.data?.totalElements ?? 0}
-              onPageChange={paging.setPage}
-              onPageSizeChange={paging.setSize}
             />
           </DataState>
-        </SectionCard>
+        </Panel>
 
         {/*
           Beside the policies rather than on a screen of its own: a posted price is a rule set by the
@@ -251,9 +235,9 @@ const FuelPoliciesPage = () => {
         <PostedPricePanel siteCode={siteCode} />
 
         {currentlyInForce.length > 0 && (
-          <SectionCard
+          <Panel
             title="In force right now"
-            subtitle="What a reconciliation run today would read"
+            description="What a reconciliation run today would read"
           >
             <ul className="space-y-2.5">
               {currentlyInForce.map((policy) => (
@@ -268,7 +252,6 @@ const FuelPoliciesPage = () => {
                   <Button
                     size="sm"
                     variant="ghost"
-                    endIcon="chevron-right"
                     onClick={() => navigate(fuelPaths.policyDetail(policy.id))}
                   >
                     Open
@@ -276,7 +259,7 @@ const FuelPoliciesPage = () => {
                 </li>
               ))}
             </ul>
-          </SectionCard>
+          </Panel>
         )}
       </div>
 

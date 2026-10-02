@@ -17,18 +17,16 @@ import { AnomalyActionDialog } from 'modules/fuel/dialogs/anomalyDialogs';
 import HistoryTimeline from 'modules/fuel/components/HistoryTimeline';
 import { formatDueIn, siteOf } from 'modules/fuel/components/fuelFormat';
 import { humanise } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
 import Icon from 'shared/components/Icon';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
 import { useNotifier } from 'shared/components/Notifier';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatusChip from 'shared/components/StatusChip';
 import { formatDateTime } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fleetPaths, fuelPaths } from 'shared/layout/navigation';
+import { Banner, Button } from '@rfdtech/components';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import { FuelBadge, Panel } from 'modules/fuel/components/fuelUi';
 
 /** One sentence per action, naming what landed. */
 const CONFIRMATIONS: Record<AnomalyAction, string> = {
@@ -118,7 +116,7 @@ const FuelAnomalyDetailPage = () => {
 
   return (
     <div>
-      <PageHeader
+      <PageHeading
         title={record?.anomalyNumber ?? 'Anomaly case'}
         subtitle={record ? humanise(record.type) : undefined}
         crumbs={[
@@ -129,7 +127,6 @@ const FuelAnomalyDetailPage = () => {
         actions={
           <Button
             variant="outline"
-            startIcon="arrow-left"
             onClick={() => navigate(fuelPaths.anomalies)}
           >
             Queue
@@ -138,11 +135,11 @@ const FuelAnomalyDetailPage = () => {
         meta={
           record && (
             <div className="flex flex-wrap items-center gap-2">
-              <StatusChip value={record.status} />
-              <StatusChip value={record.severity} />
-              {record.material && <StatusChip value="HIGH" label="Material" tone="caution" />}
+              <FuelBadge value={record.status} />
+              <FuelBadge value={record.severity} />
+              {record.material && <FuelBadge value="HIGH" label="Material" tone="caution" />}
               {record.escalationLevel > 0 && (
-                <StatusChip
+                <FuelBadge
                   value="ESCALATED"
                   label={`Escalation level ${record.escalationLevel}`}
                   tone="blocked"
@@ -162,29 +159,20 @@ const FuelAnomalyDetailPage = () => {
         {record && (
           <div className="space-y-5">
             {breached && (
-              <Alert variant="error" title="This case has breached its SLA">
-                It was due {formatDateTime(record.slaDueAt)} - {formatDueIn(record.slaDueAt)}. The
-                scheduled sweep escalates cases past their target automatically.
-              </Alert>
+              <Banner variant="danger" heading="This case has breached its SLA" subtext={<>It was due {formatDateTime(record.slaDueAt)} - {formatDueIn(record.slaDueAt)}. The
+                scheduled sweep escalates cases past their target automatically.</>} />
             )}
             {record.material && anomalyOpen(record) && (
-              <Alert variant="warning" title="This case is material">
-                The transaction met or exceeded the policy’s materiality amount, so escalating it
-                surfaces it to finance and audit as well as to the fleet manager.
-              </Alert>
+              <Banner variant="warning" heading="This case is material" subtext="The transaction met or exceeded the policy’s materiality amount, so escalating it surfaces it to finance and audit as well as to the fleet manager." />
             )}
             {record.status === 'CLOSED' && (
-              <Alert variant="success" title="This case is closed">
-                {record.closureReason ?? 'No closure reason was recorded.'}
-              </Alert>
+              <Banner variant="success" heading="This case is closed" subtext={record.closureReason ?? 'No closure reason was recorded.'} />
             )}
             {record.status === 'CANCELLED' && (
-              <Alert variant="info" title="This case is cancelled">
-                {record.closureReason ?? 'No reason was recorded.'}
-              </Alert>
+              <Banner variant="info" heading="This case is cancelled" subtext={record.closureReason ?? 'No reason was recorded.'} />
             )}
 
-            <SectionCard title="Actions">
+            <Panel title="Actions">
               <div className="flex flex-wrap items-center gap-2">
                 {ACTION_ORDER.filter((action) => anomalyActionAllowed(record, action)).map(
                   (action) =>
@@ -192,7 +180,6 @@ const FuelAnomalyDetailPage = () => {
                       <Button
                         key={action}
                         variant="outline"
-                        startIcon="play"
                         loading={working === action}
                         onClick={() => runDirect(action)}
                       >
@@ -202,7 +189,6 @@ const FuelAnomalyDetailPage = () => {
                       <Button
                         key={action}
                         variant={buttonVariant(action)}
-                        startIcon={buttonIcon(action)}
                         onClick={() => setDialog(action)}
                       >
                         {ANOMALY_RULES[action].label}
@@ -215,8 +201,6 @@ const FuelAnomalyDetailPage = () => {
                 {record.transactionId && (
                   <Button
                     variant="ghost"
-                    startIcon="coins"
-                    endIcon="chevron-right"
                     onClick={() =>
                       navigate(fuelPaths.transactionDetail(record.transactionId as string))
                     }
@@ -227,8 +211,6 @@ const FuelAnomalyDetailPage = () => {
                 {record.logbookId && (
                   <Button
                     variant="ghost"
-                    startIcon="book"
-                    endIcon="chevron-right"
                     onClick={() => navigate(fuelPaths.logbookDetail(record.logbookId as string))}
                   >
                     Logbook
@@ -237,8 +219,6 @@ const FuelAnomalyDetailPage = () => {
                 {record.vehicleId && (
                   <Button
                     variant="ghost"
-                    startIcon="truck"
-                    endIcon="chevron-right"
                     onClick={() => navigate(fleetPaths.vehicleDetail(record.vehicleId as string))}
                   >
                     Vehicle
@@ -247,8 +227,6 @@ const FuelAnomalyDetailPage = () => {
                 {record.driverId && (
                   <Button
                     variant="ghost"
-                    startIcon="driver"
-                    endIcon="chevron-right"
                     onClick={() => navigate(fleetPaths.driverDetail(record.driverId as string))}
                   >
                     Driver
@@ -257,19 +235,17 @@ const FuelAnomalyDetailPage = () => {
                 {record.tripId && (
                   <Button
                     variant="ghost"
-                    startIcon="route"
-                    endIcon="chevron-right"
                     onClick={() => navigate(fleetPaths.tripDetail(record.tripId as string))}
                   >
                     Trip
                   </Button>
                 )}
               </div>
-            </SectionCard>
+            </Panel>
 
             <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
               <div className="space-y-5">
-                <SectionCard title="Case">
+                <Panel title="Case">
                   <KeyValueGrid
                     items={[
                       { label: 'Case number', value: record.anomalyNumber },
@@ -290,11 +266,11 @@ const FuelAnomalyDetailPage = () => {
                       { label: 'Closure reason', value: record.closureReason ?? '-', span: 2 },
                     ]}
                   />
-                </SectionCard>
+                </Panel>
 
-                <SectionCard
+                <Panel
                   title="Why this case exists"
-                  subtitle="The rules the service recorded when it raised the case"
+                  description="The rules the service recorded when it raised the case"
                 >
                   {record.detectedRules.length === 0 ? (
                     <p className="text-theme-sm text-gray-600">No rule was recorded.</p>
@@ -314,13 +290,13 @@ const FuelAnomalyDetailPage = () => {
                       ))}
                     </ul>
                   )}
-                </SectionCard>
+                </Panel>
               </div>
 
               <div className="space-y-5">
-                <SectionCard
+                <Panel
                   title="Path to closure"
-                  subtitle="All three are required before the case can be closed"
+                  description="All three are required before the case can be closed"
                 >
                   <ul className="space-y-3">
                     <ClosureStep
@@ -340,17 +316,15 @@ const FuelAnomalyDetailPage = () => {
                     />
                   </ul>
                   {anomalyOpen(record) && closureBlockers.length === 0 && (
-                    <Alert variant="success" className="mt-4">
-                      Everything the service needs is recorded. Closure needs an evidence reference.
-                    </Alert>
+                    <Banner variant="success" heading="Ready to close" subtext="Everything the service needs is recorded. Closure needs an evidence reference." className="mt-4" />
                   )}
-                </SectionCard>
+                </Panel>
 
-                <SectionCard
+                <Panel
                   title="History"
-                  subtitle="Recorded transitions, from the audit log"
+                  description="Recorded transitions, from the audit log"
                   actions={
-                    <Button variant="ghost" size="sm" startIcon="refresh" onClick={history.refetch}>
+                    <Button variant="ghost" size="sm" onClick={history.refetch}>
                       Refresh
                     </Button>
                   }
@@ -363,9 +337,9 @@ const FuelAnomalyDetailPage = () => {
                   >
                     <HistoryTimeline events={history.data} recordNoun="case" />
                   </DataState>
-                </SectionCard>
+                </Panel>
 
-                <SectionCard title="Where this can go next">
+                <Panel title="Where this can go next">
                   <ul className="space-y-2.5">
                     {ACTION_ORDER.map((action) => {
                       const allowed = anomalyActionAllowed(record, action);
@@ -410,7 +384,7 @@ const FuelAnomalyDetailPage = () => {
                       );
                     })}
                   </ul>
-                </SectionCard>
+                </Panel>
               </div>
             </div>
 
@@ -460,38 +434,12 @@ const buttonVariant = (action: AnomalyAction) => {
     case 'assign':
       return 'primary' as const;
     case 'close':
-      return 'accent' as const;
+      return 'primary' as const;
     case 'cancel':
     case 'reject':
-      return 'danger' as const;
+      return 'primary-destructive' as const;
     default:
       return 'outline' as const;
-  }
-};
-
-const buttonIcon = (action: AnomalyAction) => {
-  switch (action) {
-    case 'assign':
-    case 'reassign':
-      return 'user-plus' as const;
-    case 'explain':
-      return 'edit' as const;
-    case 'approve':
-      return 'check-circle' as const;
-    case 'reject':
-      return 'close' as const;
-    case 'escalate':
-      return 'alert-triangle' as const;
-    case 'hold':
-      return 'stop' as const;
-    case 'close':
-      return 'lock' as const;
-    case 'reopen':
-      return 'refresh' as const;
-    case 'cancel':
-      return 'close' as const;
-    default:
-      return 'play' as const;
   }
 };
 

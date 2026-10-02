@@ -7,16 +7,14 @@ import HistoryTimeline from 'modules/fuel/components/HistoryTimeline';
 import { canManageFuelPolicies } from 'modules/fleet/api/access';
 import { siteOf } from 'modules/fuel/components/fuelFormat';
 import { humanise } from 'modules/fleet/api/enums';
-import Alert from 'shared/components/Alert';
-import Button from 'shared/components/Button';
 import DataState from 'shared/components/DataState';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
-import PageHeader from 'shared/components/PageHeader';
-import SectionCard from 'shared/components/SectionCard';
-import StatusChip from 'shared/components/StatusChip';
 import { formatDateTime, formatNumber } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fuelPaths } from 'shared/layout/navigation';
+import { Banner, Button } from '@rfdtech/components';
+import PageHeading from 'modules/emergency/components/PageHeading';
+import { FuelBadge, Panel } from 'modules/fuel/components/fuelUi';
 
 const inForce = (policy: FuelPolicy, at = Date.now()): boolean =>
   policy.status === 'ACTIVE' &&
@@ -51,7 +49,7 @@ const FuelPolicyDetailPage = () => {
 
   return (
     <div>
-      <PageHeader
+      <PageHeading
         title={policy ? policy.name : 'Fuel policy'}
         subtitle={policy ? `Version ${policy.policyVersion} · ${siteOf(policy.siteCode)}` : undefined}
         crumbs={[
@@ -68,11 +66,11 @@ const FuelPolicyDetailPage = () => {
             */}
             {policy && canManageFuelPolicies() && (
               <>
-                <Button variant="outline" startIcon="edit" onClick={() => setEditing(true)}>
+                <Button variant="outline" onClick={() => setEditing(true)}>
                   Edit
                 </Button>
                 {policy.status !== 'ARCHIVED' && (
-                  <Button variant="outline" startIcon="close" onClick={() => setWithdrawing(true)}>
+                  <Button variant="outline" onClick={() => setWithdrawing(true)}>
                     Withdraw
                   </Button>
                 )}
@@ -80,7 +78,6 @@ const FuelPolicyDetailPage = () => {
             )}
             <Button
               variant="outline"
-              startIcon="arrow-left"
               onClick={() => navigate(fuelPaths.policies)}
             >
               Register
@@ -90,11 +87,11 @@ const FuelPolicyDetailPage = () => {
         meta={
           policy && (
             <div className="flex flex-wrap items-center gap-2">
-              <StatusChip value={policy.status} />
+              <FuelBadge value={policy.status} />
               {inForce(policy) ? (
-                <StatusChip value="ACTIVE" label="In force now" tone="ready" />
+                <FuelBadge value="ACTIVE" label="In force now" tone="ready" />
               ) : (
-                <StatusChip value="INACTIVE" label="Outside its period" tone="neutral" />
+                <FuelBadge value="INACTIVE" label="Outside its period" tone="neutral" />
               )}
             </div>
           )
@@ -111,7 +108,7 @@ const FuelPolicyDetailPage = () => {
           <div className="space-y-5">
             <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
               <div className="space-y-5">
-                <SectionCard title="Effective period" subtitle="What reconciliation resolves against">
+                <Panel title="Effective period" description="What reconciliation resolves against">
                   <KeyValueGrid
                     columns={2}
                     items={[
@@ -131,9 +128,9 @@ const FuelPolicyDetailPage = () => {
                       },
                     ]}
                   />
-                </SectionCard>
+                </Panel>
 
-                <SectionCard title="Limits" subtitle="What the reconciliation rules read">
+                <Panel title="Limits" description="What the reconciliation rules read">
                   <KeyValueGrid
                     items={[
                       {
@@ -201,9 +198,9 @@ const FuelPolicyDetailPage = () => {
                     the vehicle, driver and fuel card, and the cost-variance and repeated-pattern
                     checks are versioned policy values recorded with each reconciliation.
                   </p>
-                </SectionCard>
+                </Panel>
 
-                <SectionCard title="Allowed products and vendors">
+                <Panel title="Allowed products and vendors">
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div>
                       <p className="text-theme-xs font-semibold text-gray-600">Fuel products</p>
@@ -215,7 +212,7 @@ const FuelPolicyDetailPage = () => {
                         <ul className="mt-1.5 flex flex-wrap gap-1.5">
                           {policy.allowedFuelProducts.map((product) => (
                             <li key={product}>
-                              <StatusChip value={product} label={product} tone="neutral" />
+                              <FuelBadge value={product} label={product} tone="neutral" />
                             </li>
                           ))}
                         </ul>
@@ -231,18 +228,18 @@ const FuelPolicyDetailPage = () => {
                         <ul className="mt-1.5 flex flex-wrap gap-1.5">
                           {policy.approvedVendors.map((vendor) => (
                             <li key={vendor}>
-                              <StatusChip value={vendor} label={vendor} tone="neutral" />
+                              <FuelBadge value={vendor} label={vendor} tone="neutral" />
                             </li>
                           ))}
                         </ul>
                       )}
                     </div>
                   </div>
-                </SectionCard>
+                </Panel>
               </div>
 
               <div className="space-y-5">
-                <SectionCard title="Receipts">
+                <Panel title="Receipts">
                   <KeyValueGrid
                     columns={2}
                     items={[
@@ -261,9 +258,9 @@ const FuelPolicyDetailPage = () => {
                       ? `A transaction with no receipt passes reconciliation while it is within ${policy.receiptGraceHours} hours of occurring. After that, the scheduled sweep reconciles it again and raises a missing-receipt case.`
                       : 'Reconciliation does not check for a receipt under this policy.'}
                   </p>
-                </SectionCard>
+                </Panel>
 
-                <SectionCard title="History" subtitle="Recorded changes, from the audit log">
+                <Panel title="History" description="Recorded changes, from the audit log">
                   <DataState
                     loading={history.initialising}
                     error={history.error}
@@ -272,16 +269,18 @@ const FuelPolicyDetailPage = () => {
                   >
                     <HistoryTimeline events={history.data} recordNoun="policy" />
                   </DataState>
-                </SectionCard>
+                </Panel>
 
-                <SectionCard title="Changing this policy">
-                  <Alert variant="info" title="Revisions keep past judgements intact">
-                    Every reconciliation run records the policy version it applied, so editing the
+                <Panel title="Changing this policy">
+                  <Banner
+                    variant="info"
+                    heading="Revisions keep past judgements intact"
+                    subtext={<>Every reconciliation run records the policy version it applied, so editing the
                     limits here does not change how anything was judged before. Withdrawing moves
                     the policy to archived rather than deleting it - the runs that cited it still
-                    point at it - and releases its period so a replacement can cover the same dates.
-                  </Alert>
-                </SectionCard>
+                    point at it - and releases its period so a replacement can cover the same dates.</>}
+                  />
+                </Panel>
               </div>
             </div>
           </div>
