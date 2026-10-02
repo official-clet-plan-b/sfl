@@ -5,6 +5,7 @@ import App from './App';
 import { loadActorPermissions } from 'shared/layout/actorPermissions';
 import { loadActorSites } from 'shared/layout/actorSites';
 import { loadServingPlatform } from 'shared/platform';
+import { SystemPreferencesProvider } from 'shared/layout/SystemPreferences';
 import './index.css';
 
 const container = document.getElementById('root');
@@ -17,7 +18,9 @@ const render = () =>
   createRoot(container).render(
     <StrictMode>
       <ThemeProvider defaultTheme="light">
-        <App />
+        <SystemPreferencesProvider>
+          <App />
+        </SystemPreferencesProvider>
       </ThemeProvider>
     </StrictMode>,
   );

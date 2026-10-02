@@ -18,6 +18,7 @@ export type IconName =
   | 'route'
   | 'workflow'
   | 'shield-check'
+  | 'shield-alert'
   | 'document'
   | 'camera'
   | 'cloud'
@@ -82,6 +83,7 @@ const glyphs: Record<IconName, LucideIcon> = {
   'route': Route,
   'workflow': Workflow,
   'shield-check': ShieldCheck,
+  'shield-alert': ShieldAlert,
   'document': FileText,
   'camera': Camera,
   'cloud': Cloud,

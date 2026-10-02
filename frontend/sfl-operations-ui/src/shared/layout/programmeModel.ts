@@ -5,7 +5,7 @@
  * mapping be exercised directly rather than only through a running application, and the decision it
  * encodes - who sees what - is worth being able to check.
  *
- * Phase 1 is **13 systems under 4 programme modules, delivered as 5 services**, and those counts do
+ * The portal now exposes **20 systems under 3 programme modules**, and those counts do
  * not line up. A programme is a user-facing grouping; a service is a deployment unit. See
  * `docs/architecture/microservices-realignment.md` for the map and ADR 0005 for the rule.
  *
@@ -52,11 +52,11 @@ export const programmes: Record<ProgrammeCode, Programme> = {
 export const allProgrammes = Object.keys(programmes) as ProgrammeCode[];
 
 /**
- * The systems that have screens.
+ * The systems that have screens. The four physical-security systems are separate entitlement
+ * grains even though they share the safety-security service.
  *
- * Five of the thirteen. The others arrive with their own screens rather than being declared ahead of
- * them - a code here with nothing behind it would be a promise the sidebar cannot keep, and
- * {@link systemsFor} would happily entitle somebody to it.
+ * A code here is paired with a route and a service-backed register. Keeping the declaration in one
+ * place makes the sidebar and route guard agree about the same system boundary.
  *
  * S152 is the first IFIMP system to arrive. Until it did, the programme was declared in
  * {@link programmes} and had no systems at all, so a facilities manager was entitled to a programme
@@ -89,7 +89,7 @@ export const allProgrammes = Object.keys(programmes) as ProgrammeCode[];
  */
 export type SystemCode =
   | 'S152' | 'S153' | 'S156' | 'S157' | 'S158' | 'S159'
-  | 'S160' | 'S163' | 'S165' | 'S166' | 'S168' | 'S169' | 'S171' | 'S173' | 'S174' | 'S176';
+  | 'S160' | 'S160a' | 'S161' | 'S162' | 'S162a' | 'S163' | 'S165' | 'S166' | 'S168' | 'S169' | 'S171' | 'S173' | 'S174' | 'S176';
 
 export interface SflSystem {
   code: SystemCode;
@@ -107,6 +107,10 @@ export const systems: Record<SystemCode, SflSystem> = {
   S158: { code: 'S158', label: 'Space planning & moves', programme: 'IFIMP' },
   S159: { code: 'S159', label: 'Room & resource booking', programme: 'IFIMP' },
   S160: { code: 'S160', label: 'Visitor management', programme: 'SSEMP' },
+  S160a: { code: 'S160a', label: 'Physical access control', programme: 'SSEMP' },
+  S161: { code: 'S161', label: 'CCTV / VMS', programme: 'SSEMP' },
+  S162: { code: 'S162', label: 'Intrusion & alarms', programme: 'SSEMP' },
+  S162a: { code: 'S162a', label: 'Fire & life safety', programme: 'SSEMP' },
   S163: { code: 'S163', label: 'HSE incidents & near misses', programme: 'SSEMP' },
   // Phase 2. The first Phase 2 system with screens; S164 and S175 follow it into SSEMP.
   S165: { code: 'S165', label: 'Risk assessment library', programme: 'SSEMP' },
@@ -161,7 +165,7 @@ export const roleProgrammes: Record<string, ProgrammeCode[]> = {
   CONSTRUCTION_PROJECT_MANAGER: ['IFIMP'],
   EVENT_LOGISTICS_COORDINATOR: ['IFIMP'],
 
-  // SFL.SSEMP - safety, security and emergency, including S174
+  // SFL.SSEMP - safety, security and emergency, including the four physical-security systems.
   SECURITY_DIRECTOR: ['SSEMP'],
   SECURITY_OFFICER: ['SSEMP'],
   SOC_OPERATOR: ['SSEMP'],
@@ -170,10 +174,7 @@ export const roleProgrammes: Record<string, ProgrammeCode[]> = {
   RECEPTION_OFFICER: ['SSEMP'],
   VISITOR_HOST: ['SSEMP'],
   INCIDENT_INVESTIGATOR: ['SSEMP'],
-  // S160a Physical Access Control. No system code or screens exist for it yet (see `systems`
-  // below), so this role has no entry in `roleSystems` either - `systemsFor`'s own documented
-  // fallback widens it to every SSEMP system that currently has screens, which is the intended
-  // behaviour until S160a gets its own module.
+  // The access-control administrator owns the physical-security operations console.
   ACCESS_CONTROL_ADMINISTRATOR: ['SSEMP'],
   // Command sits over the emergency workflow - it approves activations and records after-action
   // approval - and over facility incident response with it.
@@ -268,14 +269,16 @@ export const roleSystems: Record<string, SystemCode[]> = {
   // diary - the role the matrix expects to hold `FACILITIES_BOOKING_OVERRIDE` in practice.
   CENTRE_MANAGER: ['S152', 'S153', 'S156', 'S159', 'S169', 'S171', 'S173'],
 
-  // SFL.SSEMP - S174 is its own deployable, split by ADR 0004
+  // SFL.SSEMP - S174 is its own deployable, split by ADR 0004; the four physical-security systems
+  // share the safety-security service while retaining independent entitlement guards.
   EMERGENCY_COORDINATOR: ['S174'],
   // S165 from RiskAssessmentPermissionMatrix: the HSE manager owns the library; the security director,
   // the investigator (an incident's assessment) and command read it.
-  SECURITY_DIRECTOR: ['S160', 'S163', 'S165', 'S174'],
+  SECURITY_DIRECTOR: ['S160', 'S160a', 'S161', 'S162', 'S162a', 'S163', 'S165', 'S174'],
+  ACCESS_CONTROL_ADMINISTRATOR: ['S160a'],
   RECEPTION_OFFICER: ['S160'],
   VISITOR_HOST: ['S160'],
-  SOC_OPERATOR: ['S160', 'S163', 'S174'],
+  SOC_OPERATOR: ['S160', 'S160a', 'S161', 'S162', 'S162a', 'S163', 'S174'],
   INCIDENT_INVESTIGATOR: ['S163', 'S165'],
   // An HSE manager reads the estate to place an incident and judge a location's standing. It takes
   // the matrix's shared READ_ONLY set, which carries FACILITIES_BOOKING_READ - so the diary is
@@ -283,7 +286,7 @@ export const roleSystems: Record<string, SystemCode[]> = {
   HSE_MANAGER: ['S152', 'S153', 'S156', 'S159', 'S163', 'S165', 'S173', 'S174', 'S176'],
 
   // Roles that span programmes at the system grain too
-  SECURITY_OFFICER: ['S171', 'S174'],
+  SECURITY_OFFICER: ['S160a', 'S161', 'S162', 'S162a', 'S171', 'S174'],
   COMMAND_ROLE: allSystems,
   INTEGRATION_ENGINEER: allSystems,
   SERVICE_INTEGRATION: ['S152', 'S153', 'S156', 'S157', 'S159', 'S166', 'S168', 'S171', 'S173'],

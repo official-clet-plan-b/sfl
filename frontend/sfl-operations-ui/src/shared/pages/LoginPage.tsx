@@ -93,7 +93,7 @@ const LoginPage = () => {
       <div
         aria-hidden="true"
         className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: 'url(images/homepage-campus-night.jpg)' }}
+        style={{ backgroundImage: 'url(images/clet-campus.png)' }}
       />
       <div aria-hidden="true" className="absolute inset-0 bg-primary/70" />
 
