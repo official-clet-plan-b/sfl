@@ -114,6 +114,17 @@ sfl:
     # member of the "SFL all services" compound and should not also open its own dashboard tab.
     open-swagger: ${SFL_SAFETY_SECURITY_OPEN_SWAGGER:false}
     open-dashboard: ${SFL_SAFETY_SECURITY_OPEN_DASHBOARD:false}
+    # The safety_security outbox (every SSEMP module except S174, which has its own) - ADR 0010.
+    # Defaults to S174's transport so the one variable that already points SSEMP at the broker points
+    # both drainers there; set SFL_SAFETY_SECURITY_EVENT_TRANSPORT only to split them deliberately.
+    # `rabbitmq` also declares the inbound queue (sfl.ssemp.inbound, bound to ifimp.#) and starts the
+    # listener; `local` records delivery without a broker and consumes nothing.
+    messaging:
+      transport: ${SFL_SAFETY_SECURITY_EVENT_TRANSPORT:${SFL_EMERGENCY_EVENT_TRANSPORT:local}}
+      exchange: ${SFL_SAFETY_SECURITY_EVENT_EXCHANGE:sfl.events}
+      confirm-timeout: PT5S
+      max-attempts: ${SFL_SAFETY_SECURITY_OUTBOX_MAX_ATTEMPTS:5}
+      drainer-enabled: ${SFL_SAFETY_SECURITY_OUTBOX_DRAINER:true}
   emergency:
     # Outbound delivery uses a self-contained transactional outbox; failed deliveries dead-letter and
     # are replayable. `local` records delivery without a broker and is the single-node default. Any

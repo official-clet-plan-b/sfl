@@ -19,8 +19,9 @@ import tools.jackson.databind.ObjectMapper;
  * for the table, which was scaffolded before any module used it, and {@code
  * platform.application.port.IntegrationEventPublisher} for why the event type is a plain string here.
  *
- * <p>No drainer exists yet, matching S174's own outbox: events are recorded, not delivered. Adding
- * one is a later, cross-module concern once a second consumer actually needs one.
+ * <p>{@link SafetySecurityOutboxDrainer} delivers what this writes (ADR 0010). Until Phase 2 nothing did:
+ * events were recorded and never delivered, which was tolerable only while no other service waited on
+ * one. S165's risk-assessment events have consumers in facilities, so the drainer arrived with it.
  */
 @Component
 public class OutboxEventPublisher implements IntegrationEventPublisher {
