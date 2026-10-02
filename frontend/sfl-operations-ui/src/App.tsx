@@ -77,6 +77,9 @@ const WorkflowDetailPage = lazy(() => import('modules/fleet/pages/WorkflowDetail
 const CompliancePage = lazy(() => import('modules/fleet/pages/CompliancePage'));
 const EvidenceAuditPage = lazy(() => import('modules/fleet/pages/EvidenceAuditPage'));
 const IntegrationHealthPage = lazy(() => import('modules/fleet/pages/IntegrationHealthPage'));
+const TelematicsDashboardPage = lazy(() => import('modules/phase2/pages/Phase2OperationsPages').then((module) => ({ default: module.TelematicsDashboardPage })));
+const VipTripPortalPage = lazy(() => import('modules/phase2/pages/Phase2OperationsPages').then((module) => ({ default: module.VipTripPortalPage })));
+const AssetVisibilityPage = lazy(() => import('modules/phase2/pages/Phase2OperationsPages').then((module) => ({ default: module.AssetVisibilityPage })));
 
 const FuelDashboardPage = lazy(() => import('modules/fuel/pages/FuelDashboardPage'));
 const FuelTransactionsPage = lazy(() => import('modules/fuel/pages/FuelTransactionsPage'));
@@ -369,6 +372,9 @@ const App = () => {
               entitlement is unchanged; only the address moved.
             */}
             <Route path="fleetvehicle">
+              <Route path="telematics" element={<SystemRoutes system="S167" />}><Route index element={<TelematicsDashboardPage />} /></Route>
+              <Route path="vip-transport" element={<SystemRoutes system="S168a" />}><Route index element={<VipTripPortalPage />} /></Route>
+              <Route path="asset-visibility" element={<SystemRoutes system="AVAMP" />}><Route index element={<AssetVisibilityPage />} /></Route>
               <Route path="fleet" element={<SystemRoutes system="S166" />}>
                 <Route index element={<FleetDashboardPage />} />
                 <Route path="vehicles">

@@ -37,6 +37,13 @@ class JpaAssetReferenceRepositoryAdapter implements AssetReferenceRepository {
     }
 
     @Override
+    public Optional<AssetReference> findByExternalReference(String tag) {
+        return tag == null || tag.isBlank()
+                ? Optional.empty()
+                : assets.findFirstByExternalReferenceIgnoreCase(tag.strip()).map(AssetReferenceRecord::toDomain);
+    }
+
+    @Override
     public List<AssetReference> findAll(String siteCode) {
         return siteCode == null || siteCode.isBlank()
                 ? assets.findAllByOrderBySiteCodeAscAssetCodeAsc().stream().map(AssetReferenceRecord::toDomain).toList()

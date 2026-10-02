@@ -1,16 +1,20 @@
 package gh.edu.clet.sfl.fleetlogistics.assets.api;
 
 import java.net.URI;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
 import gh.edu.clet.sfl.fleetlogistics.assets.application.AssetVisibilityAccessPolicy;
 import gh.edu.clet.sfl.fleetlogistics.assets.application.AssetVisibilityService;
 import gh.edu.clet.sfl.fleetlogistics.assets.application.AssignCustodyCommand;
+import gh.edu.clet.sfl.fleetlogistics.assets.application.AssignTagCommand;
 import gh.edu.clet.sfl.fleetlogistics.assets.application.LinkEvidenceCommand;
 import gh.edu.clet.sfl.fleetlogistics.assets.application.MoveAssetCommand;
+import gh.edu.clet.sfl.fleetlogistics.assets.application.RecordScanCommand;
 import gh.edu.clet.sfl.fleetlogistics.assets.application.RegisterAssetCommand;
 import gh.edu.clet.sfl.fleetlogistics.assets.domain.AssetCategory;
+import gh.edu.clet.sfl.fleetlogistics.assets.domain.AssetHistoryEntry;
 import gh.edu.clet.sfl.fleetlogistics.assets.domain.AssetReference;
 import gh.edu.clet.sfl.fleetlogistics.assets.domain.LocationType;
 import gh.edu.clet.sfl.common.api.ApiResponse;
@@ -139,6 +143,66 @@ public class AssetReferenceController {
         return ApiResponse.ok(service.findByLocation(siteCode, locationType, locationReference));
     }
 
+    @io.swagger.v3.oas.annotations.Operation(summary = "Reads the asset that carries a physical tag")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Actor lacks ASSET_REFERENCE_READ, or the asset's site is outside their scope")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "No asset carries this tag")
+    @GetMapping("/by-tag/{tagId}")
+    public ApiResponse<AssetReference> byTag(@PathVariable String tagId, HttpServletRequest http) {
+        ActorContext actor = actors.resolve(http);
+        access.require(actor, SflPermission.ASSET_REFERENCE_READ, RESOURCE);
+
+        AssetReference asset = service.findByTag(tagId);
+        access.require(actor, SflPermission.ASSET_REFERENCE_READ, asset.siteCode(), RESOURCE);
+        return ApiResponse.ok(asset);
+    }
+
+    @io.swagger.v3.oas.annotations.Operation(summary = "Lists every change to an asset - location, custody and tag - newest first")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Actor lacks ASSET_REFERENCE_READ, or the asset's site is outside their scope")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "No asset exists with this id")
+    @GetMapping("/{assetId}/history")
+    public ApiResponse<List<AssetHistoryEntry>> history(@PathVariable UUID assetId, HttpServletRequest http) {
+        ActorContext actor = actors.resolve(http);
+        access.require(actor, SflPermission.ASSET_REFERENCE_READ, RESOURCE);
+
+        AssetReference asset = service.findById(assetId);
+        access.require(actor, SflPermission.ASSET_REFERENCE_READ, asset.siteCode(), RESOURCE);
+        return ApiResponse.ok(service.history(assetId));
+    }
+
+    @io.swagger.v3.oas.annotations.Operation(summary = "Gives an asset the physical tag it is read by")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Request failed bean validation")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Actor lacks ASSET_REFERENCE_MANAGE for the asset's site")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "No asset exists with this id")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "The tag already identifies a different asset")
+    @PatchMapping("/{assetId}/tag")
+    public ApiResponse<AssetReference> assignTag(@PathVariable UUID assetId,
+            @Valid @RequestBody AssignTagRequest request, HttpServletRequest http) {
+        ActorContext actor = actors.resolve(http);
+        AssetReference existing = service.findById(assetId);
+        access.require(actor, SflPermission.ASSET_REFERENCE_MANAGE, existing.siteCode(), RESOURCE);
+
+        return ApiResponse.ok(service.assignTag(new AssignTagCommand(assetId, request.tagId(), actor.actorId(),
+                actor.correlationId())));
+    }
+
+    @io.swagger.v3.oas.annotations.Operation(summary = "Records a reader's sighting of a tag, moving the asset that carries it")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Request failed bean validation, or the read is stamped in the future")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Actor lacks ASSET_REFERENCE_MANAGE for the asset's site")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "No asset carries this tag")
+    @PostMapping("/scans")
+    public ApiResponse<AssetReference> recordScan(@Valid @RequestBody RecordScanRequest request,
+            HttpServletRequest http) {
+        ActorContext actor = actors.resolve(http);
+        access.require(actor, SflPermission.ASSET_REFERENCE_MANAGE, RESOURCE);
+
+        AssetReference existing = service.findByTag(request.tagId());
+        access.require(actor, SflPermission.ASSET_REFERENCE_MANAGE, existing.siteCode(), RESOURCE);
+
+        return ApiResponse.ok(service.recordScan(new RecordScanCommand(request.tagId(), request.locationType(),
+                request.locationReference(), request.readerId(), request.occurredAt(), actor.actorId(),
+                actor.correlationId())));
+    }
+
     @io.swagger.v3.oas.annotations.Operation(summary = "Moves an asset to a new location")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Request failed bean validation")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Actor lacks ASSET_REFERENCE_MANAGE for the asset's site")
@@ -192,6 +256,14 @@ public class AssetReferenceController {
 
     public record MoveAssetRequest(@NotNull LocationType locationType,
             @NotBlank @Size(max = 120) String locationReference) {
+    }
+
+    public record AssignTagRequest(@NotBlank @Size(max = 160) String tagId) {
+    }
+
+    public record RecordScanRequest(@NotBlank @Size(max = 160) String tagId, @NotNull LocationType locationType,
+            @NotBlank @Size(max = 120) String locationReference, @Size(max = 160) String readerId,
+            Instant occurredAt) {
     }
 
     public record AssignCustodyRequest(@Size(max = 160) String custodianReference) {

@@ -44,7 +44,14 @@ public interface TripRepository {
             Instant to,
             int page,
             int size,
-            String sort) {
+            String sort,
+            String purposePrefix) {
+
+        /** A search with no purpose filter - every caller that predates it. */
+        public TripSearchCriteria(String siteCode, TripStatus status, UUID vehicleId, UUID driverId,
+                OperatingMode operatingMode, Instant from, Instant to, int page, int size, String sort) {
+            this(siteCode, status, vehicleId, driverId, operatingMode, from, to, page, size, sort, null);
+        }
     }
 
     record TripPage(List<Trip> content, int page, int size, long totalElements, int totalPages, String sort) {

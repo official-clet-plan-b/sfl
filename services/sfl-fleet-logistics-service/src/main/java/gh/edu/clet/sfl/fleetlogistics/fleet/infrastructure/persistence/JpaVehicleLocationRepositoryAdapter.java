@@ -46,6 +46,22 @@ class JpaVehicleLocationRepositoryAdapter implements VehicleLocationRepository {
 
     @Override
     @Transactional(readOnly = true)
+    public java.util.Map<UUID, VehicleLocationSnapshot> findLatestByVehicles(
+            java.util.Collection<UUID> vehicleIds) {
+        if (vehicleIds == null || vehicleIds.isEmpty()) {
+            return java.util.Map.of();
+        }
+        // Two reports recorded in the same instant tie on time; the larger id wins, the same
+        // tiebreak the single-vehicle lookup uses, so the answer cannot flip between requests.
+        return locations.findLatestForVehicles(vehicleIds).stream()
+                .map(VehicleLocationSnapshotEntity::toDomain)
+                .collect(java.util.stream.Collectors.toMap(VehicleLocationSnapshot::vehicleId,
+                        snapshot -> snapshot,
+                        (first, second) -> first.id().compareTo(second.id()) >= 0 ? first : second));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<VehicleLocationSnapshot> findRecentInScope(SiteScopeFilter scope, int limit) {
         return locations.findRecentInScope(scope.allSites(), scope.allSites() ? List.of("*") : List.copyOf(scope.sites()),
                         PageRequest.of(0, Math.max(1, Math.min(limit, 500))))

@@ -16,6 +16,9 @@ public interface AssetReferenceRepository {
 
     Optional<AssetReference> findByAssetCode(String assetCode);
 
+    /** The asset carrying this physical tag, compared without regard to case. */
+    Optional<AssetReference> findByExternalReference(String tag);
+
     List<AssetReference> findAll(String siteCode);
 
     /**
