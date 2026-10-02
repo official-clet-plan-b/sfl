@@ -87,7 +87,9 @@ export const allProgrammes = Object.keys(programmes) as ProgrammeCode[];
  * no-entitlement page told a refused requester they could not see "Facility management", which is not
  * what they came for.
  */
-export type SystemCode = 'S152' | 'S153' | 'S159' | 'S160' | 'S163' | 'S166' | 'S168' | 'S171' | 'S174';
+export type SystemCode =
+  | 'S152' | 'S153' | 'S156' | 'S157' | 'S158' | 'S159'
+  | 'S160' | 'S163' | 'S166' | 'S168' | 'S169' | 'S171' | 'S173' | 'S174' | 'S176';
 
 export interface SflSystem {
   code: SystemCode;
@@ -100,13 +102,19 @@ export interface SflSystem {
 export const systems: Record<SystemCode, SflSystem> = {
   S152: { code: 'S152', label: 'Facility management', programme: 'IFIMP' },
   S153: { code: 'S153', label: 'Maintenance management', programme: 'IFIMP' },
+  S156: { code: 'S156', label: 'Building systems & IoT', programme: 'IFIMP' },
+  S157: { code: 'S157', label: 'Energy & sustainability', programme: 'IFIMP' },
+  S158: { code: 'S158', label: 'Space planning & moves', programme: 'IFIMP' },
   S159: { code: 'S159', label: 'Room & resource booking', programme: 'IFIMP' },
   S160: { code: 'S160', label: 'Visitor management', programme: 'SSEMP' },
   S163: { code: 'S163', label: 'HSE incidents & near misses', programme: 'SSEMP' },
   S166: { code: 'S166', label: 'Fleet & vehicle management', programme: 'FTLMP' },
   S168: { code: 'S168', label: 'Fuel & driver logbooks', programme: 'FTLMP' },
+  S169: { code: 'S169', label: 'Cleaning operations', programme: 'IFIMP' },
   S171: { code: 'S171', label: 'Courier & dispatch', programme: 'FTLMP' },
+  S173: { code: 'S173', label: 'Event logistics', programme: 'IFIMP' },
   S174: { code: 'S174', label: 'Emergency mass notification', programme: 'SSEMP' },
+  S176: { code: 'S176', label: 'Construction projects', programme: 'IFIMP' },
 };
 
 export const allSystems = Object.keys(systems) as SystemCode[];
@@ -232,12 +240,17 @@ export const roleSystems: Record<string, SystemCode[]> = {
   // `FACILITIES_SETUP_TASK_MANAGE` and no booking-request permission at all. A technician turns rooms
   // around; a technician who could reserve a hall would be scheduling the estate from the shop floor.
   // The section renders for them with the turnaround queue and nothing that books anything.
-  FACILITIES_DIRECTOR: ['S152', 'S153', 'S159'],
-  FACILITIES_MANAGER: ['S152', 'S153', 'S159'],
-  IFIMP_MAINTENANCE_SUPERVISOR: ['S152', 'S153', 'S159'],
-  IFIMP_TECHNICIAN: ['S152', 'S153', 'S159'],
-  IFIMP_REQUESTER: ['S152', 'S153', 'S159'],
-  VENDOR_TECHNICIAN: ['S152', 'S153'],
+  FACILITIES_DIRECTOR: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S169', 'S173', 'S176'],
+  FACILITIES_MANAGER: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S169', 'S173', 'S176'],
+  IFIMP_MAINTENANCE_SUPERVISOR: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S169', 'S173', 'S176'],
+  IFIMP_TECHNICIAN: ['S152', 'S153', 'S156', 'S159', 'S169'],
+  IFIMP_REQUESTER: ['S152', 'S153', 'S158', 'S159', 'S169'],
+  VENDOR_TECHNICIAN: ['S152', 'S153', 'S169'],
+  FACILITIES_ENGINEER: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S169', 'S173', 'S176'],
+  ENERGY_SUSTAINABILITY_OFFICER: ['S152', 'S153', 'S156', 'S157', 'S159'],
+  SPACE_PLANNING_OFFICER: ['S152', 'S153', 'S158', 'S159', 'S176'],
+  CONSTRUCTION_PROJECT_MANAGER: ['S152', 'S153', 'S158', 'S159', 'S176'],
+  EVENT_LOGISTICS_COORDINATOR: ['S152', 'S153', 'S159', 'S169', 'S173'],
 
   // SFL.FTLMP - all three systems live in `sfl-fleet-logistics-service`
   FLEET_MANAGER: ['S166', 'S168', 'S171'],
@@ -249,7 +262,7 @@ export const roleSystems: Record<string, SystemCode[]> = {
   LOGISTICS_COORDINATOR: ['S171'],
   // A centre manager receives consignments, declares their centre's operating mode, and owns its
   // diary - the role the matrix expects to hold `FACILITIES_BOOKING_OVERRIDE` in practice.
-  CENTRE_MANAGER: ['S152', 'S153', 'S159', 'S171'],
+  CENTRE_MANAGER: ['S152', 'S153', 'S156', 'S159', 'S169', 'S171', 'S173'],
 
   // SFL.SSEMP - S174 is its own deployable, split by ADR 0004
   EMERGENCY_COORDINATOR: ['S174'],
@@ -261,13 +274,13 @@ export const roleSystems: Record<string, SystemCode[]> = {
   // An HSE manager reads the estate to place an incident and judge a location's standing. It takes
   // the matrix's shared READ_ONLY set, which carries FACILITIES_BOOKING_READ - so the diary is
   // readable, and nothing in the section can book, approve or turn a room around.
-  HSE_MANAGER: ['S152', 'S153', 'S159', 'S163', 'S174'],
+  HSE_MANAGER: ['S152', 'S153', 'S156', 'S159', 'S163', 'S173', 'S174', 'S176'],
 
   // Roles that span programmes at the system grain too
   SECURITY_OFFICER: ['S171', 'S174'],
-  COMMAND_ROLE: ['S152', 'S153', 'S159', 'S160', 'S163', 'S166', 'S168', 'S171', 'S174'],
-  INTEGRATION_ENGINEER: ['S152', 'S153', 'S159', 'S160', 'S163', 'S166', 'S168', 'S171', 'S174'],
-  SERVICE_INTEGRATION: ['S152', 'S153', 'S159', 'S166', 'S168', 'S171'],
+  COMMAND_ROLE: allSystems,
+  INTEGRATION_ENGINEER: allSystems,
+  SERVICE_INTEGRATION: ['S152', 'S153', 'S156', 'S157', 'S159', 'S166', 'S168', 'S171', 'S173'],
 };
 
 /** Splits a comma-separated header or env value into normalised role names. */

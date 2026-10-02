@@ -171,6 +171,36 @@ export const bookingPaths = {
   bookingDetail: (bookingId: string) => `/facilities/bookings/${bookingId}`,
 };
 
+/** Phase 2 IFIMP systems share the facilities deployable but remain independently entitled. */
+export const ifimpPhase2Paths = {
+  buildingSystems: '/facilities/building-systems',
+  bmsDevices: '/facilities/building-systems/devices',
+  bmsAlerts: '/facilities/building-systems/alerts',
+  bmsQuarantine: '/facilities/building-systems/quarantine',
+  bmsRules: '/facilities/building-systems/rules',
+  energy: '/facilities/energy',
+  energyMeters: '/facilities/energy/meters',
+  energyReadings: '/facilities/energy/readings',
+  energyAlerts: '/facilities/energy/alerts',
+  energyBudgets: '/facilities/energy/budgets',
+  energyKpis: '/facilities/energy/kpis',
+  spacePlanning: '/facilities/space-planning',
+  spaceScenarios: '/facilities/space-planning/scenarios',
+  spaceRequests: '/facilities/space-planning/requests',
+  cleaning: '/facilities/cleaning',
+  cleaningTasks: '/facilities/cleaning/tasks',
+  cleaningSchedules: '/facilities/cleaning/schedules',
+  cleaningVendors: '/facilities/cleaning/vendors',
+  eventLogistics: '/facilities/event-logistics',
+  eventTemplates: '/facilities/event-logistics/templates',
+  eventRisks: '/facilities/event-logistics/risk-criteria',
+  eventIntegrations: '/facilities/event-logistics/integration',
+  construction: '/facilities/construction',
+  constructionProjects: '/facilities/construction/projects',
+  constructionContractors: '/facilities/construction/contractors',
+  constructionIntegrations: '/facilities/construction/integrations',
+};
+
 export const fleetPaths = {
   dashboard: '/fleetvehicle/fleet',
   vehicles: '/fleetvehicle/fleet/vehicles',
@@ -616,6 +646,74 @@ export const navSections: NavSection[] = [
         permission: 'FACILITIES_RESOURCE_READ',
         capability: 'FACILITIES_RESOURCE_MANAGE',
       },
+    ],
+  },
+  {
+    heading: 'Building systems',
+    programme: 'IFIMP',
+    system: 'S156',
+    items: [
+      { label: 'BMS overview', to: ifimpPhase2Paths.buildingSystems, icon: 'dashboard', description: 'Device health and active alerts', permission: 'FACILITIES_BMS_READ' },
+      { label: 'Devices', to: ifimpPhase2Paths.bmsDevices, icon: 'activity', description: 'Registered controllers, sensors and gateways', permission: 'FACILITIES_BMS_READ', capability: 'FACILITIES_BMS_DEVICE_MANAGE' },
+      { label: 'BMS alerts', to: ifimpPhase2Paths.bmsAlerts, icon: 'alert-circle', description: 'Threshold and fault-code alerts', permission: 'FACILITIES_BMS_READ' },
+      { label: 'Quarantined readings', to: ifimpPhase2Paths.bmsQuarantine, icon: 'shield-lock', description: 'Telemetry awaiting resolution', permission: 'FACILITIES_BMS_READ', capability: 'FACILITIES_BMS_QUARANTINE_RESOLVE' },
+      { label: 'Alert rules', to: ifimpPhase2Paths.bmsRules, icon: 'gauge', description: 'Thresholds and fault-code rules', permission: 'FACILITIES_BMS_READ', capability: 'FACILITIES_BMS_RULE_MANAGE' },
+    ],
+  },
+  {
+    heading: 'Energy & sustainability',
+    programme: 'IFIMP',
+    system: 'S157',
+    items: [
+      { label: 'Energy overview', to: ifimpPhase2Paths.energy, icon: 'dashboard', description: 'Metering health and coverage', permission: 'FACILITIES_ENERGY_READ' },
+      { label: 'Meters', to: ifimpPhase2Paths.energyMeters, icon: 'gauge', description: 'Utility meters and acquisition sources', permission: 'FACILITIES_ENERGY_READ', capability: 'FACILITIES_ENERGY_METER_MANAGE' },
+      { label: 'Energy readings', to: ifimpPhase2Paths.energyReadings, icon: 'activity', description: 'Posted and held consumption readings', permission: 'FACILITIES_ENERGY_READ', capability: 'FACILITIES_ENERGY_READING_ENTER' },
+      { label: 'Energy alerts', to: ifimpPhase2Paths.energyAlerts, icon: 'alert-circle', description: 'Variance and missing-tariff exceptions', permission: 'FACILITIES_ENERGY_READ' },
+      { label: 'Budgets', to: ifimpPhase2Paths.energyBudgets, icon: 'clipboard', description: 'Effective-dated utility budgets', permission: 'FACILITIES_ENERGY_READ', capability: 'FACILITIES_ENERGY_BUDGET_MANAGE' },
+      { label: 'Sustainability KPIs', to: ifimpPhase2Paths.energyKpis, icon: 'check-circle', description: 'Published indicators and completeness', permission: 'FACILITIES_ENERGY_READ' },
+    ],
+  },
+  {
+    heading: 'Space planning',
+    programme: 'IFIMP',
+    system: 'S158',
+    items: [
+      { label: 'Planning overview', to: ifimpPhase2Paths.spacePlanning, icon: 'dashboard', description: 'Pipeline, compliance and utilisation', permission: 'FACILITIES_SPACE_PLAN_READ' },
+      { label: 'Planning scenarios', to: ifimpPhase2Paths.spaceScenarios, icon: 'layers', description: 'Draft and committed estate plans', permission: 'FACILITIES_SPACE_PLAN_READ', capability: 'FACILITIES_SPACE_PLAN_MANAGE' },
+      { label: 'Change requests', to: ifimpPhase2Paths.spaceRequests, icon: 'clipboard', description: 'Move and physical-work requests', permission: 'FACILITIES_SPACE_PLAN_READ', capability: ['FACILITIES_SPACE_CHANGE_REQUEST', 'FACILITIES_SPACE_CHANGE_DECIDE'] },
+    ],
+  },
+  {
+    heading: 'Cleaning operations',
+    programme: 'IFIMP',
+    system: 'S169',
+    items: [
+      { label: 'Cleaning overview', to: ifimpPhase2Paths.cleaning, icon: 'dashboard', description: 'Workload, SLA and feedback', permission: 'FACILITIES_CLEANING_READ' },
+      { label: 'Cleaning tasks', to: ifimpPhase2Paths.cleaningTasks, icon: 'check-circle', description: 'Scheduled and reactive work', permission: 'FACILITIES_CLEANING_READ', capability: ['FACILITIES_CLEANING_TASK_EXECUTE', 'FACILITIES_CLEANING_TASK_SUPERVISE', 'FACILITIES_CLEANING_REQUEST'] },
+      { label: 'Cleaning schedules', to: ifimpPhase2Paths.cleaningSchedules, icon: 'calendar', description: 'Recurring room schedules', permission: 'FACILITIES_CLEANING_READ', capability: 'FACILITIES_CLEANING_SCHEDULE_MANAGE' },
+      { label: 'Cleaning vendors', to: ifimpPhase2Paths.cleaningVendors, icon: 'users', description: 'Providers and SLA performance', permission: 'FACILITIES_CLEANING_READ', capability: 'FACILITIES_CLEANING_VENDOR_MANAGE' },
+    ],
+  },
+  {
+    heading: 'Event logistics',
+    programme: 'IFIMP',
+    system: 'S173',
+    items: [
+      { label: 'Set-up tasks', to: ifimpPhase2Paths.eventLogistics, icon: 'calendar', description: 'Event readiness and resources', permission: 'FACILITIES_EVENT_READ', capability: 'FACILITIES_EVENT_COORDINATE' },
+      { label: 'Resource templates', to: ifimpPhase2Paths.eventTemplates, icon: 'clipboard-list', description: 'Reusable event resource plans', permission: 'FACILITIES_EVENT_READ', capability: 'FACILITIES_EVENT_COORDINATE' },
+      { label: 'Risk criteria', to: ifimpPhase2Paths.eventRisks, icon: 'shield-check', description: 'Event risk categorisation rules', permission: 'FACILITIES_EVENT_READ', capability: 'FACILITIES_EVENT_RISK_CATEGORY_MANAGE' },
+      { label: 'Event integrations', to: ifimpPhase2Paths.eventIntegrations, icon: 'workflow', description: 'Upstream event-system status', permission: 'FACILITIES_EVENT_READ' },
+    ],
+  },
+  {
+    heading: 'Construction',
+    programme: 'IFIMP',
+    system: 'S176',
+    items: [
+      { label: 'Construction overview', to: ifimpPhase2Paths.construction, icon: 'dashboard', description: 'Portfolio, milestones and defects', permission: 'FACILITIES_PROJECT_READ' },
+      { label: 'Projects', to: ifimpPhase2Paths.constructionProjects, icon: 'building', description: 'Projects, variations and handover', permission: 'FACILITIES_PROJECT_READ', capability: ['FACILITIES_PROJECT_MANAGE', 'FACILITIES_PROJECT_APPROVE', 'FACILITIES_PROJECT_HANDOVER'] },
+      { label: 'Contractors', to: ifimpPhase2Paths.constructionContractors, icon: 'users', description: 'Competency, insurance and site access', permission: 'FACILITIES_PROJECT_READ', capability: 'FACILITIES_CONTRACTOR_MANAGE' },
+      { label: 'Construction integrations', to: ifimpPhase2Paths.constructionIntegrations, icon: 'workflow', description: 'Procurement and project-system status', permission: 'FACILITIES_PROJECT_READ' },
     ],
   },
   {
