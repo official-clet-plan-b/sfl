@@ -12,7 +12,7 @@ import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { facilitiesPaths } from 'shared/layout/navigation';
 import { IfimpRecord, readIfimpDataset } from '../api/ifimpPhase2Api';
 import IfimpCreateDialog, { CreateAction } from '../components/IfimpCreateDialog';
-import IfimpRecordDialog from '../components/IfimpRecordDialog';
+import IfimpRecordDialog, { visibleRecordActions } from '../components/IfimpRecordDialog';
 
 export interface IfimpView {
   label: string;
@@ -132,6 +132,24 @@ const IfimpOperationsPage = ({
     header: column.label,
     cell: (row) => renderValue(row[column.key]),
   }));
+  columns.push({
+    key: 'recordActions',
+    header: 'Actions',
+    align: 'right',
+    cell: (row) => {
+      const canManage = visibleRecordActions(active.actions ?? [], row).length > 0;
+      return (
+        <Button
+          size="sm"
+          variant="outline"
+          startIcon={canManage ? 'edit' : 'eye'}
+          onClick={() => setSelected(row)}
+        >
+          {canManage ? 'Manage' : 'View'}
+        </Button>
+      );
+    },
+  });
 
   return (
     <>
@@ -188,7 +206,7 @@ const IfimpOperationsPage = ({
           getRowId={identifier}
           loading={query.loading}
           caption={active.label}
-          onRowClick={(active.actions?.length ?? 0) > 0 ? setSelected : undefined}
+          onRowClick={setSelected}
         />
       </DataState>
       {active.create && <IfimpCreateDialog key={`${active.path}-${creating}`} action={active.create} siteCode={siteCode} open={creating} onClose={() => setCreating(false)} onCreated={query.refetch} />}

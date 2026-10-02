@@ -22,10 +22,13 @@ const value = (entry: unknown) => {
   return <span className="break-words">{String(entry)}</span>;
 };
 
+export const visibleRecordActions = (actions: CreateAction[], record: IfimpRecord) =>
+  actions.filter((candidate) => !candidate.visible || candidate.visible(record));
+
 const IfimpRecordDialog = ({ record, title, siteCode, actions = [], onClose, onChanged }: Props) => {
   const [action, setAction] = useState<CreateAction>();
   if (!record) return null;
-  const available = actions.filter((candidate) => !candidate.visible || candidate.visible(record));
+  const available = visibleRecordActions(actions, record);
   return (
     <>
       <Modal open onClose={onClose} size="xl" labelledBy="ifimp-record-title">
@@ -33,7 +36,10 @@ const IfimpRecordDialog = ({ record, title, siteCode, actions = [], onClose, onC
           <div><h2 id="ifimp-record-title" className="text-theme-xl font-bold text-gray-900">{title}</h2><p className="mt-1 text-theme-sm text-gray-600">Record details and available workflow actions</p></div>
           <ModalCloseButton onClose={onClose} />
         </header>
-        {available.length > 0 && <div className="flex flex-wrap gap-2 border-b border-gray-200 bg-gray-50 px-6 py-3">{available.map((item) => <Button key={item.label} size="sm" variant={item.destructive ? 'danger' : 'outline'} onClick={() => setAction(item)}>{item.label}</Button>)}</div>}
+        {available.length > 0 && <div className="flex flex-wrap gap-2 border-b border-gray-200 bg-gray-50 px-6 py-3">{available.map((item) => {
+          const disabledReason = item.disabledReason?.(record);
+          return <Button key={item.label} size="sm" variant={item.destructive ? 'danger' : 'outline'} disabled={Boolean(disabledReason)} title={disabledReason} onClick={() => setAction(item)}>{item.label}</Button>;
+        })}</div>}
         <dl className="custom-scrollbar grid max-h-[68vh] grid-cols-1 overflow-y-auto sm:grid-cols-2">
           {Object.entries(record).map(([key, entry]) => <div key={key} className="border-b border-gray-100 px-6 py-4 even:bg-gray-25"><dt className="text-theme-xs font-semibold tracking-wide text-gray-500 uppercase">{label(key)}</dt><dd className="mt-1 text-theme-sm text-gray-800">{value(entry)}</dd></div>)}
         </dl>

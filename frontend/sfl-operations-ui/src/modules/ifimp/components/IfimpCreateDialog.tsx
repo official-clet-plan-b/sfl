@@ -22,6 +22,7 @@ export interface CreateAction {
   method?: IfimpWriteMethod;
   destructive?: boolean;
   visible?: (record: IfimpRecord) => boolean;
+  disabledReason?: (record: IfimpRecord) => string | undefined;
   toBody?: (values: Record<string, string>, siteCode: string) => Record<string, unknown>;
 }
 

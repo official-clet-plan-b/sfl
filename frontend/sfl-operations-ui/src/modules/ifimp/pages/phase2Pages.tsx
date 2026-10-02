@@ -1,8 +1,10 @@
 import IfimpOperationsPage, { IfimpOperationsPageProps } from './IfimpOperationsPage';
 import { CreateAction } from '../components/IfimpCreateDialog';
+import { cleaningTaskActionAvailability, CleaningTaskAction } from '../api/cleaningWorkflow';
 
 const reason = [{ key: 'reason', label: 'Reason', type: 'textarea' as const, required: true }];
 const note = [{ key: 'note', label: 'Note', type: 'textarea' as const }];
+const commaSeparated = (value: string) => value.split(',').map((entry) => entry.trim()).filter(Boolean);
 const deviceActions: CreateAction[] = [
   { label: 'Update device', method: 'PATCH', path: '/api/v1/facilities/building-systems/devices/{id}', fields: [{ key: 'name', label: 'Name' }, { key: 'buildingCode', label: 'Building code' }, { key: 'expectedIntervalSeconds', label: 'Expected interval (seconds)', type: 'number' }], toBody: (v) => ({ name: v.name || null, buildingCode: v.buildingCode || null, expectedIntervalSeconds: v.expectedIntervalSeconds ? Number(v.expectedIntervalSeconds) : 0 }) },
   { label: 'Retire device', method: 'PATCH', destructive: true, path: '/api/v1/facilities/building-systems/devices/{id}/retirement', fields: reason },
@@ -36,12 +38,52 @@ const requestActions: CreateAction[] = [
   { label: 'Hand to construction', path: '/api/v1/facilities/space-planning/requests/{id}/hand-to-construction', fields: [{ key: 'title', label: 'Project title' }, { key: 'scope', label: 'Scope', type: 'textarea' }] },
   { label: 'Resolve request', path: '/api/v1/facilities/space-planning/requests/{id}/resolve', fields: note },
 ];
+const cleaningTaskAction = (
+  kind: CleaningTaskAction,
+  action: Omit<CreateAction, 'visible' | 'disabledReason'>,
+): CreateAction => ({
+  ...action,
+  visible: (record) => cleaningTaskActionAvailability(kind, record).visible,
+  disabledReason: (record) => cleaningTaskActionAvailability(kind, record).disabledReason,
+});
 const cleaningTaskActions: CreateAction[] = [
-  { label: 'Assign task', method: 'PATCH', path: '/api/v1/facilities/cleaning/tasks/{id}/assignment', fields: [{ key: 'assigneeType', label: 'Assignee type', type: 'select', required: true, options: ['INTERNAL', 'VENDOR'] }, { key: 'assignedTo', label: 'Assigned to', required: true }, { key: 'vendorId', label: 'Vendor ID' }] },
-  { label: 'Start task', method: 'PATCH', path: '/api/v1/facilities/cleaning/tasks/{id}/start', fields: [] },
-  { label: 'Complete task', method: 'PATCH', path: '/api/v1/facilities/cleaning/tasks/{id}/completion', fields: note },
-  { label: 'Cancel task', method: 'PATCH', destructive: true, path: '/api/v1/facilities/cleaning/tasks/{id}/cancellation', fields: reason },
-  { label: 'Submit feedback', path: '/api/v1/facilities/cleaning/tasks/{id}/feedback', fields: [{ key: 'rating', label: 'Rating (1–5)', type: 'number', required: true }, { key: 'comment', label: 'Comment', type: 'textarea' }], toBody: (v) => ({ rating: Number(v.rating), comment: v.comment || null }) },
+  cleaningTaskAction('assign', { label: 'Assign task', method: 'PATCH', path: '/api/v1/facilities/cleaning/tasks/{id}/assignment', fields: [{ key: 'assigneeType', label: 'Assignee type', type: 'select', required: true, options: ['INTERNAL', 'VENDOR'] }, { key: 'assignedTo', label: 'Assigned to', required: true }, { key: 'vendorId', label: 'Vendor ID' }] }),
+  cleaningTaskAction('start', { label: 'Start task', method: 'PATCH', path: '/api/v1/facilities/cleaning/tasks/{id}/start', fields: [] }),
+  cleaningTaskAction('complete', { label: 'Complete task', method: 'PATCH', path: '/api/v1/facilities/cleaning/tasks/{id}/completion', fields: [{ key: 'notes', label: 'Completion notes', type: 'textarea' }] }),
+  cleaningTaskAction('cancel', { label: 'Cancel task', method: 'PATCH', destructive: true, path: '/api/v1/facilities/cleaning/tasks/{id}/cancellation', fields: reason }),
+  cleaningTaskAction('feedback', { label: 'Submit feedback', path: '/api/v1/facilities/cleaning/tasks/{id}/feedback', fields: [{ key: 'rating', label: 'Rating (1–5)', type: 'number', required: true }, { key: 'comment', label: 'Comment', type: 'textarea' }], toBody: (v) => ({ rating: Number(v.rating), comment: v.comment || null }) }),
+];
+const cleaningScheduleActions: CreateAction[] = [
+  {
+    label: 'Update schedule',
+    method: 'PATCH',
+    path: '/api/v1/facilities/cleaning/schedules/{id}',
+    fields: [
+      { key: 'name', label: 'Schedule name', required: true },
+      { key: 'frequency', label: 'Frequency', type: 'select', required: true, options: ['DAILY', 'WEEKLY', 'SPECIFIC_WEEKDAYS'] },
+      { key: 'daysOfWeek', label: 'Days of week (comma-separated)' },
+      { key: 'timesOfDay', label: 'Times of day (comma-separated, HH:mm)', required: true },
+      { key: 'durationMinutes', label: 'Duration (minutes)', type: 'number', required: true },
+      { key: 'active', label: 'Active', type: 'select', required: true, options: ['true', 'false'] },
+    ],
+    toBody: (v) => ({
+      name: v.name,
+      frequency: v.frequency,
+      daysOfWeek: v.frequency === 'DAILY' ? [] : commaSeparated(v.daysOfWeek),
+      timesOfDay: commaSeparated(v.timesOfDay),
+      durationMinutes: Number(v.durationMinutes),
+      active: v.active === 'true',
+    }),
+  },
+];
+const lowRatingActions: CreateAction[] = [
+  {
+    label: 'Review rating issue',
+    method: 'PATCH',
+    path: '/api/v1/facilities/cleaning/low-rating-flags/{id}/review',
+    fields: [{ key: 'notes', label: 'Review notes', type: 'textarea', required: true }],
+    visible: (record) => record.open !== false,
+  },
 ];
 const vendorActions: CreateAction[] = [
   { label: 'Change status', method: 'PATCH', path: '/api/v1/facilities/cleaning/vendors/{id}/status', fields: [{ key: 'status', label: 'Status', type: 'select', required: true, options: ['ACTIVE', 'SUSPENDED', 'INACTIVE'] }] },
@@ -148,10 +190,10 @@ export const CleaningPage = page({
   views: [
     { label: 'Dashboard', path: '/api/v1/facilities/cleaning/dashboard', description: 'Scheduled/completed work, overdue requests, SLA performance and feedback.' },
     { label: 'Tasks', path: '/api/v1/facilities/cleaning/tasks', description: 'Routine, booking-triggered and reactive cleaning work.', actions: cleaningTaskActions, create: { label: 'Raise cleaning task', path: '/api/v1/facilities/cleaning/tasks', fields: [{ key: 'roomId', label: 'Room ID', required: true }, { key: 'origin', label: 'Origin', type: 'select', required: true, options: ['ADHOC', 'BOOKING_SETUP', 'BOOKING_TEARDOWN'] }, { key: 'title', label: 'Title', required: true }, { key: 'description', label: 'Description', type: 'textarea' }, { key: 'windowStart', label: 'Window start', type: 'datetime' }, { key: 'dueBy', label: 'Due by', type: 'datetime', required: true }] } },
-    { label: 'Schedules', path: '/api/v1/facilities/cleaning/schedules', description: 'Recurring cleaning schedules.', create: { label: 'Create schedule', path: '/api/v1/facilities/cleaning/schedules', fields: [{ key: 'siteCode', label: 'Site code', required: true }, { key: 'name', label: 'Schedule name', required: true }, { key: 'spaceType', label: 'Space type', type: 'select', required: true, options: ['OFFICE', 'MEETING_ROOM', 'LECTURE_HALL', 'EXAMINATION_HALL', 'LABORATORY', 'LIBRARY', 'STORE', 'PLANT_ROOM'] }, { key: 'roomId', label: 'Room ID' }, { key: 'frequency', label: 'Frequency', type: 'select', required: true, options: ['DAILY', 'WEEKLY', 'MONTHLY'] }, { key: 'timesOfDay', label: 'Time of day (HH:mm)', required: true, initial: '07:00' }, { key: 'durationMinutes', label: 'Duration (minutes)', type: 'number', required: true, initial: '60' }], toBody: (v) => ({ ...v, roomId: v.roomId || null, timesOfDay: [v.timesOfDay], daysOfWeek: v.frequency === 'WEEKLY' ? ['MONDAY'] : [], durationMinutes: Number(v.durationMinutes) }) } },
+    { label: 'Schedules', path: '/api/v1/facilities/cleaning/schedules', description: 'Recurring cleaning schedules.', actions: cleaningScheduleActions, create: { label: 'Create schedule', path: '/api/v1/facilities/cleaning/schedules', fields: [{ key: 'siteCode', label: 'Site code', required: true }, { key: 'name', label: 'Schedule name', required: true }, { key: 'spaceType', label: 'Space type', type: 'select', required: true, options: ['OFFICE', 'MEETING_ROOM', 'LECTURE_HALL', 'EXAMINATION_HALL', 'LABORATORY', 'LIBRARY', 'STORE', 'PLANT_ROOM'] }, { key: 'roomId', label: 'Room ID' }, { key: 'frequency', label: 'Frequency', type: 'select', required: true, options: ['DAILY', 'WEEKLY', 'SPECIFIC_WEEKDAYS'] }, { key: 'daysOfWeek', label: 'Days of week (comma-separated)', initial: 'MONDAY' }, { key: 'timesOfDay', label: 'Times of day (comma-separated, HH:mm)', required: true, initial: '07:00' }, { key: 'durationMinutes', label: 'Duration (minutes)', type: 'number', required: true, initial: '60' }], toBody: (v) => ({ ...v, roomId: v.roomId || null, timesOfDay: commaSeparated(v.timesOfDay), daysOfWeek: v.frequency === 'DAILY' ? [] : commaSeparated(v.daysOfWeek), durationMinutes: Number(v.durationMinutes) }) } },
     { label: 'Checklists', path: '/api/v1/facilities/cleaning/checklist-templates', description: 'Checklist templates used as completion evidence.', create: { label: 'Create checklist', path: '/api/v1/facilities/cleaning/checklist-templates', fields: [{ key: 'siteCode', label: 'Site code', required: true }, { key: 'spaceType', label: 'Space type', type: 'select', required: true, options: ['OFFICE', 'MEETING_ROOM', 'LECTURE_HALL', 'EXAMINATION_HALL', 'LABORATORY', 'LIBRARY', 'STORE', 'PLANT_ROOM'] }, { key: 'name', label: 'Template name', required: true }, { key: 'itemCode', label: 'First item code', required: true }, { key: 'itemLabel', label: 'First checklist item', required: true }], toBody: (v) => ({ siteCode: v.siteCode, spaceType: v.spaceType, name: v.name, items: [{ itemCode: v.itemCode, label: v.itemLabel, photoRequired: false }] }) } },
     { label: 'Vendors', path: '/api/v1/facilities/cleaning/vendors', description: 'Cleaning suppliers and current service terms.', actions: vendorActions, create: { label: 'Register vendor', path: '/api/v1/facilities/cleaning/vendors', fields: [{ key: 'siteCode', label: 'Site code', required: true }, { key: 'vendorMasterReference', label: 'Vendor master reference', required: true }] } },
-    { label: 'Low ratings', path: '/api/v1/facilities/cleaning/low-rating-flags', description: 'Feedback exceptions awaiting supervisor review.' },
+    { label: 'Low ratings', path: '/api/v1/facilities/cleaning/low-rating-flags', description: 'Feedback exceptions awaiting supervisor review.', actions: lowRatingActions },
     { label: 'Capacity', path: '/api/v1/facilities/cleaning/capacity', description: 'Crew capacity and competing commitments.' },
   ],
 });
