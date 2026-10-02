@@ -77,7 +77,7 @@ jobs:
       SFL_DB_POOL_MAX_SIZE: '6'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -135,7 +135,7 @@ jobs:
       run:
         working-directory: frontend/sfl-operations-ui
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # 22, not 20. jsdom loads undici, which calls `webidl.util.markAsUncloneable` - a function that
       # does not exist before Node 20.19, so every one of the 27 test files died at import with
       # `TypeError: webidl.util.markAsUncloneable is not a function` and vitest reported unhandled
