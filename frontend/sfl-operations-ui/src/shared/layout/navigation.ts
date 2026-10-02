@@ -309,6 +309,15 @@ export const riskAssessmentPaths = {
   configuration: '/safetysecurity/risk-assessments/configuration',
 };
 
+export type SecuritySystemCode = 'S160a' | 'S161' | 'S162' | 'S162a';
+
+export const securitySystemPaths: Record<SecuritySystemCode, string> = {
+  S160a: '/safetysecurity/access-control',
+  S161: '/safetysecurity/cctv',
+  S162: '/safetysecurity/intrusion',
+  S162a: '/safetysecurity/life-safety',
+};
+
 /**
  * Personal landings - the "what do I have to do today" views.
  *
@@ -335,6 +344,30 @@ export const navSections: NavSection[] = [
   //
   // Each is `persona`-gated, so an operator never sees them: the sections below are unchanged for
   // everybody who was already served.
+  {
+    heading: 'Physical access control',
+    programme: 'SSEMP',
+    system: 'S160a',
+    items: [{ label: 'Access control', to: securitySystemPaths.S160a, icon: 'lock', description: 'Zones, exceptions and occupancy' }],
+  },
+  {
+    heading: 'CCTV / VMS',
+    programme: 'SSEMP',
+    system: 'S161',
+    items: [{ label: 'CCTV operations', to: securitySystemPaths.S161, icon: 'camera', description: 'Cameras and evidence requests' }],
+  },
+  {
+    heading: 'Intrusion & alarms',
+    programme: 'SSEMP',
+    system: 'S162',
+    items: [{ label: 'Alarm queue', to: securitySystemPaths.S162, icon: 'shield-alert', description: 'SOC alarms and dispatch' }],
+  },
+  {
+    heading: 'Fire & life safety',
+    programme: 'SSEMP',
+    system: 'S162a',
+    items: [{ label: 'Life safety', to: securitySystemPaths.S162a, icon: 'alert-triangle', description: 'Detectors and compliance exceptions' }],
+  },
   {
     heading: 'My work',
     programme: 'FTLMP',

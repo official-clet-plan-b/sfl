@@ -144,6 +144,7 @@ const RiskAssessmentDetailPage = lazy(() => import('modules/riskassessment/pages
 const ReviewFlagsPage = lazy(() => import('modules/riskassessment/pages/ReviewFlagsPage'));
 const RiskCoveragePage = lazy(() => import('modules/riskassessment/pages/RiskCoveragePage'));
 const RiskConfigurationPage = lazy(() => import('modules/riskassessment/pages/RiskConfigurationPage'));
+const SecuritySystemsPage = lazy(() => import('modules/security/SecuritySystemsPage'));
 
 /**
  * The router basename comes from Vite's `BASE_URL`, which is set by `base` in `vite.config.ts`.
@@ -438,6 +439,18 @@ const App = () => {
               named for the system, which is the same split FTLMP and IFIMP now use.
             */}
             <Route path="safetysecurity">
+              <Route path="access-control" element={<SystemRoutes system="S160a" />}>
+                <Route index element={<SecuritySystemsPage system="S160a" />} />
+              </Route>
+              <Route path="cctv" element={<SystemRoutes system="S161" />}>
+                <Route index element={<SecuritySystemsPage system="S161" />} />
+              </Route>
+              <Route path="intrusion" element={<SystemRoutes system="S162" />}>
+                <Route index element={<SecuritySystemsPage system="S162" />} />
+              </Route>
+              <Route path="life-safety" element={<SystemRoutes system="S162a" />}>
+                <Route index element={<SecuritySystemsPage system="S162a" />} />
+              </Route>
               <Route path="visitors" element={<SystemRoutes system="S160" />}>
                 <Route index element={<VisitorDashboardPage />} />
                 <Route path="visits">

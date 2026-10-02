@@ -4,7 +4,6 @@ import {
   AppBody,
   AppHeader,
   AppHeaderActions,
-  AppHeaderFontSize,
   AppHeaderSearch,
   AppHeaderTitle,
   AppLayout,
@@ -29,6 +28,12 @@ import Icon from 'shared/components/Icon';
 import { entitledSections, type NavItem } from './navigation';
 import { permissionFailure } from './actorPermissions';
 import { portalLabel } from './programmes';
+import {
+  FONT_SCALE_MAX,
+  FONT_SCALE_MIN,
+  FONT_SCALE_STEP,
+  useSystemPreferences,
+} from './SystemPreferences';
 
 /**
  * The development actor switcher, loaded on demand - and only in a development build.
@@ -62,6 +67,53 @@ const sites = sflActor.sites
   .split(',')
   .map((site) => site.trim())
   .filter(Boolean);
+
+const FontScaleMenu = () => {
+  const { fontScale, setFontScale, resetFontScale } = useSystemPreferences();
+  const percentage = Math.round(fontScale * 100);
+
+  return (
+    <details className="relative">
+      <summary
+        className="flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-md px-2 text-theme-sm font-medium text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
+        aria-label="System preferences"
+      >
+        <span aria-hidden="true" className="text-base leading-none">A</span>
+        <span className="hidden sm:inline">Text size</span>
+      </summary>
+      <div className="absolute top-11 right-0 z-50 w-64 rounded-lg border border-gray-200 bg-white p-4 shadow-theme-lg">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-theme-sm font-semibold text-gray-900">System preferences</p>
+          <span className="text-theme-xs font-medium text-gray-600">{percentage}%</span>
+        </div>
+        <label className="mt-3 block text-theme-xs text-gray-600" htmlFor="font-scale">
+          Text size
+        </label>
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-xs" aria-hidden="true">A</span>
+          <input
+            id="font-scale"
+            type="range"
+            min={FONT_SCALE_MIN}
+            max={FONT_SCALE_MAX}
+            step={FONT_SCALE_STEP}
+            value={fontScale}
+            onChange={(event) => setFontScale(Number(event.target.value))}
+            className="min-w-0 flex-1 accent-teal-700"
+          />
+          <span className="text-lg" aria-hidden="true">A</span>
+        </div>
+        <button
+          type="button"
+          className="mt-3 text-theme-xs font-medium text-teal-800 underline underline-offset-2"
+          onClick={resetFontScale}
+        >
+          Reset to 100%
+        </button>
+      </div>
+    </details>
+  );
+};
 
 /** Whether `item` is the current destination - `matchPrefix` also claims its child routes. */
 const isCurrent = (item: NavItem, pathname: string): boolean =>
@@ -157,7 +209,7 @@ const AppShell = () => {
             showEmpty
             emptyLabel="No matching pages"
           />
-          <AppHeaderFontSize />
+          <FontScaleMenu />
           <ProfilePopover
             variant="full"
             side="bottom"

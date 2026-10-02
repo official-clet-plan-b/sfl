@@ -3,6 +3,35 @@
 @import 'flatpickr/dist/flatpickr.min.css';
 @import 'leaflet/dist/leaflet.css';
 
+:root {
+  --clet-font-scale: 1;
+}
+
+/* Keep the layout fluid while every type ramp responds to the same preference. */
+html {
+  font-size: calc(16px * var(--clet-font-scale));
+}
+
+/* Collapsed navigation is an icon rail: labels remain available to assistive technology but never
+   wrap into the rail or collide with the active icon. */
+.clet-sidebar--brand.clet-sidebar--collapsed .clet-sidebar__group-label,
+.clet-sidebar--brand.clet-sidebar--collapsed .clet-sidebar__link-label {
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  position: absolute;
+}
+
+.clet-sidebar--brand.clet-sidebar--collapsed .clet-sidebar__link,
+.clet-sidebar--brand.clet-sidebar--collapsed .clet-sidebar__group-toggle {
+  justify-content: center;
+  min-width: 48px;
+  padding-inline: 8px;
+}
+
 /*
  * CLET design tokens.
  *
@@ -496,4 +525,17 @@ span.flatpickr-weekday {
 .apexcharts-xaxistooltip,
 .apexcharts-yaxistooltip {
   @apply rounded-md border-gray-200 bg-white text-theme-xs text-gray-700;
+}
+
+/* Apply the preference after the generated theme so the named ramps scale too. */
+:root {
+  --text-title-xl: calc(64px * var(--clet-font-scale));
+  --text-title-lg: calc(48px * var(--clet-font-scale));
+  --text-title-md: calc(40px * var(--clet-font-scale));
+  --text-title-sm: calc(30px * var(--clet-font-scale));
+  --text-theme-xl: calc(20px * var(--clet-font-scale));
+  --text-theme-lg: calc(18px * var(--clet-font-scale));
+  --text-theme-md: calc(16px * var(--clet-font-scale));
+  --text-theme-sm: calc(14px * var(--clet-font-scale));
+  --text-theme-xs: calc(12px * var(--clet-font-scale));
 }
