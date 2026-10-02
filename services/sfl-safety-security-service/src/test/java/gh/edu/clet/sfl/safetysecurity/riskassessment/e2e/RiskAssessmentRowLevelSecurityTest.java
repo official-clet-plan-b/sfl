@@ -42,9 +42,14 @@ class RiskAssessmentRowLevelSecurityTest extends SafetySecurityPostgresSupport {
      * tables, and nothing else. ADR 0010 leaves Phase 1 tables unpoliced for a later pass; a Phase 1 table
      * appearing here would mean a migration switched RLS on for it, and every sweep that reads it, unannounced.
      */
-    private static final Set<String> PHASE_2_POLICED = Set.of("risk_assessments", "risk_assessment_versions",
+    private static final Set<String> S165_POLICED = Set.of("risk_assessments", "risk_assessment_versions",
             "risk_assessment_hazards", "risk_assessment_controls", "risk_assessment_sign_offs",
             "risk_assessment_review_flags", "risk_observed_activity_types");
+    private static final Set<String> S175_POLICED = Set.of("drills", "drill_expectations", "drill_executions",
+            "drill_baseline_persons", "drill_roll_call_gaps", "drill_reviews", "drill_findings",
+            "drill_corrective_actions", "drill_frequency_requirements");
+    private static final Set<String> PHASE_2_POLICED = java.util.stream.Stream.of(S165_POLICED, S175_POLICED)
+            .flatMap(Set::stream).collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     @Autowired private DataSource dataSource;
 
@@ -114,7 +119,7 @@ class RiskAssessmentRowLevelSecurityTest extends SafetySecurityPostgresSupport {
                    AND (table_name LIKE 'risk\\_assessment%' OR table_name LIKE 'risk\\_observed%')
                 """, String.class));
 
-        assertThat(s165SiteScoped).as("every S165 table with a site_code").isEqualTo(PHASE_2_POLICED);
+        assertThat(s165SiteScoped).as("every S165 table with a site_code").isEqualTo(S165_POLICED);
         assertThat(policed).as("tables with RLS enabled").isEqualTo(PHASE_2_POLICED);
         assertThat(withPolicy).as("tables carrying site_scope_read").isEqualTo(PHASE_2_POLICED);
     }
