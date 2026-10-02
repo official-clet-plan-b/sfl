@@ -58,6 +58,20 @@ jobs:
           --health-cmd "pg_isready -U sfl"
           --health-interval 10s --health-timeout 5s --health-retries 10
 
+      # The Amqp*TransportBrokerIntegrationTest suites (fleet, emergency) prove the publisher-confirm
+      # and return callbacks against a real broker and skip when nothing answers on localhost:5672
+      # with sfl/sfl - which the skip guard below correctly counts as a failure. Same image and
+      # credentials as compose.broker.yml.
+      rabbitmq:
+        image: rabbitmq:3.13-management
+        env:
+          RABBITMQ_DEFAULT_USER: sfl
+          RABBITMQ_DEFAULT_PASS: sfl
+        ports: ['5672:5672']
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q check_running"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+
     env:
       # Two variables, two databases, and they must not be the same one. The e2e suite fills its
       # database with fixtures; the migration suite proves V1..V23 apply to an *empty* schema and
