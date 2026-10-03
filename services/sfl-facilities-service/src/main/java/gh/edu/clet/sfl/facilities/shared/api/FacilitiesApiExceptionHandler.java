@@ -14,6 +14,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.ServletRequestBindingException;
@@ -116,7 +117,10 @@ class FacilitiesApiExceptionHandler {
             // unresolved cross-module dependency rather than a bad request from the caller, so 503
             // rather than 422/400.
             Map.entry(FacilitiesErrorCode.SPACE_CONSTRUCTION_INTAKE_UNAVAILABLE, HttpStatus.SERVICE_UNAVAILABLE),
-            Map.entry(FacilitiesErrorCode.SPACE_UTILISATION_SOURCE_UNAVAILABLE, HttpStatus.SERVICE_UNAVAILABLE));
+            Map.entry(FacilitiesErrorCode.SPACE_UTILISATION_SOURCE_UNAVAILABLE, HttpStatus.SERVICE_UNAVAILABLE),
+            Map.entry(FacilitiesErrorCode.HYGIENE_SELF_VERIFICATION, HttpStatus.FORBIDDEN),
+            Map.entry(FacilitiesErrorCode.HYGIENE_PROVIDER_UNCONFIRMED, HttpStatus.UNPROCESSABLE_ENTITY),
+            Map.entry(FacilitiesErrorCode.HYGIENE_CLOSURE_BLOCKED, HttpStatus.UNPROCESSABLE_ENTITY));
 
     /** One field's rejection, shaped as the dashboard's form binding expects. */
     public record FieldErrorResponse(String field, String message, Object rejectedValue) {
@@ -248,6 +252,14 @@ class FacilitiesApiExceptionHandler {
             HttpServletRequest request) {
         return respond(HttpStatus.BAD_REQUEST, FacilitiesErrorCode.VALIDATION_FAILED, exception.getMessage(),
                 null, request);
+    }
+
+    /** A body that is not JSON, or names an enum value that does not exist, gets the same envelope as any other 400. */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<ApiResponse<Object>> unreadableBody(HttpMessageNotReadableException exception,
+            HttpServletRequest request) {
+        return respond(HttpStatus.BAD_REQUEST, FacilitiesErrorCode.VALIDATION_FAILED,
+                "The request body is missing or malformed.", null, request);
     }
 
     /** Legacy state failures from {@code maintenance}, which predate the typed exceptions. */

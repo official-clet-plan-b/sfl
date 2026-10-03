@@ -114,8 +114,8 @@ class RegisterRecordsRowLevelSecurityTest {
     private static String insertSql(String siteCode, String title) {
         Timestamp now = Timestamp.from(Instant.now());
         return "INSERT INTO facilities.register_records (id, system_code, site_code, record_type, title, status,"
-                + " created_by, created_at, updated_at, version) VALUES ('" + UUID.randomUUID() + "', 'S170', '"
-                + siteCode + "', 'HYGIENE_AUDIT', '" + title + "', 'PLANNED', 'rls-seed', '" + now + "', '" + now
+                + " created_by, created_at, updated_at, version) VALUES ('" + UUID.randomUUID() + "', 'S172', '"
+                + siteCode + "', 'SERVICE', '" + title + "', 'DRAFT', 'rls-seed', '" + now + "', '" + now
                 + "', 0)";
     }
 

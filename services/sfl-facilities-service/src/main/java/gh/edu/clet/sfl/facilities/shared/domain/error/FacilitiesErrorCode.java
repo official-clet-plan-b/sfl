@@ -129,6 +129,11 @@ public enum FacilitiesErrorCode {
             "Inbound vendor message failed authentication, source allowlist or schema validation; logged and not actioned."),
     RISK_ASSESSMENT_NOT_CURRENT("Linked assessment past its review date; refused pending renewal."),
     RISK_ASSESSMENT_NOT_LINKED("A current risk assessment is required for this work and none is linked; refused."),
+
+    // S170 Hygiene & Pest-Control Audit Tracker
+    HYGIENE_SELF_VERIFICATION("A finding or action must be verified by someone other than the person who completed it."),
+    HYGIENE_PROVIDER_UNCONFIRMED("The pest-control provider has not confirmed this visit; it cannot be completed."),
+    HYGIENE_CLOSURE_BLOCKED("A finding closes only with accepted evidence or an approved exception."),
     // ---- end of block
 
     // Cross-cutting

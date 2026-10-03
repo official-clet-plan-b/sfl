@@ -393,6 +393,11 @@ public enum SflPermission {
     // integration engineer - gating a hygiene officer's daily work on it left the system owners locked out.
     FACILITIES_HYGIENE_READ,
     FACILITIES_HYGIENE_MANAGE,
+    // Filed evidence can name people and premises, so seeing it is a grant of its own rather than a side
+    // effect of reading the register. Verification is separate again: whoever manages a finding must not be
+    // the one who signs it off, so the facilities manager manages and cannot verify.
+    FACILITIES_HYGIENE_EVIDENCE_READ,
+    FACILITIES_HYGIENE_VERIFY,
 
     // S165 Risk Assessment Library (Phase 2 SRS §3.2, SSEMP). Additive only - adding enum constants
     // changes no existing signature and no existing service behaviour. Split by authority level, not by
