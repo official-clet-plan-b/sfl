@@ -120,7 +120,11 @@ class FacilitiesApiExceptionHandler {
             Map.entry(FacilitiesErrorCode.SPACE_UTILISATION_SOURCE_UNAVAILABLE, HttpStatus.SERVICE_UNAVAILABLE),
             Map.entry(FacilitiesErrorCode.HYGIENE_SELF_VERIFICATION, HttpStatus.FORBIDDEN),
             Map.entry(FacilitiesErrorCode.HYGIENE_PROVIDER_UNCONFIRMED, HttpStatus.UNPROCESSABLE_ENTITY),
-            Map.entry(FacilitiesErrorCode.HYGIENE_CLOSURE_BLOCKED, HttpStatus.UNPROCESSABLE_ENTITY));
+            Map.entry(FacilitiesErrorCode.HYGIENE_CLOSURE_BLOCKED, HttpStatus.UNPROCESSABLE_ENTITY),
+            Map.entry(FacilitiesErrorCode.WASTE_CARRIER_UNAPPROVED, HttpStatus.UNPROCESSABLE_ENTITY),
+            Map.entry(FacilitiesErrorCode.WASTE_DESTINATION_UNAPPROVED, HttpStatus.UNPROCESSABLE_ENTITY),
+            Map.entry(FacilitiesErrorCode.WASTE_CHAIN_OPEN, HttpStatus.UNPROCESSABLE_ENTITY),
+            Map.entry(FacilitiesErrorCode.WASTE_SELF_VERIFICATION, HttpStatus.FORBIDDEN));
 
     /** One field's rejection, shaped as the dashboard's form binding expects. */
     public record FieldErrorResponse(String field, String message, Object rejectedValue) {

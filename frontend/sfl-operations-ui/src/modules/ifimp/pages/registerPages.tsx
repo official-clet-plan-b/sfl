@@ -56,7 +56,6 @@ const RegisterPage = ({ system, title, subtitle, views }: { system: string; titl
 
 const cateringStatuses = ['DRAFT', 'PENDING_APPROVAL', 'CONFIRMED', 'DELIVERED', 'RECONCILIATION_PENDING', 'CLOSED'];
 const leaseStatuses = ['DRAFT', 'ACTIVE', 'DUE', 'PENDING_APPROVAL', 'RENEWED', 'TERMINATED'];
-const wasteStatuses = ['PLANNED', 'IN_TRANSIT', 'RECEIVED', 'EXCEPTION', 'CLOSED'];
 const lostFoundStatuses = ['INTAKE', 'STORED', 'CLAIM_PENDING', 'RELEASED', 'DISPOSED', 'CLOSED'];
 
 export const CateringPage = () => <RegisterPage system="S172" title="Catering & cafeteria" subtitle="Plan safe services, dietary handling and delivery reconciliation." views={[
@@ -69,12 +68,6 @@ export const LeasePage = () => <RegisterPage system="S177" title="Lease & tenanc
   view('Agreements', 'Lease and tenancy portfolio by site.', 'agreements', 'S177', ['LEASE', 'TENANCY'], leaseStatuses),
   view('Obligations', 'Notice, insurance, rent-review and compliance dates.', 'obligations', 'S177', ['OBLIGATION', 'RENEWAL', 'RENT_REVIEW'], leaseStatuses),
   view('Amendments', 'Controlled amendment and termination approvals.', 'amendments', 'S177', ['AMENDMENT', 'TERMINATION'], leaseStatuses),
-]} />;
-
-export const WastePage = () => <RegisterPage system="S178" title="Waste & recycling" subtitle="Track collections, manifests, certificates and hazardous custody." views={[
-  view('Collections', 'Measured waste collections by stream and point.', 'collections', 'S178', ['COLLECTION', 'WASTE_STREAM'], wasteStatuses),
-  view('Custody & certificates', 'Carrier handover and destination evidence.', 'certificates', 'S178', ['MANIFEST', 'CERTIFICATE', 'DESTINATION_RECEIPT'], wasteStatuses),
-  view('Exceptions', 'Contamination, missed collection and spill exceptions.', 'exceptions', 'S178', ['EXCEPTION', 'CORRECTIVE_ACTION'], wasteStatuses),
 ]} />;
 
 export const LostFoundPage = () => <RegisterPage system="S179" title="Lost & found" subtitle="Protect found property, verify claims and preserve custody history." views={[
