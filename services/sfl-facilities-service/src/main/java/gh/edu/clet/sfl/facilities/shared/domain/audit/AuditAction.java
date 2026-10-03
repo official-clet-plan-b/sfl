@@ -88,6 +88,8 @@ public enum AuditAction {
      * logged; this is that log, and it records the recipient as well as the reason.
      */
     EVIDENCE_EXPORTED,
+    /** A register left CLET as a file: who, which register, how many rows and the stated reason. */
+    REGISTER_EXPORTED,
     /** The retention period ran out and the reference was cleared. The row survives; see V13. */
     EVIDENCE_DISPOSED,
     EVIDENCE_LEGAL_HOLD_CHANGED,

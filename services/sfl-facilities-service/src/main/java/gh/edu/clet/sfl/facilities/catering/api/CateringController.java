@@ -63,8 +63,11 @@ public class CateringController {
     private final CateringOpsService ops;
     private final gh.edu.clet.sfl.facilities.catering.application.CateringWorkOrderService workOrders;
 
+    private final gh.edu.clet.sfl.facilities.catering.application.CateringExportService exports;
+
     public CateringController(CateringConfigService config, CateringServiceService services, CateringOpsService ops,
-            gh.edu.clet.sfl.facilities.catering.application.CateringWorkOrderService workOrders) {
+            gh.edu.clet.sfl.facilities.catering.application.CateringWorkOrderService workOrders, gh.edu.clet.sfl.facilities.catering.application.CateringExportService exports) {
+        this.exports = exports;
         this.workOrders = workOrders;
         this.config = config;
         this.services = services;
@@ -404,5 +407,17 @@ public class CateringController {
 
     public record ReconcileRequest(@NotBlank @Size(max = 120) String purchaseReference,
             @Size(max = 120) String invoiceReference, Long version) {
+    }
+
+    // ---- export (NFR-AUD1): its own grant, a stated reason, audited
+
+    @GetMapping(value = "/exports/services", produces = "text/csv")
+    public ResponseEntity<byte[]> exportServices(@RequestParam String siteCode, @RequestParam(required = false) String status,
+            @RequestParam String reason, ActorContext actor, SourceChannel channel) {
+        var file = exports.export(siteCode, status, reason, new Caller(actor, channel));
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.fileName() + "\"")
+                .contentType(new org.springframework.http.MediaType("text", "csv", java.nio.charset.StandardCharsets.UTF_8))
+                .body(file.csv().getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 }

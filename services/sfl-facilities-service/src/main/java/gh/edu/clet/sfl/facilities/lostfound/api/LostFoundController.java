@@ -49,7 +49,10 @@ public class LostFoundController {
     private final LostFoundClaimService claims;
     private final LostFoundOpsService ops;
 
-    public LostFoundController(LostFoundItemService items, LostFoundClaimService claims, LostFoundOpsService ops) {
+    private final gh.edu.clet.sfl.facilities.lostfound.application.LostFoundExportService exports;
+
+    public LostFoundController(LostFoundItemService items, LostFoundClaimService claims, LostFoundOpsService ops, gh.edu.clet.sfl.facilities.lostfound.application.LostFoundExportService exports) {
+        this.exports = exports;
         this.items = items;
         this.claims = claims;
         this.ops = ops;
@@ -305,5 +308,17 @@ public class LostFoundController {
     }
 
     public record ReleaseRequest(boolean accepted, @Size(max = 2000) String note, Long version) {
+    }
+
+    // ---- export (NFR-AUD1): its own grant, a stated reason, audited
+
+    @GetMapping(value = "/exports/items", produces = "text/csv")
+    public ResponseEntity<byte[]> exportItems(@RequestParam String siteCode, @RequestParam(required = false) String status,
+            @RequestParam String reason, ActorContext actor, SourceChannel channel) {
+        var file = exports.export(siteCode, status, reason, new Caller(actor, channel));
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.fileName() + "\"")
+                .contentType(new org.springframework.http.MediaType("text", "csv", java.nio.charset.StandardCharsets.UTF_8))
+                .body(file.csv().getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 }

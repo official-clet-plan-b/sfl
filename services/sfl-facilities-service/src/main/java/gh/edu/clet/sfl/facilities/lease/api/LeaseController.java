@@ -58,7 +58,10 @@ public class LeaseController {
     private final LeaseOpsService ops;
     private final LeaseWorkOrderService workOrders;
 
-    public LeaseController(LeaseAgreementService agreements, LeaseConfigService config, LeaseOpsService ops, LeaseWorkOrderService workOrders) {
+    private final gh.edu.clet.sfl.facilities.lease.application.LeaseExportService exports;
+
+    public LeaseController(LeaseAgreementService agreements, LeaseConfigService config, LeaseOpsService ops, LeaseWorkOrderService workOrders, gh.edu.clet.sfl.facilities.lease.application.LeaseExportService exports) {
+        this.exports = exports;
         this.workOrders = workOrders;
         this.agreements = agreements;
         this.config = config;
@@ -299,5 +302,17 @@ public class LeaseController {
 
     public record ObligationRequest(@NotNull ObligationKind kind, @NotBlank @Size(max = 240) String title, @NotNull LocalDate dueOn,
             @Size(max = 160) String ownerReference) {
+    }
+
+    // ---- export (NFR-AUD1): its own grant, a stated reason, audited
+
+    @GetMapping(value = "/exports/agreements", produces = "text/csv")
+    public ResponseEntity<byte[]> exportAgreements(@RequestParam String siteCode, @RequestParam(required = false) String status,
+            @RequestParam String reason, ActorContext actor, SourceChannel channel) {
+        var file = exports.export(siteCode, status, reason, new Caller(actor, channel));
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.fileName() + "\"")
+                .contentType(new org.springframework.http.MediaType("text", "csv", java.nio.charset.StandardCharsets.UTF_8))
+                .body(file.csv().getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 }

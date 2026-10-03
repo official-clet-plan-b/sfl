@@ -342,6 +342,7 @@ public final class FacilitiesPermissionMatrix {
         grantLostFound(matrix);
         grantCatering(matrix);
         grantLease(matrix);
+        grantRegisterExport(matrix);
 
         return Map.copyOf(matrix);
     }
@@ -477,6 +478,18 @@ public final class FacilitiesPermissionMatrix {
         grant(matrix, SflRole.COMPLIANCE_OFFICER, read, SflPermission.FACILITIES_LEASE_LEGAL_REVIEW,
                 SflPermission.FACILITIES_LEASE_FINANCIAL_READ);
         grant(matrix, SflRole.DTI_ADMIN, read);
+    }
+
+    /**
+     * Exporting a register is the assurance function (NFR-AUD1, SRS 4.2), not a stronger form of reading: held by the
+     * director, the compliance officer and the HSE manager. What an export contains is still what the caller may read -
+     * private, dietary and financial columns follow their own grants.
+     */
+    private static void grantRegisterExport(Map<SflRole, Set<SflPermission>> matrix) {
+        Set<SflPermission> export = EnumSet.of(SflPermission.FACILITIES_REGISTER_EXPORT);
+        grant(matrix, SflRole.FACILITIES_DIRECTOR, export);
+        grant(matrix, SflRole.COMPLIANCE_OFFICER, export);
+        grant(matrix, SflRole.HSE_MANAGER, export);
     }
 
     private static void grantPhaseTwo(Map<SflRole, Set<SflPermission>> matrix) {

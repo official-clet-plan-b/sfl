@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router';
 import { Plus, RefreshCw } from 'lucide-react';
 import { Banner, Button, Dropdown, MetricCards, PageSection, Tabs, TabsList, TabsTrigger, useTableState, type TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
+import ExportButton from 'shared/components/ExportButton';
 import SiteSelect, { defaultSite, sflSites } from 'shared/components/SiteSelect';
 import { formatDate } from 'shared/components/format';
 import { useNotifier } from 'shared/components/Notifier';
@@ -56,6 +57,7 @@ const LeasePage = () => {
         actions={
           <>
             <SiteSelect label="Site" value={siteCode} onChange={setSiteCode} required className="w-44" />
+            <ExportButton path="/api/v1/facilities/leases/exports/agreements" siteCode={siteCode} />
             <Button variant="outline" onClick={bump}><RefreshCw size={14} strokeWidth={1.5} aria-hidden /> Refresh</Button>
             {canManage && <Button variant="primary" onClick={() => setRegistering(true)}><Plus size={14} strokeWidth={1.5} aria-hidden /> Register agreement</Button>}
           </>

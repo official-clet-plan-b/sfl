@@ -93,6 +93,7 @@ class LeaseServicePostgresTest {
     @Autowired private LeaseOpsService ops;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private LeaseWorkOrderService leaseWorkOrders;
+    @Autowired private gh.edu.clet.sfl.facilities.lease.application.LeaseExportService exports;
     @MockitoBean private LeaseEstatePort estate;
     @MockitoBean private LeaseWorkOrderPort s153;
 
@@ -414,6 +415,19 @@ class LeaseServicePostgresTest {
         assertThat(order.state()).isEqualTo("RAISED");
         assertThatThrownBy(() -> leaseWorkOrders.raise(a.id(), null, "x", compliance)).isInstanceOf(FacilitiesException.class);
         assertThatThrownBy(() -> leaseWorkOrders.raise(a.id(), null, " ", manager)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("exporting needs its own grant and a stated reason; the file follows the caller's financial grant, and says who took it")
+    void export() {
+        active();
+
+        var asDirector = exports.export(site, null, "Quarterly lease audit", director);
+        assertThat(asDirector.rows()).isEqualTo(1);
+        assertThat(asDirector.csv()).contains("# Reason: Quarterly lease audit").contains("director-user").contains("120000");
+
+        assertThatThrownBy(() -> exports.export(site, null, "Quarterly lease audit", manager)).isInstanceOf(FacilitiesException.class);
+        assertThatThrownBy(() -> exports.export(site, null, "audit", director)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

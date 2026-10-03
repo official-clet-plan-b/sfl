@@ -433,6 +433,8 @@ public enum SflPermission {
     FACILITIES_LEASE_APPROVE,
     FACILITIES_LEASE_LEGAL_REVIEW,
     FACILITIES_LEASE_FINANCIAL_READ,
+    /** Taking a register out of CLET as a file. Stronger than reading it: every export names a reason and is audited. */
+    FACILITIES_REGISTER_EXPORT,
 
     // S165 Risk Assessment Library (Phase 2 SRS §3.2, SSEMP). Additive only - adding enum constants
     // changes no existing signature and no existing service behaviour. Split by authority level, not by
