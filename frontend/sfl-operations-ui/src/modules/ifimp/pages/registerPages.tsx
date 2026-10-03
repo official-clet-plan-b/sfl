@@ -28,9 +28,8 @@ const statusAction = (statuses: string[]): CreateAction => ({
  * One tab of an estate register.
  *
  * `types` is both what the create form offers and what the tab lists. They were separate, and a tab
- * that listed only the first type hid every record of the others: a pest-control visit created from
- * "Hygiene controls" saved correctly and never appeared, and corrective actions never reached
- * "Findings". Whatever the form can create, the tab must be able to show.
+ * that listed only the first type hid every record of the others. Whatever the form can create, the
+ * tab must be able to show.
  */
 const view = (label: string, description: string, path: string, system: string, types: string[], statuses: string[], writePermission?: SflPermission): IfimpView => ({
   label,
@@ -55,16 +54,10 @@ const RegisterPage = ({ system, title, subtitle, views }: { system: string; titl
   <IfimpOperationsPage system={system} title={title} subtitle={subtitle} views={views} />
 );
 
-const hygieneStatuses = ['PLANNED', 'OPEN', 'IN_PROGRESS', 'OVERDUE', 'CLOSED'];
 const cateringStatuses = ['DRAFT', 'PENDING_APPROVAL', 'CONFIRMED', 'DELIVERED', 'RECONCILIATION_PENDING', 'CLOSED'];
 const leaseStatuses = ['DRAFT', 'ACTIVE', 'DUE', 'PENDING_APPROVAL', 'RENEWED', 'TERMINATED'];
 const wasteStatuses = ['PLANNED', 'IN_TRANSIT', 'RECEIVED', 'EXCEPTION', 'CLOSED'];
 const lostFoundStatuses = ['INTAKE', 'STORED', 'CLAIM_PENDING', 'RELEASED', 'DISPOSED', 'CLOSED'];
-
-export const HygienePage = () => <RegisterPage system="S170" title="Hygiene & pest control" subtitle="Schedule inspections, record findings and prove corrective-action closure." views={[
-  view('Hygiene controls', 'Scheduled hygiene and pest-control controls by site.', 'controls', 'S170', ['HYGIENE_AUDIT', 'PEST_VISIT'], hygieneStatuses, 'FACILITIES_HYGIENE_MANAGE'),
-  view('Findings', 'Open findings, severity and closure evidence.', 'findings', 'S170', ['FINDING', 'CORRECTIVE_ACTION'], hygieneStatuses, 'FACILITIES_HYGIENE_MANAGE'),
-]} />;
 
 export const CateringPage = () => <RegisterPage system="S172" title="Catering & cafeteria" subtitle="Plan safe services, dietary handling and delivery reconciliation." views={[
   view('Catering services', 'Menus, service windows, quantities and delivery state.', 'services', 'S172', ['SERVICE', 'MENU'], cateringStatuses),

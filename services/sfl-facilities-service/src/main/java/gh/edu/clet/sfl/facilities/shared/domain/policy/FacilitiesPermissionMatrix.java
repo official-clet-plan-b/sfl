@@ -373,20 +373,25 @@ public final class FacilitiesPermissionMatrix {
      * </ul>
      */
     /**
-     * The estate-register grants (SRS-SFL-S170, "Common Roles" §2.3).
+     * The S170 hygiene grants (SRS-SFL-S170, "Common Roles" §2.3).
      *
      * <p>S170 is owned by Facilities and HSE: the facilities director and manager and the HSE manager read
-     * and manage it. The auditor / reporting viewer reads it without mutation rights, which is the
-     * compliance officer and the technical administrator. Nobody else holds either permission - in
-     * particular not the requester or the contractor, because hygiene findings carry evidence the SRS
-     * (4.2) keeps from requester views.
+     * and manage it. The compliance officer reads it, and reads evidence; the technical administrator
+     * reads the register only. Nobody else holds any of the four permissions - in particular not the
+     * requester or the contractor, because hygiene findings carry evidence the SRS (4.2) keeps from
+     * requester views.
      */
     private static void grantEstateRegisters(Map<SflRole, Set<SflPermission>> matrix) {
         Set<SflPermission> read = EnumSet.of(SflPermission.FACILITIES_HYGIENE_READ);
-        grant(matrix, SflRole.FACILITIES_DIRECTOR, read, SflPermission.FACILITIES_HYGIENE_MANAGE);
-        grant(matrix, SflRole.FACILITIES_MANAGER, read, SflPermission.FACILITIES_HYGIENE_MANAGE);
-        grant(matrix, SflRole.HSE_MANAGER, read, SflPermission.FACILITIES_HYGIENE_MANAGE);
-        grant(matrix, SflRole.COMPLIANCE_OFFICER, read);
+        // Director and HSE manager own hygiene outcomes, so they alone verify and close. The facilities
+        // manager runs the register day to day and can see evidence but not sign a finding off.
+        grant(matrix, SflRole.FACILITIES_DIRECTOR, read, SflPermission.FACILITIES_HYGIENE_MANAGE,
+                SflPermission.FACILITIES_HYGIENE_EVIDENCE_READ, SflPermission.FACILITIES_HYGIENE_VERIFY);
+        grant(matrix, SflRole.FACILITIES_MANAGER, read, SflPermission.FACILITIES_HYGIENE_MANAGE,
+                SflPermission.FACILITIES_HYGIENE_EVIDENCE_READ);
+        grant(matrix, SflRole.HSE_MANAGER, read, SflPermission.FACILITIES_HYGIENE_MANAGE,
+                SflPermission.FACILITIES_HYGIENE_EVIDENCE_READ, SflPermission.FACILITIES_HYGIENE_VERIFY);
+        grant(matrix, SflRole.COMPLIANCE_OFFICER, read, SflPermission.FACILITIES_HYGIENE_EVIDENCE_READ);
         grant(matrix, SflRole.DTI_ADMIN, read);
     }
 

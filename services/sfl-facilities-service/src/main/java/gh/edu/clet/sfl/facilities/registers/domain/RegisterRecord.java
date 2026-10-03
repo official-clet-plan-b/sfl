@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * A persisted operational record shared by the S170, S172, S177, S178 and S179 registers.
+ * A persisted operational record shared by the S172, S177, S178 and S179 registers.
  *
  * <p>The record type and details fields carry the system-specific facts while the lifecycle, scope,
  * ownership and audit behaviour stays consistent with the rest of IFIMP. This is deliberately a
