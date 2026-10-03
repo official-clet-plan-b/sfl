@@ -63,7 +63,9 @@ const PlaceField = ({
   className,
 }: PlaceFieldProps) => {
   const listboxId = useId();
-  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [fetched, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  // Too short a query offers nothing, whatever an earlier, longer one found.
+  const suggestions = value.trim().length < 3 ? [] : fetched;
   const [open, setOpen] = useState(false);
   /**
    * Why suggestions are not coming, when they are not.
@@ -87,7 +89,6 @@ const PlaceField = ({
     }
     latestQuery.current = value;
     if (value.trim().length < 3) {
-      setSuggestions([]);
       return undefined;
     }
     // Debounced: Places bills per request, and a keystroke is not a question worth asking.
