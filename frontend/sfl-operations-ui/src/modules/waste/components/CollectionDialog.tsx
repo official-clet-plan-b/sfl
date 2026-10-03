@@ -10,7 +10,7 @@ import { permits } from 'shared/layout/actorPermissions';
 import { humanise } from 'modules/fleet/api/enums';
 import { wasteApi, type Configuration, type WasteEvidence } from '../api/wasteApi';
 import { EvidenceDialog, ExceptionDialog, HandOverDialog, ReconcileDialog, RecordDialog } from './WasteDialogs';
-import WasteTimeline, { historySteps } from './WasteHistory';
+import StepTimeline, { historySteps } from 'shared/components/StepTimeline';
 import { WasteBadge, quantityText } from './wasteUi';
 
 type Pending = 'record' | 'handover' | 'certificate' | 'evidence' | 'contaminated' | 'reconcile' | 'missed' | 'cancel' | 'exception' | { reject: WasteEvidence };
@@ -102,7 +102,7 @@ const CollectionDialog = ({ collectionId, config, onClose, onChanged }: { collec
                     </Section>
 
                     <Section title="Chain of custody">
-                      <WasteTimeline empty="Nothing has been recorded yet." steps={detail.data.custody.map((e) => ({
+                      <StepTimeline empty="Nothing has been recorded yet." steps={detail.data.custody.map((e) => ({
                         id: e.id, title: `${humanise(e.step)} · ${e.fromParty}${e.toParty ? ` → ${e.toParty}` : ''}`,
                         detail: [e.location, e.evidenceReference].filter(Boolean).join(' · ') || null,
                         footer: `${formatDateTime(e.occurredAt)} · recorded by ${e.recordedBy}`,
@@ -134,7 +134,7 @@ const CollectionDialog = ({ collectionId, config, onClose, onChanged }: { collec
                       </ul>
                     </Section>
 
-                    <Section title="History"><WasteTimeline empty="No recorded activity yet." steps={historySteps(detail.data.history)} /></Section>
+                    <Section title="History"><StepTimeline empty="No recorded activity yet." steps={historySteps(detail.data.history)} /></Section>
                   </>
                 )}
               </DataState>

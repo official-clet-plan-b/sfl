@@ -273,7 +273,7 @@ describe('who is offered the hygiene register (S170)', () => {
   it('keeps the other estate registers on the grants they were built with', () => {
     holding(['FACILITIES_SITE_READ', 'FACILITIES_CONFIG_MANAGE']);
     expect(labelsFor(['S172'])).toEqual(
-      expect.arrayContaining(['Catering & cafeteria', 'Lease & tenancy', 'Lost & found']),
+      expect.arrayContaining(['Catering & cafeteria', 'Lease & tenancy']),
     );
     holding(OWNER);
     expect(labelsFor(['S172'])).not.toContain('Catering & cafeteria');
@@ -299,5 +299,26 @@ describe('who is offered waste & recycling (S178)', () => {
   it('does not offer it to an actor who is not entitled to S178', () => {
     holding(OWNER);
     expect(labelsFor(['S172'])).not.toContain('Waste & recycling');
+  });
+});
+
+describe('who is offered lost & found (S179)', () => {
+  const FRONT_DESK = ['FACILITIES_SITE_READ', 'FACILITIES_LOSTFOUND_READ', 'FACILITIES_LOSTFOUND_MANAGE', 'FACILITIES_LOSTFOUND_PRIVATE_READ'];
+
+  it('offers it to a role that runs the register, and to a read-only auditor', () => {
+    holding(FRONT_DESK);
+    expect(labelsFor(['S179'])).toContain('Lost & found');
+    holding(['FACILITIES_SITE_READ', 'FACILITIES_LOSTFOUND_READ']);
+    expect(labelsFor(['S179'])).toContain('Lost & found');
+  });
+
+  it('does not offer it on the platform-configuration grant alone', () => {
+    holding(['FACILITIES_SITE_READ', 'FACILITIES_CONFIG_MANAGE']);
+    expect(labelsFor(['S179'])).not.toContain('Lost & found');
+  });
+
+  it('does not offer it to an actor who is not entitled to S179', () => {
+    holding(FRONT_DESK);
+    expect(labelsFor(['S172'])).not.toContain('Lost & found');
   });
 });

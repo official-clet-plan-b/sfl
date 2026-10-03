@@ -84,7 +84,7 @@ const HygienePage = lazy(() => import('modules/hygiene/pages/HygienePage'));
 const CateringPage = lazy(() => import('modules/ifimp/pages/registerPages').then((module) => ({ default: module.CateringPage })));
 const LeasePage = lazy(() => import('modules/ifimp/pages/registerPages').then((module) => ({ default: module.LeasePage })));
 const WastePage = lazy(() => import('modules/waste/pages/WastePage'));
-const LostFoundPage = lazy(() => import('modules/ifimp/pages/registerPages').then((module) => ({ default: module.LostFoundPage })));
+const LostFoundPage = lazy(() => import('modules/lostfound/pages/LostFoundPage'));
 
 const FuelDashboardPage = lazy(() => import('modules/fuel/pages/FuelDashboardPage'));
 const FuelTransactionsPage = lazy(() => import('modules/fuel/pages/FuelTransactionsPage'));

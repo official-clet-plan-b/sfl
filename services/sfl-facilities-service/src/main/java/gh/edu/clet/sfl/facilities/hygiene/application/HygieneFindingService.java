@@ -2,7 +2,7 @@ package gh.edu.clet.sfl.facilities.hygiene.application;
 
 import gh.edu.clet.sfl.common.security.SflPermission;
 import gh.edu.clet.sfl.facilities.hygiene.application.HygieneCommands.AddAction;
-import gh.edu.clet.sfl.facilities.hygiene.application.HygieneCommands.Caller;
+import gh.edu.clet.sfl.facilities.shared.application.Caller;
 import gh.edu.clet.sfl.facilities.hygiene.application.HygieneCommands.CloseFinding;
 import gh.edu.clet.sfl.facilities.hygiene.application.HygieneCommands.CreateFinding;
 import gh.edu.clet.sfl.facilities.hygiene.application.HygieneCommands.SubmitEvidence;

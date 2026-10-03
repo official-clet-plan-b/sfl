@@ -1,12 +1,11 @@
 package gh.edu.clet.sfl.facilities.hygiene.application;
 
-import gh.edu.clet.sfl.common.security.ActorContext;
+import gh.edu.clet.sfl.facilities.shared.application.Caller;
 import gh.edu.clet.sfl.facilities.hygiene.domain.ClosureMode;
 import gh.edu.clet.sfl.facilities.hygiene.domain.ControlType;
 import gh.edu.clet.sfl.facilities.hygiene.domain.Frequency;
 import gh.edu.clet.sfl.facilities.hygiene.domain.RiskCategory;
 import gh.edu.clet.sfl.facilities.hygiene.domain.Severity;
-import gh.edu.clet.sfl.facilities.shared.domain.audit.SourceChannel;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -14,9 +13,6 @@ import java.util.UUID;
 public final class HygieneCommands {
 
     private HygieneCommands() {
-    }
-
-    public record Caller(ActorContext actor, SourceChannel channel) {
     }
 
     public record CreateControl(String siteCode, UUID roomId, String locationLabel, ControlType controlType,

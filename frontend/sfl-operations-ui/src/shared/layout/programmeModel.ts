@@ -277,7 +277,7 @@ export const roleSystems: Record<string, SystemCode[]> = {
   LOGISTICS_COORDINATOR: ['S171'],
   // A centre manager receives consignments, declares their centre's operating mode, and owns its
   // diary - the role the matrix expects to hold `FACILITIES_BOOKING_OVERRIDE` in practice.
-  CENTRE_MANAGER: ['S152', 'S153', 'S156', 'S159', 'S169', 'S171', 'S173'],
+  CENTRE_MANAGER: ['S152', 'S153', 'S156', 'S159', 'S169', 'S171', 'S173', 'S179'],
 
   // SFL.SSEMP - S174 is its own deployable, split by ADR 0004; the four physical-security systems
   // share the safety-security service while retaining independent entitlement guards.
@@ -286,9 +286,9 @@ export const roleSystems: Record<string, SystemCode[]> = {
   // S165 from RiskAssessmentPermissionMatrix: the HSE manager owns the library; the security director,
   // the investigator (an incident's assessment) and command read it.
   // S175: the security director owns drill frequency compliance and combined drills.
-  SECURITY_DIRECTOR: ['S160', 'S160a', 'S161', 'S162', 'S162a', 'S163', 'S165', 'S174', 'S175'],
+  SECURITY_DIRECTOR: ['S160', 'S160a', 'S161', 'S162', 'S162a', 'S163', 'S165', 'S174', 'S175', 'S179'],
   ACCESS_CONTROL_ADMINISTRATOR: ['S160a'],
-  RECEPTION_OFFICER: ['S160'],
+  RECEPTION_OFFICER: ['S160', 'S179'],
   VISITOR_HOST: ['S160'],
   SOC_OPERATOR: ['S160', 'S160a', 'S161', 'S162', 'S162a', 'S163', 'S174', 'S175'],
   INCIDENT_INVESTIGATOR: ['S163', 'S165'],
@@ -298,7 +298,7 @@ export const roleSystems: Record<string, SystemCode[]> = {
   HSE_MANAGER: ['S152', 'S153', 'S156', 'S159', 'S163', 'S165', 'S170', 'S173', 'S174', 'S175', 'S176', 'S178'],
 
   // Roles that span programmes at the system grain too
-  SECURITY_OFFICER: ['S160a', 'S161', 'S162', 'S162a', 'S171', 'S174'],
+  SECURITY_OFFICER: ['S160a', 'S161', 'S162', 'S162a', 'S171', 'S174', 'S179'],
   COMMAND_ROLE: allSystems,
   INTEGRATION_ENGINEER: allSystems,
   SERVICE_INTEGRATION: ['S152', 'S153', 'S156', 'S157', 'S159', 'S166', 'S168', 'S171', 'S173'],

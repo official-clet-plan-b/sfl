@@ -56,7 +56,6 @@ const RegisterPage = ({ system, title, subtitle, views }: { system: string; titl
 
 const cateringStatuses = ['DRAFT', 'PENDING_APPROVAL', 'CONFIRMED', 'DELIVERED', 'RECONCILIATION_PENDING', 'CLOSED'];
 const leaseStatuses = ['DRAFT', 'ACTIVE', 'DUE', 'PENDING_APPROVAL', 'RENEWED', 'TERMINATED'];
-const lostFoundStatuses = ['INTAKE', 'STORED', 'CLAIM_PENDING', 'RELEASED', 'DISPOSED', 'CLOSED'];
 
 export const CateringPage = () => <RegisterPage system="S172" title="Catering & cafeteria" subtitle="Plan safe services, dietary handling and delivery reconciliation." views={[
   view('Catering services', 'Menus, service windows, quantities and delivery state.', 'services', 'S172', ['SERVICE', 'MENU'], cateringStatuses),
@@ -68,10 +67,4 @@ export const LeasePage = () => <RegisterPage system="S177" title="Lease & tenanc
   view('Agreements', 'Lease and tenancy portfolio by site.', 'agreements', 'S177', ['LEASE', 'TENANCY'], leaseStatuses),
   view('Obligations', 'Notice, insurance, rent-review and compliance dates.', 'obligations', 'S177', ['OBLIGATION', 'RENEWAL', 'RENT_REVIEW'], leaseStatuses),
   view('Amendments', 'Controlled amendment and termination approvals.', 'amendments', 'S177', ['AMENDMENT', 'TERMINATION'], leaseStatuses),
-]} />;
-
-export const LostFoundPage = () => <RegisterPage system="S179" title="Lost & found" subtitle="Protect found property, verify claims and preserve custody history." views={[
-  view('Found items', 'Found-property intake and secure storage.', 'items', 'S179', ['FOUND_ITEM', 'STORAGE'], lostFoundStatuses),
-  view('Claims', 'Private claim review and claimant verification.', 'claims', 'S179', ['CLAIM', 'VERIFICATION'], lostFoundStatuses),
-  view('Custody & outcomes', 'Transfers, release, return and authorised disposal.', 'outcomes', 'S179', ['CUSTODY_TRANSFER', 'RELEASE', 'DISPOSAL'], lostFoundStatuses),
 ]} />;

@@ -3,7 +3,7 @@ package gh.edu.clet.sfl.facilities.hygiene.api;
 import gh.edu.clet.sfl.common.api.ApiResponse;
 import gh.edu.clet.sfl.common.security.ActorContext;
 import gh.edu.clet.sfl.facilities.hygiene.application.HygieneCommands;
-import gh.edu.clet.sfl.facilities.hygiene.application.HygieneCommands.Caller;
+import gh.edu.clet.sfl.facilities.shared.application.Caller;
 import gh.edu.clet.sfl.facilities.hygiene.application.HygieneControlService;
 import gh.edu.clet.sfl.facilities.hygiene.application.HygieneFindingService;
 import gh.edu.clet.sfl.facilities.hygiene.application.HygieneStore;

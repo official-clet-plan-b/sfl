@@ -4,8 +4,8 @@ import { humanise } from 'modules/fleet/api/enums';
 
 export interface Step { id: string; title: string; detail?: string | null; footer: string; tone?: 'primary' | 'success' | 'error' }
 
-/** A list of dated steps, oldest first: the chain of custody, or a record's state history. */
-const WasteTimeline = ({ steps, empty }: { steps: Step[]; empty: string }) => {
+/** A list of dated steps, oldest first: a chain of custody, or a record's state history. */
+const StepTimeline = ({ steps, empty }: { steps: Step[]; empty: string }) => {
   if (steps.length === 0) return <p className="text-theme-sm text-gray-600">{empty}</p>;
   return (
     <Timeline>
@@ -29,4 +29,4 @@ export const historySteps = (history: Array<{ id: string; subjectType: string; f
     tone: ['MISSED', 'REJECTED'].includes(entry.toStatus) ? 'error' : ['CLOSED', 'ACCEPTED', 'RESOLVED'].includes(entry.toStatus) ? 'success' : 'primary',
   }));
 
-export default WasteTimeline;
+export default StepTimeline;

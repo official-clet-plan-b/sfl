@@ -137,6 +137,12 @@ public enum FacilitiesErrorCode {
     WASTE_DESTINATION_UNAPPROVED("The destination is not approved for this waste; the handover is blocked."),
     WASTE_CHAIN_OPEN("The chain of custody is incomplete; the collection stays open and has been escalated."),
     WASTE_SELF_VERIFICATION("Evidence must be accepted by someone other than the person who submitted it."),
+    LF_RELEASE_BLOCKED("The item cannot be released yet; the reason has been recorded."),
+    LF_COMPETING_CLAIMS("More than one claim is open on this item; release is blocked pending investigation."),
+    LF_ITEM_ISOLATED("The item is isolated as unsafe; it can only be handed to the authorities or disposed of with approval."),
+    LF_RETENTION_NOT_EXPIRED("The retention period has not expired; the item cannot be disposed of yet."),
+    LF_SELF_APPROVAL("An approval must come from someone other than the person who requested or carried it out."),
+    LF_STORAGE_NOT_SECURE("This category must be kept in secure storage."),
     HYGIENE_CLOSURE_BLOCKED("A finding closes only with accepted evidence or an approved exception."),
     // ---- end of block
 

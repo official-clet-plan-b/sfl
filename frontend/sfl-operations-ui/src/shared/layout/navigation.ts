@@ -810,13 +810,22 @@ export const navSections: NavSection[] = [
     ],
   },
   {
+    // S179 has its own permission set, like S170 and S178: front desk and security run it, and the platform
+    // configuration grant is not what owns lost property.
+    heading: 'Lost & found',
+    programme: 'IFIMP',
+    system: 'S179',
+    items: [
+      { label: 'Lost & found', to: estateRegisterPaths.lostFound, icon: 'search', description: 'Found property, custody and claims', permission: 'FACILITIES_LOSTFOUND_READ' },
+    ],
+  },
+  {
     heading: 'Estate services',
     programme: 'IFIMP',
     system: 'S172',
     items: [
       { label: 'Catering & cafeteria', to: estateRegisterPaths.catering, icon: 'calendar', description: 'Services, dietary checks and reconciliation', permission: 'FACILITIES_SITE_READ', capability: 'FACILITIES_CONFIG_MANAGE' },
       { label: 'Lease & tenancy', to: estateRegisterPaths.leases, icon: 'document', description: 'Agreements, obligations and renewals', permission: 'FACILITIES_SITE_READ', capability: 'FACILITIES_CONFIG_MANAGE' },
-      { label: 'Lost & found', to: estateRegisterPaths.lostFound, icon: 'search', description: 'Secure intake, claims and release', permission: 'FACILITIES_SITE_READ', capability: 'FACILITIES_CONFIG_MANAGE' },
     ],
   },
   {
