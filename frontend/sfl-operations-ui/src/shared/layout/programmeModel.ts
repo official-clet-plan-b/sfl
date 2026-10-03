@@ -295,7 +295,7 @@ export const roleSystems: Record<string, SystemCode[]> = {
   // An HSE manager reads the estate to place an incident and judge a location's standing. It takes
   // the matrix's shared READ_ONLY set, which carries FACILITIES_BOOKING_READ - so the diary is
   // readable, and nothing in the section can book, approve or turn a room around.
-  HSE_MANAGER: ['S152', 'S153', 'S156', 'S159', 'S163', 'S165', 'S170', 'S173', 'S174', 'S175', 'S176', 'S178'],
+  HSE_MANAGER: ['S152', 'S153', 'S156', 'S159', 'S163', 'S165', 'S170', 'S172', 'S173', 'S174', 'S175', 'S176', 'S178'],
 
   // Roles that span programmes at the system grain too
   SECURITY_OFFICER: ['S160a', 'S161', 'S162', 'S162a', 'S171', 'S174', 'S179'],

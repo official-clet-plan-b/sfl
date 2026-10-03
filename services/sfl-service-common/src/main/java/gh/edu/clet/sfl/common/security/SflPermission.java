@@ -415,6 +415,14 @@ public enum SflPermission {
     FACILITIES_LOSTFOUND_PRIVATE_READ,
     FACILITIES_LOSTFOUND_APPROVE,
 
+    // S172 Catering & Cafeteria Management. The coordinator plans and runs services; approving a service, a
+    // menu or an exception is a separate grant held by fewer people; and dietary requests - who needs what, and
+    // why - are sensitive operational data with a grant of their own.
+    FACILITIES_CATERING_READ,
+    FACILITIES_CATERING_MANAGE,
+    FACILITIES_CATERING_APPROVE,
+    FACILITIES_CATERING_DIETARY_READ,
+
     // S165 Risk Assessment Library (Phase 2 SRS §3.2, SSEMP). Additive only - adding enum constants
     // changes no existing signature and no existing service behaviour. Split by authority level, not by
     // screen: authoring, publishing and signing off are separate acts, and S165-02 requires the last to

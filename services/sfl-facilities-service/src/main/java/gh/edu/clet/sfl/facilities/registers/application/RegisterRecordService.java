@@ -16,11 +16,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Application boundary for the S172 and S177 registers. */
+/** Application boundary for the S177 register. */
 @Service
 public class RegisterRecordService {
 
-    public static final Set<String> SYSTEMS = Set.of("S172", "S177");
+    public static final Set<String> SYSTEMS = Set.of("S177");
 
     private final JdbcTemplate jdbc;
     private final FacilitiesAuthorization authorization;

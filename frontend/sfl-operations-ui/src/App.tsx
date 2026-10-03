@@ -81,7 +81,7 @@ const TelematicsDashboardPage = lazy(() => import('modules/phase2/pages/Phase2Op
 const VipTripPortalPage = lazy(() => import('modules/phase2/pages/Phase2OperationsPages').then((module) => ({ default: module.VipTripPortalPage })));
 const AssetVisibilityPage = lazy(() => import('modules/phase2/pages/Phase2OperationsPages').then((module) => ({ default: module.AssetVisibilityPage })));
 const HygienePage = lazy(() => import('modules/hygiene/pages/HygienePage'));
-const CateringPage = lazy(() => import('modules/ifimp/pages/registerPages').then((module) => ({ default: module.CateringPage })));
+const CateringPage = lazy(() => import('modules/catering/pages/CateringPage'));
 const LeasePage = lazy(() => import('modules/ifimp/pages/registerPages').then((module) => ({ default: module.LeasePage })));
 const WastePage = lazy(() => import('modules/waste/pages/WastePage'));
 const LostFoundPage = lazy(() => import('modules/lostfound/pages/LostFoundPage'));
