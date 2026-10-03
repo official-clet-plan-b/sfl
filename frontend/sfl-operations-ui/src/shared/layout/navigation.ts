@@ -830,11 +830,12 @@ export const navSections: NavSection[] = [
     ],
   },
   {
-    heading: 'Estate services',
+    // S177 has its own permission set: rent and deposit are shown only to the financial grant.
+    heading: 'Lease & tenancy',
     programme: 'IFIMP',
     system: 'S177',
     items: [
-      { label: 'Lease & tenancy', to: estateRegisterPaths.leases, icon: 'document', description: 'Agreements, obligations and renewals', permission: 'FACILITIES_SITE_READ', capability: 'FACILITIES_CONFIG_MANAGE' },
+      { label: 'Lease & tenancy', to: estateRegisterPaths.leases, icon: 'document', description: 'Agreements, amendments, obligations and renewals', permission: 'FACILITIES_LEASE_READ' },
     ],
   },
   {
