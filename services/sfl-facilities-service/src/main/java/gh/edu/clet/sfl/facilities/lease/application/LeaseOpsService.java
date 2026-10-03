@@ -43,18 +43,31 @@ public class LeaseOpsService {
 
     private final LeaseStore store;
     private final LeaseSupport support;
+    private final LeaseWorkOrderService workOrders;
     private final TransactionTemplate inTransaction;
 
-    public LeaseOpsService(LeaseStore store, LeaseSupport support, PlatformTransactionManager transactions) {
+    public LeaseOpsService(LeaseStore store, LeaseSupport support, LeaseWorkOrderService workOrders, PlatformTransactionManager transactions) {
         this.store = store;
         this.support = support;
+        this.workOrders = workOrders;
         this.inTransaction = new TransactionTemplate(transactions);
     }
 
-    public record ControlResult(int expired, int alertsRaised, int noticeDatesMoved) {
+    public record ControlResult(int expired, int alertsRaised, int noticeDatesMoved, int reviewsRaised) {
     }
 
+    /**
+     * The control, then - once its changes are committed - a review work order for every lapsed agreement that has none
+     * and a retry of any S153 request still pending. Kept outside the control's transaction: a refusal from S153 must
+     * leave the agreement expired and the alerts raised.
+     */
     public ControlResult dailyControl(ActorContext actor) {
+        ControlResult result = control(actor);
+        int reviews = workOrders.reviewExpired(actor);
+        return new ControlResult(result.expired(), result.alertsRaised(), result.noticeDatesMoved(), reviews);
+    }
+
+    private ControlResult control(ActorContext actor) {
         Caller caller = new Caller(actor, SourceChannel.SCHEDULER);
         return inTransaction.execute(tx -> {
             LocalDate today = support.today();
@@ -116,7 +129,7 @@ public class LeaseOpsService {
                 alerts += raise(agreement, null, AlertLevel.OWNER, AlertReason.DOCUMENT_EXPIRED, d.kind() + " " + d.reference() + " expired " + d.expiresOn(), caller);
                 alerts += raise(agreement, null, AlertLevel.MANAGER, AlertReason.DOCUMENT_EXPIRED, d.kind() + " " + d.reference() + " expired " + d.expiresOn(), caller);
             }
-            return new ControlResult(expired, alerts, moved);
+            return new ControlResult(expired, alerts, moved, 0);
         });
     }
 

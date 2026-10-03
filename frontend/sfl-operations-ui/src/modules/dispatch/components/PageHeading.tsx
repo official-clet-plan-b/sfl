@@ -38,7 +38,7 @@ const PageHeading = ({ title, subtitle, crumbs, actions, meta }: PageHeadingProp
       <SectionHeader>
         <SectionTitle>{title}</SectionTitle>
         {subtitle && <SectionDescription>{subtitle}</SectionDescription>}
-        {actions && <SectionActions>{actions}</SectionActions>}
+        {actions && <SectionActions className="items-end [&_button]:whitespace-nowrap">{actions}</SectionActions>}
       </SectionHeader>
       {meta && <div className="-mt-3 flex flex-wrap items-center gap-2">{meta}</div>}
     </PageSection>

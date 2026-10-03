@@ -409,7 +409,7 @@ const FuelReconciliationPage = () => {
       <PageSection>
         <SectionHeader>
           <SectionTitle>Reconciliation</SectionTitle>
-          <SectionActions>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <SiteSelect value={siteCode} onChange={setSiteCode} required />
             {/*
               Hidden for a reader, disabled for a shortfall - the two are different answers and must

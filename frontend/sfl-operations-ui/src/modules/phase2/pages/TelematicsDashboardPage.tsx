@@ -95,7 +95,7 @@ export const TelematicsDashboardPage = () => {
       <PageSection>
         <SectionHeader>
           <SectionTitle>GPS & telematics</SectionTitle>
-          <SectionActions style={{ alignItems: 'flex-end' }}>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <SiteSelect value={siteCode} onChange={setSiteCode} required />
             <Button variant="outline" className="whitespace-nowrap" onClick={() => refetch()}>
               Refresh

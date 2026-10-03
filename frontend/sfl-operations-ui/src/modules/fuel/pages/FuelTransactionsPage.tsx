@@ -198,7 +198,7 @@ const FuelTransactionsPage = () => {
       <PageSection>
         <SectionHeader>
           <SectionTitle>Fuel transactions</SectionTitle>
-          <SectionActions>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <SiteSelect value={siteCode} onChange={setSiteCode} required />
             {/*
               Both controls are gated, and on different permissions, because they are different

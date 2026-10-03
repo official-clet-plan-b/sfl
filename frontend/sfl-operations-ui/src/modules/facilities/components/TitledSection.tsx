@@ -27,7 +27,7 @@ const TitledSection = ({ title, description, subtitle, actions, children }: Titl
     <SectionHeader>
       <SectionTitle>{title}</SectionTitle>
       {(description ?? subtitle) && <SectionDescription>{description ?? subtitle}</SectionDescription>}
-      {actions && <SectionActions>{actions}</SectionActions>}
+      {actions && <SectionActions className="items-end [&_button]:whitespace-nowrap">{actions}</SectionActions>}
     </SectionHeader>
     {children}
   </PageSection>

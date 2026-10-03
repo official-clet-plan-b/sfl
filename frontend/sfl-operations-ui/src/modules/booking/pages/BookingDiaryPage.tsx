@@ -190,7 +190,7 @@ const BookingDiaryPage = () => {
           <SectionDescription>
             Rooms and resources booked at this site, and what the estate currently thinks of each
           </SectionDescription>
-          <SectionActions>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
             {canRequest().kind === 'allowed' && (
               <Button variant="primary" onClick={() => navigate(bookingPaths.availability)}>

@@ -34,7 +34,7 @@ const RegisterHeader = ({
     <SectionHeader>
       <SectionTitle>{title}</SectionTitle>
       {description && <SectionDescription>{description}</SectionDescription>}
-      <SectionActions>
+      <SectionActions className="items-end [&_button]:whitespace-nowrap">
         {onSiteChange && (
           <Dropdown
             aria-label="Site"

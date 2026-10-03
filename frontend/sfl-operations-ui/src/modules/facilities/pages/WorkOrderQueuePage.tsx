@@ -175,7 +175,7 @@ const WorkOrderQueuePage = () => {
               ? `${overdueCount} of ${rows.length} past their SLA`
               : 'What is booked, who has it, and what is late'}
           </SectionDescription>
-          <SectionActions>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <SiteSelect value={siteCode} onChange={setSiteCode} />
           </SectionActions>
         </SectionHeader>

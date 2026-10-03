@@ -7,6 +7,7 @@ type Tone = 'success' | 'warning' | 'error' | 'primary' | 'outline' | 'default';
 const tones: Record<string, Tone> = {
   DRAFT: 'default', IN_REVIEW: 'warning', ACTIVE: 'success', EXPIRED: 'error', TERMINATED: 'default', ARCHIVED: 'default',
   PROPOSED: 'warning', LEGAL_REVIEW: 'error', APPROVED: 'success', REJECTED: 'error', WITHDRAWN: 'default',
+  RAISED: 'success', PENDING_MANUAL: 'warning',
   OPEN: 'warning', DONE: 'success', WAIVED: 'outline',
   UNRESOLVED: 'warning', VERIFIED: 'success',
   OWNER: 'outline', MANAGER: 'warning', DIRECTOR: 'error', LEGAL: 'error',

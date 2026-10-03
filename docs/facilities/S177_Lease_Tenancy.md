@@ -1,6 +1,6 @@
 # S177 Lease & Tenancy
 
-Module `facilities.lease` (domain, application with ports, infrastructure integration and scheduling, api). Migration `V27__lease_tenancy.sql`. Replaces the generic register that used to stand in for S177; its `register_records` table is left in place, unused.
+Module `facilities.lease` (domain, application with ports, infrastructure integration and scheduling, api). Migration `V27__lease_tenancy.sql`. Replaces the generic register that used to stand in for S177; the generic `register_records` table is dropped by `V28__drop_register_records.sql`.
 
 ## Model
 - **Agreement**: a lease or tenancy for a property at a site, with CLET as tenant (inbound) or landlord (outbound), term, renewal type (none, option, automatic), notice period, notice date, rent review date, rent, deposit and currency. Status: draft, in review, active, expired, terminated, archived.
@@ -36,3 +36,9 @@ Agreements by status, expiring within 30/60/90 days, obligations due and overdue
 
 ## Configuration
 `sfl.lease.scheduling.enabled`, `sfl.lease.control.interval-ms` for the daily control.
+
+## Corrective work, owner check, export and retention
+- When an agreement lapses the daily control raises one S153 review order for whatever depends on it (category `LEASE_EXCEPTION`), once per agreement. A manager can also raise one by hand from the agreement. The request is recorded first and is PENDING_MANUAL until S153 answers; the daily control retries it, and so can a manager.
+- The internal owner is checked through a port for HR (S140). No HR system is connected, so the owner is shown as recorded, not verified.
+- `GET /api/v1/facilities/leases/exports/agreements?siteCode=&reason=` downloads agreements. Rent and deposit are blank unless the caller holds the financial grant. It needs `FACILITIES_REGISTER_EXPORT` and a reason, is watermarked and audited.
+- Lease documents are class LEGAL for retention; the period is set in Record retention.

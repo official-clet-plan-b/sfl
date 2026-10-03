@@ -16,6 +16,8 @@ import gh.edu.clet.sfl.facilities.lease.domain.DocumentKind;
 import gh.edu.clet.sfl.facilities.lease.domain.LeaseAlert;
 import gh.edu.clet.sfl.facilities.lease.domain.LeaseDocument;
 import gh.edu.clet.sfl.facilities.lease.domain.LeaseHistoryEntry;
+import gh.edu.clet.sfl.facilities.lease.domain.LeaseWorkOrder;
+import gh.edu.clet.sfl.facilities.lease.domain.WorkOrderTrigger;
 import gh.edu.clet.sfl.facilities.lease.domain.Obligation;
 import gh.edu.clet.sfl.facilities.lease.domain.ObligationKind;
 import gh.edu.clet.sfl.facilities.lease.domain.ObligationStatus;
@@ -185,6 +187,52 @@ public class LeaseStore {
     public List<Agreement> allActive() {
         return jdbc.query("SELECT " + AGREEMENT + " FROM facilities.lease_agreements WHERE status = 'ACTIVE'",
                 (rs, n) -> agreement(rs));
+    }
+
+    /** Expired agreements that have no review work order yet - the daily control raises one for each. */
+    public List<Agreement> expiredWithoutReview() {
+        return jdbc.query("SELECT " + AGREEMENT + " FROM facilities.lease_agreements a WHERE status = 'EXPIRED' AND NOT EXISTS"
+                + " (SELECT 1 FROM facilities.lease_work_orders w WHERE w.agreement_id = a.id AND w.trigger_kind = 'EXPIRED_REVIEW')",
+                (rs, n) -> agreement(rs));
+    }
+
+    // ---- work orders
+
+    /** False if an expiry review already exists for the agreement (the unique index), so a repeat is a no-op. */
+    public boolean insert(LeaseWorkOrder w) {
+        return jdbc.update("""
+                INSERT INTO facilities.lease_work_orders (id, site_code, agreement_id, obligation_id, trigger_kind, description, state,
+                    work_order_id, work_order_number, requested_by, created_at, updated_at, version)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0) ON CONFLICT DO NOTHING
+                """, w.id(), w.siteCode(), w.agreementId(), w.obligationId(), w.trigger().name(), w.description(), w.state(),
+                w.workOrderId(), w.workOrderNumber(), w.requestedBy(), ts(w.createdAt()), ts(w.updatedAt())) == 1;
+    }
+
+    public Optional<LeaseWorkOrder> workOrder(UUID id) {
+        return jdbc.query("SELECT * FROM facilities.lease_work_orders WHERE id = ?", (rs, n) -> workOrder(rs), id).stream().findFirst();
+    }
+
+    public List<LeaseWorkOrder> workOrdersOf(UUID agreementId) {
+        return jdbc.query("SELECT * FROM facilities.lease_work_orders WHERE agreement_id = ? ORDER BY created_at DESC",
+                (rs, n) -> workOrder(rs), agreementId);
+    }
+
+    public List<LeaseWorkOrder> pendingWorkOrders() {
+        return jdbc.query("SELECT * FROM facilities.lease_work_orders WHERE state = 'PENDING_MANUAL' ORDER BY created_at",
+                (rs, n) -> workOrder(rs));
+    }
+
+    public boolean link(LeaseWorkOrder w, long expectedVersion) {
+        return jdbc.update("UPDATE facilities.lease_work_orders SET state = ?, work_order_id = ?, work_order_number = ?, updated_at = ?,"
+                + " version = version + 1 WHERE id = ? AND version = ?", w.state(), w.workOrderId(), w.workOrderNumber(), ts(w.updatedAt()),
+                w.id(), expectedVersion) == 1;
+    }
+
+    private static LeaseWorkOrder workOrder(ResultSet rs) throws SQLException {
+        return new LeaseWorkOrder(rs.getObject("id", UUID.class), rs.getString("site_code"), rs.getObject("agreement_id", UUID.class),
+                rs.getObject("obligation_id", UUID.class), WorkOrderTrigger.valueOf(rs.getString("trigger_kind")), rs.getString("description"),
+                rs.getString("state"), rs.getObject("work_order_id", UUID.class), rs.getString("work_order_number"), rs.getString("requested_by"),
+                instant(rs, "created_at"), instant(rs, "updated_at"), rs.getLong("version"));
     }
 
     // ---- versions

@@ -61,8 +61,14 @@ public class CateringController {
     private final CateringConfigService config;
     private final CateringServiceService services;
     private final CateringOpsService ops;
+    private final gh.edu.clet.sfl.facilities.catering.application.CateringWorkOrderService workOrders;
 
-    public CateringController(CateringConfigService config, CateringServiceService services, CateringOpsService ops) {
+    private final gh.edu.clet.sfl.facilities.catering.application.CateringExportService exports;
+
+    public CateringController(CateringConfigService config, CateringServiceService services, CateringOpsService ops,
+            gh.edu.clet.sfl.facilities.catering.application.CateringWorkOrderService workOrders, gh.edu.clet.sfl.facilities.catering.application.CateringExportService exports) {
+        this.exports = exports;
+        this.workOrders = workOrders;
         this.config = config;
         this.services = services;
         this.ops = ops;
@@ -244,6 +250,17 @@ public class CateringController {
                 r.ownerReference(), new Caller(actor, channel)));
     }
 
+    @GetMapping("/exceptions/work-orders")
+    public ApiResponse<java.util.List<CateringStore.ExceptionWorkOrder>> exceptionWorkOrders(@RequestParam String siteCode, ActorContext actor,
+            SourceChannel channel) {
+        return ApiResponse.ok(workOrders.at(siteCode, new Caller(actor, channel)));
+    }
+
+    @PostMapping("/exceptions/{id}/work-order/retry")
+    public ApiResponse<CateringStore.ExceptionWorkOrder> retryWorkOrder(@PathVariable UUID id, ActorContext actor, SourceChannel channel) {
+        return ApiResponse.ok(workOrders.retry(id, new Caller(actor, channel)));
+    }
+
     @PostMapping("/exceptions/{id}/resolve")
     public ApiResponse<CateringException> resolve(@PathVariable UUID id, @Valid @RequestBody ResolveRequest r,
             ActorContext actor, SourceChannel channel) {
@@ -390,5 +407,17 @@ public class CateringController {
 
     public record ReconcileRequest(@NotBlank @Size(max = 120) String purchaseReference,
             @Size(max = 120) String invoiceReference, Long version) {
+    }
+
+    // ---- export (NFR-AUD1): its own grant, a stated reason, audited
+
+    @GetMapping(value = "/exports/services", produces = "text/csv")
+    public ResponseEntity<byte[]> exportServices(@RequestParam String siteCode, @RequestParam(required = false) String status,
+            @RequestParam String reason, ActorContext actor, SourceChannel channel) {
+        var file = exports.export(siteCode, status, reason, new Caller(actor, channel));
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.fileName() + "\"")
+                .contentType(new org.springframework.http.MediaType("text", "csv", java.nio.charset.StandardCharsets.UTF_8))
+                .body(file.csv().getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 }

@@ -140,7 +140,7 @@ const ReadinessAssessmentsPage = () => {
               ? `${space.data.roomCode} - ${space.data.name}`
               : 'Every inspection recorded against a space'}
           </SectionDescription>
-          <SectionActions>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             {!roomId && (
               <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
             )}

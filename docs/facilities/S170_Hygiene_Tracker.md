@@ -31,3 +31,7 @@ Lists are paged and filtered on the server. Creates answer 201, unknown ids 404,
 
 ## Sweep
 `sfl.hygiene.scheduling.enabled` (default true), `sfl.hygiene.missed-after-days` (default 7), `sfl.hygiene.sweep.interval-ms` (default 15 minutes). Tells the owner once when a control is overdue, marks it missed after the grace period and tells HSE, escalates overdue actions. Each escalation is unique per subject, level and reason.
+
+## Export and retention
+- `GET /api/v1/facilities/hygiene/exports/findings?siteCode=&reason=` downloads findings as a CSV. It needs `FACILITIES_REGISTER_EXPORT` and a reason of at least 10 characters, is watermarked with who took it, when and why, and is audited (`REGISTER_EXPORTED`).
+- Evidence keeps its retention class; the period for each class is set in Record retention. Evidence past its period is reported for authorised disposal, never deleted automatically.

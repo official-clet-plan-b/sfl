@@ -56,8 +56,11 @@ public class WasteController {
     private final WasteExceptionService exceptions;
     private final WasteReportService reports;
 
+    private final gh.edu.clet.sfl.facilities.waste.application.WasteExportService exports;
+
     public WasteController(WasteConfigService config, WasteCollectionService collections,
-            WasteExceptionService exceptions, WasteReportService reports) {
+            WasteExceptionService exceptions, WasteReportService reports, gh.edu.clet.sfl.facilities.waste.application.WasteExportService exports) {
+        this.exports = exports;
         this.config = config;
         this.collections = collections;
         this.exceptions = exceptions;
@@ -390,5 +393,17 @@ public class WasteController {
     }
 
     public record ResolveRequest(@NotBlank @Size(max = 2000) String resolution, Long version) {
+    }
+
+    // ---- export (NFR-AUD1): its own grant, a stated reason, audited
+
+    @GetMapping(value = "/exports/collections", produces = "text/csv")
+    public ResponseEntity<byte[]> exportCollections(@RequestParam String siteCode, @RequestParam(required = false) String status,
+            @RequestParam String reason, ActorContext actor, SourceChannel channel) {
+        var file = exports.export(siteCode, status, reason, new Caller(actor, channel));
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.fileName() + "\"")
+                .contentType(new org.springframework.http.MediaType("text", "csv", java.nio.charset.StandardCharsets.UTF_8))
+                .body(file.csv().getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 }

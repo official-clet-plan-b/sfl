@@ -92,7 +92,7 @@ const AssetDetailPage = () => {
                 <SectionDescription>
                   {`${asset.data.assetCode} · ${humaniseCode(asset.data.category)} · ${asset.data.siteCode}`}
                 </SectionDescription>
-                <SectionActions>
+                <SectionActions className="items-end [&_button]:whitespace-nowrap">
                   {/*
                     Hidden for a permission, disabled for a state - the rule S153 paid for, which this
                     control was collapsing into one. `changeAssetStatusAction` answers false for both

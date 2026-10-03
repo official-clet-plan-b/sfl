@@ -189,7 +189,7 @@ const SpaceDetailPage = () => {
                 <SectionDescription>
                   {`${space.data.roomCode} · ${humaniseCode(space.data.spaceType)} · ${space.data.siteCode}`}
                 </SectionDescription>
-                <SectionActions>
+                <SectionActions className="items-end [&_button]:whitespace-nowrap">
                   <EditRowAction
                     size="md"
                     state={editSpaceControl(space.data)}

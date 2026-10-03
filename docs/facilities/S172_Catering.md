@@ -36,3 +36,8 @@ Confirmed services delivered, food-safety checks completed (delivered services w
 
 ## Not integrated
 S159 and S173 context is held as a reference and not validated against those systems. S170 hygiene audits are not consulted. Finance and procurement: references only, never verified. S163 incidents are requests recorded for a consumer that does not exist yet.
+
+## Corrective work, export and retention
+- A shortage, a service exception or a food-safety incident asks S153 for a work order (category `CATERING_EXCEPTION`). A substitution does not. The request is recorded first and stays PENDING_MANUAL until S153 answers with an order number; it is retried after the exception commits and every five minutes (`sfl.catering.scheduling.enabled`, `sfl.catering.work-orders.interval-ms`), or by hand from the exceptions list.
+- `GET /api/v1/facilities/catering/exports/services?siteCode=&reason=` downloads services. Dietary needs are never part of the file. It needs `FACILITIES_REGISTER_EXPORT` and a reason, is watermarked and audited.
+- Dietary and allergy needs are kept 90 days after the service by default (class `DIETARY_DATA`), then the person reference becomes an opaque token (`ANON-<id>`) and the need itself stays. Each row is audited (`RECORD_ANONYMISED`). The period is set in Record retention.

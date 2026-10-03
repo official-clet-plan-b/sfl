@@ -84,10 +84,14 @@ class CateringServicePostgresTest {
         FacilitiesPostgresSupport.datasource(registry);
     }
 
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired private CateringConfigService config;
     @Autowired private CateringServiceService services;
     @Autowired private CateringOpsService ops;
+    @Autowired private gh.edu.clet.sfl.facilities.catering.application.CateringWorkOrderService catWorkOrders;
+    @Autowired private gh.edu.clet.sfl.facilities.retention.application.RetentionService retention;
     @MockitoBean private CateringEstatePort estate;
+    @MockitoBean private gh.edu.clet.sfl.facilities.catering.application.ports.CateringWorkOrderPort s153;
 
     private String site;
     private String tag;
@@ -291,6 +295,59 @@ class CateringServicePostgresTest {
         CateringService approved = services.approve(s.id(), "Overflow marquee booked", null, null, director);
         assertThat(approved.capacityExceptionReason()).isEqualTo("Overflow marquee booked");
         assertThat(approved.status()).isEqualTo(ServiceStatus.APPROVED);
+    }
+
+    @Test
+    @DisplayName("a food-safety incident asks S153 for corrective work; while S153 is down it is pending, never shown as raised, and the sweep raises it once S153 answers")
+    void exception_work_order_is_pending_then_raised() {
+        org.mockito.Mockito.when(s153.raise(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any())).thenThrow(new IllegalStateException("S153 down"));
+        CateringService s = confirmed();
+        ops.recordCheck(new CateringOpsService.Check(site, s.id(), null, CheckType.TEMPERATURE, HoldType.HOT, new BigDecimal("50.0"), true, null, coordinator));
+        CateringException incident = services.get(s.id(), coordinator).exceptions().get(0);
+
+        assertThat(catWorkOrders.at(site, coordinator)).singleElement().satisfies(w -> {
+            assertThat(w.exceptionId()).isEqualTo(incident.id());
+            assertThat(w.state()).isEqualTo("PENDING_MANUAL");
+            assertThat(w.workOrderNumber()).isNull();
+        });
+
+        org.mockito.Mockito.doReturn(new gh.edu.clet.sfl.facilities.catering.application.ports.CateringWorkOrderPort.RaisedWorkOrder(UUID.randomUUID(), "WO-5"))
+                .when(s153).raise(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any());
+        catWorkOrders.retry(incident.id(), coordinator);
+
+        assertThat(catWorkOrders.at(site, coordinator)).singleElement().satisfies(w -> {
+            assertThat(w.state()).isEqualTo("RAISED");
+            assertThat(w.workOrderNumber()).isEqualTo("WO-5");
+        });
+    }
+
+    @Test
+    @DisplayName("a dietary need is anonymised once its period after the service has ended - the need stays, who it was does not - and a second run does nothing")
+    void dietary_data_is_anonymised_after_retention() {
+        CateringService s = confirmed();
+        DietaryRequest need = services.addDietary(s.id(), "P-RET-1", NeedType.ALLERGY, "PEANUTS", "Event lead", coordinator);
+        jdbc.update("UPDATE facilities.cat_services SET service_date = current_date - 400 WHERE id = ?", s.id());
+
+        int first = retention.anonymiseDietary(director.actor());
+        int second = retention.anonymiseDietary(director.actor());
+
+        assertThat(first).isGreaterThanOrEqualTo(1);
+        assertThat(second).isZero();
+        assertThat(jdbc.queryForObject("SELECT person_reference FROM facilities.cat_dietary_requests WHERE id = ?", String.class, need.id())).startsWith("ANON-");
+        assertThat(jdbc.queryForObject("SELECT need_code FROM facilities.cat_dietary_requests WHERE id = ?", String.class, need.id())).isEqualTo("PEANUTS");
+    }
+
+    @Test
+    @DisplayName("a service inside the period keeps its dietary person reference")
+    void recent_dietary_data_is_kept() {
+        CateringService s = confirmed();
+        DietaryRequest need = services.addDietary(s.id(), "P-RET-2", NeedType.ALLERGY, "PEANUTS", "Event lead", coordinator);
+
+        retention.anonymiseDietary(director.actor());
+
+        assertThat(jdbc.queryForObject("SELECT person_reference FROM facilities.cat_dietary_requests WHERE id = ?", String.class, need.id())).isEqualTo("P-RET-2");
     }
 
     @Test

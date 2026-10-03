@@ -88,6 +88,11 @@ public enum AuditAction {
      * logged; this is that log, and it records the recipient as well as the reason.
      */
     EVIDENCE_EXPORTED,
+    /** A register left CLET as a file: who, which register, how many rows and the stated reason. */
+    REGISTER_EXPORTED,
+    RETENTION_POLICY_CHANGED,
+    /** Sensitive personal data was anonymised because its retention period ended. */
+    RECORD_ANONYMISED,
     /** The retention period ran out and the reference was cleared. The row survives; see V13. */
     EVIDENCE_DISPOSED,
     EVIDENCE_LEGAL_HOLD_CHANGED,
@@ -352,6 +357,9 @@ public enum AuditAction {
     LEASE_APPROVED,
     LEASE_TERMINATED,
     LEASE_EXPIRED,
+    LEASE_WORK_ORDER_REQUESTED,
+    LEASE_WORK_ORDER_RAISED,
+    CAT_WORK_ORDER_RAISED,
     LEASE_AMENDMENT_PROPOSED,
     LEASE_AMENDMENT_DECIDED,
     LEASE_AMENDMENT_LEGAL_REVIEW,

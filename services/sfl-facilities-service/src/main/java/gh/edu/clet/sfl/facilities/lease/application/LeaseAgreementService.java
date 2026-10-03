@@ -1,6 +1,7 @@
 package gh.edu.clet.sfl.facilities.lease.application;
 
 import gh.edu.clet.sfl.common.security.SflPermission;
+import gh.edu.clet.sfl.facilities.lease.application.ports.LeaseOwnerPort;
 import gh.edu.clet.sfl.facilities.lease.application.ports.LeaseReferencePort;
 import gh.edu.clet.sfl.facilities.lease.domain.ActivationPolicy;
 import gh.edu.clet.sfl.facilities.lease.domain.Agreement;
@@ -18,6 +19,7 @@ import gh.edu.clet.sfl.facilities.lease.domain.Direction;
 import gh.edu.clet.sfl.facilities.lease.domain.DocumentKind;
 import gh.edu.clet.sfl.facilities.lease.domain.LeaseAlert;
 import gh.edu.clet.sfl.facilities.lease.domain.LeaseDocument;
+import gh.edu.clet.sfl.facilities.lease.domain.LeaseWorkOrder;
 import gh.edu.clet.sfl.facilities.lease.domain.LeaseHistoryEntry;
 import gh.edu.clet.sfl.facilities.lease.domain.NoticePolicy;
 import gh.edu.clet.sfl.facilities.lease.domain.Obligation;
@@ -65,13 +67,15 @@ public class LeaseAgreementService {
     private final LeaseStore store;
     private final LeaseSupport support;
     private final LeaseReferencePort references;
+    private final LeaseOwnerPort owners;
     private final TransactionTemplate inTransaction;
 
-    public LeaseAgreementService(LeaseStore store, LeaseSupport support, LeaseReferencePort references,
+    public LeaseAgreementService(LeaseStore store, LeaseSupport support, LeaseReferencePort references, LeaseOwnerPort owners,
             PlatformTransactionManager transactions) {
         this.store = store;
         this.support = support;
         this.references = references;
+        this.owners = owners;
         this.inTransaction = new TransactionTemplate(transactions);
     }
 
@@ -484,11 +488,16 @@ public class LeaseAgreementService {
                 support.audit(caller, AuditAction.LEASE_FINANCIAL_VIEWED, "Agreement", id, agreement.siteCode(), null, "terms");
             }
             LocalDate today = support.today();
-            return new Detail(money ? agreement : agreement.withoutFinancials(), readiness.blockers(), readiness.warnings(),
+            List<String> warnings = new java.util.ArrayList<>(readiness.warnings());
+            boolean ownerVerified = agreement.ownerReference() != null && owners.verifyOwner(agreement.ownerReference()).verified();
+            if (agreement.ownerReference() != null && !ownerVerified) {
+                warnings.add("The owner is recorded, not verified against HR (S140): no HR system is connected.");
+            }
+            return new Detail(money ? agreement : agreement.withoutFinancials(), readiness.blockers(), warnings,
                     documents.stream().map(d -> new DocumentView(d, d.expired(today))).toList(), store.obligationsOf(id),
                     store.amendmentsOf(id).stream().map(a -> money ? a : a.withoutFinancials()).toList(),
                     store.versions(id).stream().map(v -> money ? v : v.withoutFinancials()).toList(), store.alertsOf(id),
-                    store.history(id), money, agreement.status().live() && agreement.endDate().isBefore(today));
+                    store.history(id), money, agreement.status().live() && agreement.endDate().isBefore(today), store.workOrdersOf(id), ownerVerified);
         });
     }
 
@@ -497,7 +506,8 @@ public class LeaseAgreementService {
 
     public record Detail(Agreement agreement, List<String> blockers, List<String> warnings, List<DocumentView> documents,
             List<Obligation> obligations, List<Amendment> amendments, List<AgreementVersion> versions, List<LeaseAlert> alerts,
-            List<LeaseHistoryEntry> history, boolean financialView, boolean pastEndDate) {
+            List<LeaseHistoryEntry> history, boolean financialView, boolean pastEndDate, List<LeaseWorkOrder> workOrders,
+            boolean ownerVerified) {
     }
 
     public LeaseStore.Page<Amendment> amendments(String siteCode, String status, int page, int size, Caller caller) {

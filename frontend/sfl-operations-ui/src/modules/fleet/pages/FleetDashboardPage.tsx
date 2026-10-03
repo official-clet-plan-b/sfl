@@ -568,7 +568,7 @@ const FleetDashboardPage = () => {
       <PageSection>
         <SectionHeader>
           <SectionTitle>Fleet dashboard</SectionTitle>
-          <SectionActions>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <Dropdown
               aria-label="Site"
               value={siteCode || null}

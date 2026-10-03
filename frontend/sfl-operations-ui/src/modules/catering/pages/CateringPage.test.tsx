@@ -7,7 +7,7 @@ import { NotifierProvider } from 'shared/components/Notifier';
 
 const permits = vi.hoisted(() => vi.fn<(permission?: string) => boolean>());
 const api = vi.hoisted(() => ({
-  dashboard: vi.fn(), configuration: vi.fn(), services: vi.fn(), service: vi.fn(), exceptions: vi.fn(),
+  dashboard: vi.fn(), configuration: vi.fn(), services: vi.fn(), service: vi.fn(), exceptions: vi.fn(), exceptionWorkOrders: vi.fn(), retryWorkOrder: vi.fn(),
 }));
 
 vi.mock('shared/layout/actorPermissions', () => ({
@@ -73,6 +73,7 @@ beforeEach(() => {
   });
   api.services.mockResolvedValue(page([service()]));
   api.exceptions.mockResolvedValue(page([]));
+  api.exceptionWorkOrders.mockResolvedValue([]);
 });
 
 describe('the overview', () => {

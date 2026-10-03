@@ -133,7 +133,6 @@ export class FleetApiError extends Error {
     const path = typeof shape.path === 'string' ? shape.path : undefined;
     const summary = [reason, detail].filter(Boolean).join(' - ') || `HTTP ${status}`;
 
-    // eslint-disable-next-line no-console
     console.error(
       `[SFL] Unmapped ${status} from ${path ?? 'the service'}: ${summary}`,
       correlationId ? `correlation ${correlationId}` : '',

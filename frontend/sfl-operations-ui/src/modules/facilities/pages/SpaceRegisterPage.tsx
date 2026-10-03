@@ -193,7 +193,7 @@ const SpaceRegisterPage = () => {
         <SectionHeader>
           <SectionTitle>Spaces</SectionTitle>
           <SectionDescription>Rooms, halls and courtrooms, with the readiness of each</SectionDescription>
-          <SectionActions>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <SiteSelect
               value={siteCode}
               onChange={setSiteCode}

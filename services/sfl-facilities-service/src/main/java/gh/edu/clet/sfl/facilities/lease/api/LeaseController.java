@@ -6,6 +6,8 @@ import gh.edu.clet.sfl.facilities.lease.application.LeaseAgreementService;
 import gh.edu.clet.sfl.facilities.lease.application.LeaseConfigService;
 import gh.edu.clet.sfl.facilities.lease.application.LeaseOpsService;
 import gh.edu.clet.sfl.facilities.lease.application.LeaseStore;
+import gh.edu.clet.sfl.facilities.lease.application.LeaseWorkOrderService;
+import gh.edu.clet.sfl.facilities.lease.domain.LeaseWorkOrder;
 import gh.edu.clet.sfl.facilities.lease.domain.Agreement;
 import gh.edu.clet.sfl.facilities.lease.domain.AgreementKind;
 import gh.edu.clet.sfl.facilities.lease.domain.Amendment;
@@ -54,8 +56,13 @@ public class LeaseController {
     private final LeaseAgreementService agreements;
     private final LeaseConfigService config;
     private final LeaseOpsService ops;
+    private final LeaseWorkOrderService workOrders;
 
-    public LeaseController(LeaseAgreementService agreements, LeaseConfigService config, LeaseOpsService ops) {
+    private final gh.edu.clet.sfl.facilities.lease.application.LeaseExportService exports;
+
+    public LeaseController(LeaseAgreementService agreements, LeaseConfigService config, LeaseOpsService ops, LeaseWorkOrderService workOrders, gh.edu.clet.sfl.facilities.lease.application.LeaseExportService exports) {
+        this.exports = exports;
+        this.workOrders = workOrders;
         this.agreements = agreements;
         this.config = config;
         this.ops = ops;
@@ -215,6 +222,22 @@ public class LeaseController {
         return ApiResponse.ok(agreements.waiveObligation(id, r.reason(), r.version(), new Caller(actor, channel)));
     }
 
+    // ---- corrective work (S153)
+
+    public record WorkOrderRequest(UUID obligationId, @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 2000) String description) {
+    }
+
+    @PostMapping("/agreements/{id}/work-orders")
+    public ResponseEntity<ApiResponse<LeaseWorkOrder>> raiseWorkOrder(@PathVariable UUID id, @Valid @RequestBody WorkOrderRequest r, ActorContext actor,
+            SourceChannel channel) {
+        return created(workOrders.raise(id, r.obligationId(), r.description(), new Caller(actor, channel)));
+    }
+
+    @PostMapping("/work-orders/{id}/retry")
+    public ApiResponse<LeaseWorkOrder> retryWorkOrder(@PathVariable UUID id, ActorContext actor, SourceChannel channel) {
+        return ApiResponse.ok(workOrders.retry(id, new Caller(actor, channel)));
+    }
+
     // ---- shapes
 
     private static <T> ResponseEntity<ApiResponse<T>> created(T body) {
@@ -279,5 +302,17 @@ public class LeaseController {
 
     public record ObligationRequest(@NotNull ObligationKind kind, @NotBlank @Size(max = 240) String title, @NotNull LocalDate dueOn,
             @Size(max = 160) String ownerReference) {
+    }
+
+    // ---- export (NFR-AUD1): its own grant, a stated reason, audited
+
+    @GetMapping(value = "/exports/agreements", produces = "text/csv")
+    public ResponseEntity<byte[]> exportAgreements(@RequestParam String siteCode, @RequestParam(required = false) String status,
+            @RequestParam String reason, ActorContext actor, SourceChannel channel) {
+        var file = exports.export(siteCode, status, reason, new Caller(actor, channel));
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.fileName() + "\"")
+                .contentType(new org.springframework.http.MediaType("text", "csv", java.nio.charset.StandardCharsets.UTF_8))
+                .body(file.csv().getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 }

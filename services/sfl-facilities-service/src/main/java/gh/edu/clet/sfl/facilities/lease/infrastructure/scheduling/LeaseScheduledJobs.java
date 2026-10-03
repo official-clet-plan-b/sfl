@@ -38,9 +38,9 @@ public class LeaseScheduledJobs {
     public void dailyControl() {
         try {
             LeaseOpsService.ControlResult result = ops.dailyControl(new ActorContext(SYSTEM, UUID.randomUUID().toString()));
-            if (result.expired() + result.alertsRaised() + result.noticeDatesMoved() > 0) {
-                log.info("Lease control: {} expired, {} alert(s) raised, {} notice date(s) moved", result.expired(), result.alertsRaised(),
-                        result.noticeDatesMoved());
+            if (result.expired() + result.alertsRaised() + result.noticeDatesMoved() + result.reviewsRaised() > 0) {
+                log.info("Lease control: {} expired, {} alert(s) raised, {} notice date(s) moved, {} review order(s)", result.expired(), result.alertsRaised(),
+                        result.noticeDatesMoved(), result.reviewsRaised());
             }
         } catch (RuntimeException failure) {
             log.error("Lease daily control failed; it will be retried on the next run", failure);

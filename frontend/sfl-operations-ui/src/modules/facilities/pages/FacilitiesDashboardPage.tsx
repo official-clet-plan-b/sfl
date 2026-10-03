@@ -135,14 +135,11 @@ const FacilitiesDashboardPage = () => {
       <PageSection>
         <SectionHeader>
           <SectionTitle>Facilities dashboard</SectionTitle>
-          <SectionDescription>Readiness, blockers and examination risk across the estate</SectionDescription>
-          {data && (
-            <SectionDescription>
-              {data.operatingMode === 'EXAMINATION' ? 'Examination mode' : 'Routine operations'} ·
-              generated {formatDateTime(data.generatedAt)}
-            </SectionDescription>
-          )}
-          <SectionActions>
+          <SectionDescription>
+            Readiness, blockers and examination risk across the estate
+            {data && ` · ${data.operatingMode === 'EXAMINATION' ? 'Examination mode' : 'Routine operations'} · generated ${formatDateTime(data.generatedAt)}`}
+          </SectionDescription>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
           </SectionActions>
         </SectionHeader>

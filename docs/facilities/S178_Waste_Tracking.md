@@ -35,3 +35,7 @@ Diversion (measured kilograms of diverting streams delivered to a non-landfill d
 
 ## Events
 `sfl.ifimp.waste-collection-scheduled.v1`, `-collection-recorded.v1`, `-collection-handed-over.v1`, `-collection-closed.v1`, `-collection-missed.v1`, `-exception-raised.v1`, `-incident-requested.v1`.
+
+## Export and retention
+- `GET /api/v1/facilities/waste/exports/collections?siteCode=&reason=` downloads collections as a CSV, with the quantity basis column so estimates stay distinguishable. It needs `FACILITIES_REGISTER_EXPORT` and a reason, is watermarked and audited.
+- Certificate and manifest evidence follow the retention periods in Record retention.

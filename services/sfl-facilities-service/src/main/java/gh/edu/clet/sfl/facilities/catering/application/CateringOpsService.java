@@ -53,10 +53,12 @@ public class CateringOpsService {
     private final CateringSupport support;
     private final CateringIncidentPort incidents;
     private final FinanceReferencePort finance;
+    private final CateringWorkOrderService workOrders;
     private final TransactionTemplate inTransaction;
 
     public CateringOpsService(CateringStore store, CateringSupport support, CateringIncidentPort incidents,
-            FinanceReferencePort finance, PlatformTransactionManager transactions) {
+            FinanceReferencePort finance, CateringWorkOrderService workOrders, PlatformTransactionManager transactions) {
+        this.workOrders = workOrders;
         this.store = store;
         this.support = support;
         this.incidents = incidents;
@@ -145,6 +147,18 @@ public class CateringOpsService {
         if (type.needsIncident()) {
             incidents.request(exception, caller.actor());
         }
+        // S153 is asked only once the exception is committed; a refusal then leaves the exception standing, pending.
+        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        try {
+                            workOrders.sweep(caller.actor());
+                        } catch (RuntimeException ignored) {
+                            // the timer retries it
+                        }
+                    }
+                });
         return exception;
     }
 

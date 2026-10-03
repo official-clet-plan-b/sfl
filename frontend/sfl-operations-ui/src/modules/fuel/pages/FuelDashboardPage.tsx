@@ -293,7 +293,7 @@ const FuelDashboardPage = () => {
       <PageSection>
         <SectionHeader>
           <SectionTitle>Fuel dashboard</SectionTitle>
-          <SectionActions>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <SiteSelect value={siteCode} onChange={setSiteCode} required />
             <Button variant="outline" onClick={refreshAll}>
               <RefreshCw size={14} strokeWidth={1.5} aria-hidden />
