@@ -89,7 +89,7 @@ export const allProgrammes = Object.keys(programmes) as ProgrammeCode[];
  */
 export type SystemCode =
   | 'S152' | 'S153' | 'S156' | 'S157' | 'S158' | 'S159'
-  | 'S160' | 'S160a' | 'S161' | 'S162' | 'S162a' | 'S163' | 'S165' | 'S166' | 'S167' | 'S168' | 'S168a' | 'AVAMP' | 'S169' | 'S170' | 'S171' | 'S172' | 'S173' | 'S174' | 'S175' | 'S176' | 'S177' | 'S178' | 'S179';
+  | 'S160' | 'S160a' | 'S161' | 'S162' | 'S162a' | 'S163' | 'S164' | 'S165' | 'S166' | 'S167' | 'S168' | 'S168a' | 'AVAMP' | 'S169' | 'S170' | 'S171' | 'S172' | 'S173' | 'S174' | 'S175' | 'S176' | 'S177' | 'S178' | 'S179';
 
 export interface SflSystem {
   code: SystemCode;
@@ -113,6 +113,7 @@ export const systems: Record<SystemCode, SflSystem> = {
   S162a: { code: 'S162a', label: 'Fire & life safety', programme: 'SSEMP' },
   S163: { code: 'S163', label: 'HSE incidents & near misses', programme: 'SSEMP' },
   // Phase 2. The first Phase 2 system with screens; S175 followed it into SSEMP, S164 is next.
+  S164: { code: 'S164', label: 'Permit to work', programme: 'SSEMP' },
   S165: { code: 'S165', label: 'Risk assessment library', programme: 'SSEMP' },
   S166: { code: 'S166', label: 'Fleet & vehicle management', programme: 'FTLMP' },
   S167: { code: 'S167', label: 'GPS & telematics', programme: 'FTLMP' },
@@ -252,18 +253,18 @@ export const roleSystems: Record<string, SystemCode[]> = {
   // `FACILITIES_SETUP_TASK_MANAGE` and no booking-request permission at all. A technician turns rooms
   // around; a technician who could reserve a hall would be scheduling the estate from the shop floor.
   // The section renders for them with the turnaround queue and nothing that books anything.
-  FACILITIES_DIRECTOR: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S169', 'S170', 'S172', 'S173', 'S176', 'S177', 'S178', 'S179'],
-  FACILITIES_MANAGER: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S169', 'S170', 'S172', 'S173', 'S176', 'S177', 'S178', 'S179'],
-  IFIMP_MAINTENANCE_SUPERVISOR: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S169', 'S170', 'S172', 'S173', 'S176', 'S177', 'S178', 'S179'],
+  FACILITIES_DIRECTOR: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S164', 'S169', 'S170', 'S172', 'S173', 'S176', 'S177', 'S178', 'S179'],
+  FACILITIES_MANAGER: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S164', 'S169', 'S170', 'S172', 'S173', 'S176', 'S177', 'S178', 'S179'],
+  IFIMP_MAINTENANCE_SUPERVISOR: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S164', 'S169', 'S170', 'S172', 'S173', 'S176', 'S177', 'S178', 'S179'],
   IFIMP_TECHNICIAN: ['S152', 'S153', 'S156', 'S159', 'S169', 'S170', 'S178'],
   IFIMP_REQUESTER: ['S152', 'S153', 'S158', 'S159', 'S169', 'S172', 'S179'],
-  VENDOR_TECHNICIAN: ['S152', 'S153', 'S169', 'S170', 'S178'],
-  FACILITIES_ENGINEER: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S169', 'S170', 'S172', 'S173', 'S176', 'S177', 'S178', 'S179'],
+  VENDOR_TECHNICIAN: ['S152', 'S153', 'S164', 'S169', 'S170', 'S178'],
+  FACILITIES_ENGINEER: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S164', 'S169', 'S170', 'S172', 'S173', 'S176', 'S177', 'S178', 'S179'],
   ENERGY_SUSTAINABILITY_OFFICER: ['S152', 'S153', 'S156', 'S157', 'S159', 'S178'],
   SPACE_PLANNING_OFFICER: ['S152', 'S153', 'S158', 'S159', 'S176', 'S177', 'S178'],
   // S165 too: both systems' work needs a current risk assessment linked, so both roles read the library
   // (RiskAssessmentPermissionMatrix, read only).
-  CONSTRUCTION_PROJECT_MANAGER: ['S152', 'S153', 'S158', 'S159', 'S165', 'S176'],
+  CONSTRUCTION_PROJECT_MANAGER: ['S152', 'S153', 'S158', 'S159', 'S164', 'S165', 'S176'],
   EVENT_LOGISTICS_COORDINATOR: ['S152', 'S153', 'S159', 'S165', 'S169', 'S170', 'S172', 'S173', 'S178'],
 
   // SFL.FTLMP - all three systems live in `sfl-fleet-logistics-service`
@@ -286,16 +287,16 @@ export const roleSystems: Record<string, SystemCode[]> = {
   // S165 from RiskAssessmentPermissionMatrix: the HSE manager owns the library; the security director,
   // the investigator (an incident's assessment) and command read it.
   // S175: the security director owns drill frequency compliance and combined drills.
-  SECURITY_DIRECTOR: ['S160', 'S160a', 'S161', 'S162', 'S162a', 'S163', 'S165', 'S174', 'S175', 'S179'],
+  SECURITY_DIRECTOR: ['S160', 'S160a', 'S161', 'S162', 'S162a', 'S163', 'S164', 'S165', 'S174', 'S175', 'S179'],
   ACCESS_CONTROL_ADMINISTRATOR: ['S160a'],
   RECEPTION_OFFICER: ['S160', 'S179'],
   VISITOR_HOST: ['S160'],
-  SOC_OPERATOR: ['S160', 'S160a', 'S161', 'S162', 'S162a', 'S163', 'S174', 'S175'],
+  SOC_OPERATOR: ['S160', 'S160a', 'S161', 'S162', 'S162a', 'S163', 'S164', 'S174', 'S175'],
   INCIDENT_INVESTIGATOR: ['S163', 'S165'],
   // An HSE manager reads the estate to place an incident and judge a location's standing. It takes
   // the matrix's shared READ_ONLY set, which carries FACILITIES_BOOKING_READ - so the diary is
   // readable, and nothing in the section can book, approve or turn a room around.
-  HSE_MANAGER: ['S152', 'S153', 'S156', 'S159', 'S163', 'S165', 'S170', 'S172', 'S173', 'S174', 'S175', 'S176', 'S178'],
+  HSE_MANAGER: ['S152', 'S153', 'S156', 'S159', 'S163', 'S164', 'S165', 'S170', 'S172', 'S173', 'S174', 'S175', 'S176', 'S178'],
 
   // Roles that span programmes at the system grain too
   SECURITY_OFFICER: ['S160a', 'S161', 'S162', 'S162a', 'S171', 'S174', 'S179'],

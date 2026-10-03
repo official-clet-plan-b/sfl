@@ -82,6 +82,7 @@ const VipTripPortalPage = lazy(() => import('modules/phase2/pages/Phase2Operatio
 const AssetVisibilityPage = lazy(() => import('modules/phase2/pages/Phase2OperationsPages').then((module) => ({ default: module.AssetVisibilityPage })));
 const HygienePage = lazy(() => import('modules/hygiene/pages/HygienePage'));
 const RetentionPage = lazy(() => import('modules/retention/pages/RetentionPage'));
+const PermitPage = lazy(() => import('modules/permit/pages/PermitPage'));
 const CateringPage = lazy(() => import('modules/catering/pages/CateringPage'));
 const LeasePage = lazy(() => import('modules/lease/pages/LeasePage'));
 const WastePage = lazy(() => import('modules/waste/pages/WastePage'));
@@ -513,6 +514,11 @@ const App = () => {
                 <Route path="review-flags" element={<ReviewFlagsPage />} />
                 <Route path="coverage" element={<RiskCoveragePage />} />
                 <Route path="configuration" element={<RiskConfigurationPage />} />
+              </Route>
+              {/* Phase 2 S164 - permit to work. */}
+              <Route path="permits" element={<SystemRoutes system="S164" />}>
+                <Route index element={<PermitPage />} />
+                <Route path=":view" element={<PermitPage />} />
               </Route>
               {/* Phase 2 S175 - crisis and evacuation drills. */}
               <Route path="drills" element={<SystemRoutes system="S175" />}>

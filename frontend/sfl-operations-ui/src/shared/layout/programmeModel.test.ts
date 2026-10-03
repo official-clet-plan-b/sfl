@@ -17,6 +17,7 @@ describe('programme entitlement', () => {
       // identical for this role, because the permission matrix puts fault, work-order, booking and
       // resource reads in its shared read-only set - see the note on `SystemCode` for why they are
       // still separate codes.
+      // S164 is the exception to "IFIMP only": a facilities manager raises permits for hot work and work at height.
       expect(systemsFor(['FACILITIES_MANAGER'])).toEqual([
         'S152',
         'S153',
@@ -24,6 +25,7 @@ describe('programme entitlement', () => {
         'S157',
         'S158',
         'S159',
+        'S164',
         'S169',
         'S170',
         'S172',
@@ -33,7 +35,7 @@ describe('programme entitlement', () => {
         'S178',
         'S179',
       ]);
-      expect(programmesFor(['FACILITIES_MANAGER'])).toEqual(['IFIMP']);
+      expect(programmesFor(['FACILITIES_MANAGER'])).toEqual(['IFIMP', 'SSEMP']);
     });
 
     it('gives every IFIMP role the facilities system', () => {
@@ -103,8 +105,8 @@ describe('programme entitlement', () => {
       expect(systemsFor(['VISITOR_HOST'])).toEqual(['S160']);
       // RiskAssessmentPermissionMatrix: an investigator reads the assessment an incident happened under.
       expect(systemsFor(['INCIDENT_INVESTIGATOR'])).toEqual(['S163', 'S165']);
-      expect(systemsFor(['SOC_OPERATOR'])).toEqual(['S160', 'S160a', 'S161', 'S162', 'S162a', 'S163', 'S174', 'S175']);
-      expect(systemsFor(['SECURITY_DIRECTOR'])).toEqual(['S160', 'S160a', 'S161', 'S162', 'S162a', 'S163', 'S165', 'S174', 'S175', 'S179']);
+      expect(systemsFor(['SOC_OPERATOR'])).toEqual(['S160', 'S160a', 'S161', 'S162', 'S162a', 'S163', 'S164', 'S174', 'S175']);
+      expect(systemsFor(['SECURITY_DIRECTOR'])).toEqual(['S160', 'S160a', 'S161', 'S162', 'S162a', 'S163', 'S164', 'S165', 'S174', 'S175', 'S179']);
       expect(programmesFor(['INCIDENT_INVESTIGATOR'])).toEqual(['SSEMP']);
     });
 
@@ -112,11 +114,21 @@ describe('programme entitlement', () => {
       expect(systems.S165.programme).toBe('SSEMP');
       expect(systemsFor(['HSE_MANAGER'])).toContain('S165');
       // Both keep their IFIMP systems and gain the library, read only.
-      expect(systemsFor(['CONSTRUCTION_PROJECT_MANAGER'])).toEqual(['S152', 'S153', 'S158', 'S159', 'S165', 'S176']);
+      expect(systemsFor(['CONSTRUCTION_PROJECT_MANAGER'])).toEqual(['S152', 'S153', 'S158', 'S159', 'S164', 'S165', 'S176']);
       expect(systemsFor(['EVENT_LOGISTICS_COORDINATOR'])).toEqual(['S152', 'S153', 'S159', 'S165', 'S169', 'S170', 'S172', 'S173', 'S178']);
       expect(programmesFor(['CONSTRUCTION_PROJECT_MANAGER'])).toEqual(['IFIMP', 'SSEMP']);
       // A role with no S165 grant does not see it.
       expect(systemsFor(['SOC_OPERATOR'])).not.toContain('S165');
+    });
+
+    it('places S164 in SSEMP for the roles PermitPermissionMatrix grants', () => {
+      expect(systems.S164.programme).toBe('SSEMP');
+      // Requesters, competent verifiers, authorisers, the SOC and the HSE manager. A role the matrix does not name does not see permits.
+      for (const role of ['HSE_MANAGER', 'SECURITY_DIRECTOR', 'SOC_OPERATOR', 'FACILITIES_DIRECTOR', 'FACILITIES_MANAGER', 'FACILITIES_ENGINEER', 'IFIMP_MAINTENANCE_SUPERVISOR', 'CONSTRUCTION_PROJECT_MANAGER', 'VENDOR_TECHNICIAN']) {
+        expect(systemsFor([role])).toContain('S164');
+      }
+      expect(systemsFor(['RECEPTION_OFFICER'])).not.toContain('S164');
+      expect(systemsFor(['INCIDENT_INVESTIGATOR'])).not.toContain('S164');
     });
 
     it('places S175 in SSEMP for the roles DrillPermissionMatrix grants', () => {
