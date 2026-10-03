@@ -16,13 +16,13 @@ vi.mock('shared/layout/actorPermissions', () => ({
   permissionFailure: () => undefined,
 }));
 
-const { CateringPage } = await import('./registerPages');
+const { LeasePage } = await import('./registerPages');
 
 const renderAt = (path: string, page: React.ReactElement) =>
   render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/facilities/catering" element={page} />
+        <Route path="/facilities/leases" element={page} />
       </Routes>
     </MemoryRouter>,
   );
@@ -33,12 +33,12 @@ beforeEach(() => {
   permits.mockReset();
 });
 
-describe('the other estate registers list every record type their form can create', () => {
-  it('asks for services and menus together on the first Catering tab', async () => {
+describe('the lease register lists every record type its form can create', () => {
+  it('asks for leases and tenancies together on the first Lease tab', async () => {
     permits.mockReturnValue(true);
-    renderAt('/facilities/catering', <CateringPage />);
+    renderAt('/facilities/leases', <LeasePage />);
 
     await waitFor(() => expect(readIfimpDataset).toHaveBeenCalled());
-    expect(readIfimpDataset.mock.calls[0][2]).toEqual({ recordType: 'SERVICE,MENU' });
+    expect(readIfimpDataset.mock.calls[0][2]).toEqual({ recordType: 'LEASE,TENANCY' });
   });
 });

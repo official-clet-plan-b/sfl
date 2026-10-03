@@ -6,15 +6,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** System-specific vocabulary and lifecycle rules for S172 and S177 (S170, S178 and S179 have their own modules). */
+/** System-specific vocabulary and lifecycle rules for S177 (S170, S172, S178 and S179 have their own modules). */
 final class RegisterRules {
 
     private static final Map<String, Set<String>> TYPES = Map.of(
-            "S172", Set.of("SERVICE", "MENU", "DIETARY_REQUIREMENT", "SUPPLIER_CHECK", "FOOD_SAFETY_CHECK", "RECONCILIATION", "VARIANCE"),
             "S177", Set.of("LEASE", "TENANCY", "OBLIGATION", "RENEWAL", "RENT_REVIEW", "AMENDMENT", "TERMINATION"));
 
     private static final Map<String, Set<String>> STATUSES = Map.of(
-            "S172", Set.of("DRAFT", "PENDING_APPROVAL", "CONFIRMED", "DELIVERED", "RECONCILIATION_PENDING", "CLOSED"),
             "S177", Set.of("DRAFT", "ACTIVE", "DUE", "PENDING_APPROVAL", "RENEWED", "TERMINATED"));
 
     private RegisterRules() {

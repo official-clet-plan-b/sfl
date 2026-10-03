@@ -820,11 +820,20 @@ export const navSections: NavSection[] = [
     ],
   },
   {
-    heading: 'Estate services',
+    // S172 has its own permission set, like S170, S178 and S179: the coordinators who run catering do not hold
+    // the platform-configuration grant.
+    heading: 'Catering',
     programme: 'IFIMP',
     system: 'S172',
     items: [
-      { label: 'Catering & cafeteria', to: estateRegisterPaths.catering, icon: 'calendar', description: 'Services, dietary checks and reconciliation', permission: 'FACILITIES_SITE_READ', capability: 'FACILITIES_CONFIG_MANAGE' },
+      { label: 'Catering & cafeteria', to: estateRegisterPaths.catering, icon: 'calendar', description: 'Menus, services, checks and reconciliation', permission: 'FACILITIES_CATERING_READ' },
+    ],
+  },
+  {
+    heading: 'Estate services',
+    programme: 'IFIMP',
+    system: 'S177',
+    items: [
       { label: 'Lease & tenancy', to: estateRegisterPaths.leases, icon: 'document', description: 'Agreements, obligations and renewals', permission: 'FACILITIES_SITE_READ', capability: 'FACILITIES_CONFIG_MANAGE' },
     ],
   },

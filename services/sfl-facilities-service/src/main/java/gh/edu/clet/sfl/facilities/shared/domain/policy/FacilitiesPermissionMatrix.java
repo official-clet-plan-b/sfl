@@ -340,6 +340,7 @@ public final class FacilitiesPermissionMatrix {
         grantEstateRegisters(matrix);
         grantWaste(matrix);
         grantLostFound(matrix);
+        grantCatering(matrix);
 
         return Map.copyOf(matrix);
     }
@@ -433,6 +434,26 @@ public final class FacilitiesPermissionMatrix {
                 SflPermission.FACILITIES_LOSTFOUND_PRIVATE_READ);
         grant(matrix, SflRole.CENTRE_MANAGER, read, SflPermission.FACILITIES_LOSTFOUND_MANAGE,
                 SflPermission.FACILITIES_LOSTFOUND_PRIVATE_READ);
+        grant(matrix, SflRole.COMPLIANCE_OFFICER, read);
+        grant(matrix, SflRole.DTI_ADMIN, read);
+    }
+
+    /**
+     * The S172 grants. The facilities and event-logistics coordinators plan and run services and may see
+     * dietary needs; the director and the HSE manager approve - the HSE manager because a food-safety
+     * exception is theirs to accept. The compliance officer and technical administrator read the register
+     * without dietary detail.
+     */
+    private static void grantCatering(Map<SflRole, Set<SflPermission>> matrix) {
+        Set<SflPermission> read = EnumSet.of(SflPermission.FACILITIES_CATERING_READ);
+        grant(matrix, SflRole.FACILITIES_DIRECTOR, read, SflPermission.FACILITIES_CATERING_MANAGE,
+                SflPermission.FACILITIES_CATERING_APPROVE, SflPermission.FACILITIES_CATERING_DIETARY_READ);
+        grant(matrix, SflRole.FACILITIES_MANAGER, read, SflPermission.FACILITIES_CATERING_MANAGE,
+                SflPermission.FACILITIES_CATERING_DIETARY_READ);
+        grant(matrix, SflRole.EVENT_LOGISTICS_COORDINATOR, read, SflPermission.FACILITIES_CATERING_MANAGE,
+                SflPermission.FACILITIES_CATERING_DIETARY_READ);
+        grant(matrix, SflRole.HSE_MANAGER, read, SflPermission.FACILITIES_CATERING_APPROVE,
+                SflPermission.FACILITIES_CATERING_DIETARY_READ);
         grant(matrix, SflRole.COMPLIANCE_OFFICER, read);
         grant(matrix, SflRole.DTI_ADMIN, read);
     }

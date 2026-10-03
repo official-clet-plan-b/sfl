@@ -54,14 +54,7 @@ const RegisterPage = ({ system, title, subtitle, views }: { system: string; titl
   <IfimpOperationsPage system={system} title={title} subtitle={subtitle} views={views} />
 );
 
-const cateringStatuses = ['DRAFT', 'PENDING_APPROVAL', 'CONFIRMED', 'DELIVERED', 'RECONCILIATION_PENDING', 'CLOSED'];
 const leaseStatuses = ['DRAFT', 'ACTIVE', 'DUE', 'PENDING_APPROVAL', 'RENEWED', 'TERMINATED'];
-
-export const CateringPage = () => <RegisterPage system="S172" title="Catering & cafeteria" subtitle="Plan safe services, dietary handling and delivery reconciliation." views={[
-  view('Catering services', 'Menus, service windows, quantities and delivery state.', 'services', 'S172', ['SERVICE', 'MENU'], cateringStatuses),
-  view('Dietary & safety checks', 'Allergen, supplier and food-safety checks before service.', 'checks', 'S172', ['DIETARY_REQUIREMENT', 'SUPPLIER_CHECK', 'FOOD_SAFETY_CHECK'], cateringStatuses),
-  view('Reconciliations', 'Delivered service variances and finance references.', 'reconciliation', 'S172', ['RECONCILIATION', 'VARIANCE'], cateringStatuses),
-]} />;
 
 export const LeasePage = () => <RegisterPage system="S177" title="Lease & tenancy" subtitle="Govern agreement obligations, renewals, amendments and evidence." views={[
   view('Agreements', 'Lease and tenancy portfolio by site.', 'agreements', 'S177', ['LEASE', 'TENANCY'], leaseStatuses),
