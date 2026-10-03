@@ -12,6 +12,8 @@ import gh.edu.clet.sfl.safetysecurity.platform.infrastructure.persistence.AuditA
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,7 +24,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * The audit chains replay against a real database whatever sub-millisecond fraction the clock reports.
+ * The audit records hash and replay against a real database whatever sub-millisecond fraction the clock reports.
  *
  * <p>PostgreSQL keeps microseconds; a Java instant on Linux carries nanoseconds, and both chains hash epoch milliseconds. An instant
  * 400 nanoseconds short of a millisecond boundary used to be hashed in one millisecond and stored, rounded up, in the next - so the
@@ -49,14 +51,32 @@ class AuditTimestampPrecisionEndToEndTest extends SafetySecurityPostgresSupport 
     }
 
     @Test
-    @DisplayName("the shared safety-security audit chain replays intact for an instant that rounds across a millisecond boundary")
+    @DisplayName("a shared safety-security audit record's hash matches its stored values for an instant that rounds across a millisecond boundary")
     void platform_chain() {
         AuditAdapter audit = new AuditAdapter(jdbc, json, Clock.fixed(JUST_SHORT_OF_A_MILLISECOND, ZoneOffset.UTC));
+        String probe = "AUDIT-PROBE-" + java.util.UUID.randomUUID();
 
-        audit.record(actor(), "WEB", "AUDIT-PROBE", "PRECISION_PROBE", "Probe", "p-1", null, "after", null);
-        audit.record(actor(), "WEB", "AUDIT-PROBE", "PRECISION_PROBE", "Probe", "p-2", null, "after", null);
+        audit.record(actor(), "WEB", probe, "PRECISION_PROBE", "Probe", "p-1", null, "after", null);
+        audit.record(actor(), "WEB", probe, "PRECISION_PROBE", "Probe", "p-2", null, "after", null);
 
-        assertThat(audit.verifyChain().intact()).isTrue();
+        // Each record is checked on its own, from what was stored. The whole table is not replayed: other suites share it, and one of
+        // them deliberately writes two overlapping entries that are not linked to each other.
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT * FROM safety_security.audit_log WHERE site_scope = ? ORDER BY sequence_no", probe);
+        assertThat(rows).hasSize(2);
+        for (Map<String, Object> row : rows) {
+            String canonical = row.get("sequence_no") + "|" + row.get("actor") + "|" + row.get("action") + "|" + row.get("resource_type") + "|" + row.get("resource_id")
+                    + "|" + row.get("site_scope") + "|" + row.get("source_channel") + "|"
+                    + ((java.sql.Timestamp) row.get("occurred_at")).toInstant().toEpochMilli() + "|" + (row.get("previous_hash") == null ? "" : row.get("previous_hash"));
+            assertThat(row.get("record_hash")).as("record %s", row.get("sequence_no")).isEqualTo(sha256(canonical));
+        }
+    }
+
+    private static String sha256(String text) {
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(text.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @Test
