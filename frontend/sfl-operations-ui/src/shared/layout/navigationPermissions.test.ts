@@ -270,9 +270,11 @@ describe('who is offered the hygiene register (S170)', () => {
     expect(labelsFor(['S172'])).not.toContain('Hygiene & pest control');
   });
 
-  it('keeps the lease register on the grants it was built with', () => {
-    holding(['FACILITIES_SITE_READ', 'FACILITIES_CONFIG_MANAGE']);
+  it('offers lease & tenancy on its own grant, not on the configuration grant', () => {
+    holding(['FACILITIES_SITE_READ', 'FACILITIES_LEASE_READ']);
     expect(labelsFor(['S177'])).toEqual(expect.arrayContaining(['Lease & tenancy']));
+    holding(['FACILITIES_SITE_READ', 'FACILITIES_CONFIG_MANAGE']);
+    expect(labelsFor(['S177'])).not.toContain('Lease & tenancy');
     holding(OWNER);
     expect(labelsFor(['S177'])).not.toContain('Lease & tenancy');
   });

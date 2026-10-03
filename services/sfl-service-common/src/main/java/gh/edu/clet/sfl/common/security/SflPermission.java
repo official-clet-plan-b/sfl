@@ -423,6 +423,17 @@ public enum SflPermission {
     FACILITIES_CATERING_APPROVE,
     FACILITIES_CATERING_DIETARY_READ,
 
+    // S177 Lease & Tenancy Management. Five grants for five different questions: may you see the register, may
+    // you run it, may you approve an agreement or a material amendment, may you clear a conflicting amendment
+    // out of legal review, and may you see the money - rent, deposit and financial exposure. No separate legal
+    // role exists in the platform, so legal review is granted to the facilities director and the compliance
+    // officer until one does.
+    FACILITIES_LEASE_READ,
+    FACILITIES_LEASE_MANAGE,
+    FACILITIES_LEASE_APPROVE,
+    FACILITIES_LEASE_LEGAL_REVIEW,
+    FACILITIES_LEASE_FINANCIAL_READ,
+
     // S165 Risk Assessment Library (Phase 2 SRS §3.2, SSEMP). Additive only - adding enum constants
     // changes no existing signature and no existing service behaviour. Split by authority level, not by
     // screen: authoring, publishing and signing off are separate acts, and S165-02 requires the last to

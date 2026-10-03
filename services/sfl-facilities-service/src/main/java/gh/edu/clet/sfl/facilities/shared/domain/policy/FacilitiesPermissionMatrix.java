@@ -341,6 +341,7 @@ public final class FacilitiesPermissionMatrix {
         grantWaste(matrix);
         grantLostFound(matrix);
         grantCatering(matrix);
+        grantLease(matrix);
 
         return Map.copyOf(matrix);
     }
@@ -455,6 +456,26 @@ public final class FacilitiesPermissionMatrix {
         grant(matrix, SflRole.HSE_MANAGER, read, SflPermission.FACILITIES_CATERING_APPROVE,
                 SflPermission.FACILITIES_CATERING_DIETARY_READ);
         grant(matrix, SflRole.COMPLIANCE_OFFICER, read);
+        grant(matrix, SflRole.DTI_ADMIN, read);
+    }
+
+    /**
+     * The S177 grants. Facilities runs the portfolio; only the director approves an agreement or a material
+     * amendment. The compliance officer reads, can clear a conflicting amendment out of legal review and sees
+     * the financial detail, because those are an auditor's questions. Space planning and construction read the
+     * register; they are told when a lease affects their space but do not see the money.
+     */
+    private static void grantLease(Map<SflRole, Set<SflPermission>> matrix) {
+        Set<SflPermission> read = EnumSet.of(SflPermission.FACILITIES_LEASE_READ);
+        grant(matrix, SflRole.FACILITIES_DIRECTOR, read, SflPermission.FACILITIES_LEASE_MANAGE,
+                SflPermission.FACILITIES_LEASE_APPROVE, SflPermission.FACILITIES_LEASE_LEGAL_REVIEW,
+                SflPermission.FACILITIES_LEASE_FINANCIAL_READ);
+        grant(matrix, SflRole.FACILITIES_MANAGER, read, SflPermission.FACILITIES_LEASE_MANAGE,
+                SflPermission.FACILITIES_LEASE_FINANCIAL_READ);
+        grant(matrix, SflRole.SPACE_PLANNING_OFFICER, read, SflPermission.FACILITIES_LEASE_MANAGE);
+        grant(matrix, SflRole.CONSTRUCTION_PROJECT_MANAGER, read);
+        grant(matrix, SflRole.COMPLIANCE_OFFICER, read, SflPermission.FACILITIES_LEASE_LEGAL_REVIEW,
+                SflPermission.FACILITIES_LEASE_FINANCIAL_READ);
         grant(matrix, SflRole.DTI_ADMIN, read);
     }
 

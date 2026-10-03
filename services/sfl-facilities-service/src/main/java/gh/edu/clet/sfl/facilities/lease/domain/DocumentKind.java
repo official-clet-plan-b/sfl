@@ -1,0 +1,5 @@
+package gh.edu.clet.sfl.facilities.lease.domain;
+
+public enum DocumentKind {
+    SIGNED_AGREEMENT, APPROVAL_EVIDENCE, INSURANCE_CERTIFICATE, COMPLIANCE_CERTIFICATE, NOTICE, TERMINATION_NOTICE, OTHER
+}
