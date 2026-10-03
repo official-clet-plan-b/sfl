@@ -11,6 +11,8 @@ interface ExportButtonProps {
   path: string;
   siteCode: string;
   label?: string;
+  /** The service that serves the export; the facilities registers are the default. */
+  service?: 'facilities' | 'safetySecurity';
 }
 
 /**
@@ -18,17 +20,17 @@ interface ExportButtonProps {
  * reason: the service refuses a short one, watermarks the file with who took it and why, and audits the export. What the
  * file contains is what the signed-in role may read, so a masked column stays masked.
  */
-const ExportButton = ({ path, siteCode, label = 'Export' }: ExportButtonProps) => {
+const ExportButton = ({ path, siteCode, label = 'Export', service = 'facilities' }: ExportButtonProps) => {
   const notifier = useNotifier();
   const [open, setOpen] = useState(false);
-  if (!permits('FACILITIES_REGISTER_EXPORT')) return null;
+  if (!permits(service === 'facilities' ? 'FACILITIES_REGISTER_EXPORT' : 'PERMIT_EXPORT')) return null;
   return (
     <>
       <Button variant="outline" onClick={() => setOpen(true)} disabled={!siteCode}><Download size={14} strokeWidth={1.5} aria-hidden /> {label}</Button>
       {open && (
         <ReasonDialog title="Export this register" description={`Downloads the register for ${siteCode} as a CSV. The file is watermarked with your name, the time and your reason, and the export is audited. It contains only what your role may read.`}
           label="Why you need this file" submitLabel="Download" minimum={10}
-          write={async (reason) => { await downloadFile(path, { siteCode, reason }, 'export.csv', 'text/csv, application/json', 'facilities'); notifier.notifySuccess('Export downloaded'); }}
+          write={async (reason) => { await downloadFile(path, { siteCode, reason }, 'export.csv', 'text/csv, application/json', service); notifier.notifySuccess('Export downloaded'); }}
           onClose={() => setOpen(false)} onDone={() => setOpen(false)} />
       )}
     </>

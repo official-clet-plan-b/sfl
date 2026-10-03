@@ -1,6 +1,6 @@
 # ADR 0010 - Phase 2 SSEMP: one foundation for S165, S164 and S175, and S165 first
 
-- Status: **Accepted and implemented** for S165, 2 October 2026. S164 and S175 build on it.
+- Status: **Accepted and implemented** for S165 (2 October 2026) and S164 (3 October 2026); S175 also builds on it.
 - Date: 2026-10-02
 - Deciders: SFL platform / Health, Safety & Security Unit
 - Relates: [0007 row-level security](0007-row-level-security-deferred-with-a-named-mechanism.md);

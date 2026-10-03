@@ -343,3 +343,22 @@ describe('who is offered catering & cafeteria (S172)', () => {
     expect(labelsFor(['S177'])).not.toContain('Catering & cafeteria');
   });
 });
+
+describe('who is offered permit to work (S164)', () => {
+  it('offers it to anyone holding the permit read grant, whatever else they hold', () => {
+    holding(['PERMIT_READ']);
+    expect(labelsFor(['S164'])).toContain('Permit to work');
+    holding(['PERMIT_READ', 'PERMIT_REQUEST']);
+    expect(labelsFor(['S164'])).toContain('Permit to work');
+  });
+
+  it('does not offer it on the request grant alone - reading the register is what the screen is', () => {
+    holding(['PERMIT_REQUEST']);
+    expect(labelsFor(['S164'])).not.toContain('Permit to work');
+  });
+
+  it('does not offer it to an actor who is not entitled to S164, however much they hold', () => {
+    holding(['PERMIT_READ']);
+    expect(labelsFor(['S165'])).not.toContain('Permit to work');
+  });
+});

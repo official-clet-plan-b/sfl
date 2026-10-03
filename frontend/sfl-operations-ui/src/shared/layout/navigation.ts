@@ -333,6 +333,12 @@ export const securitySystemPaths: Record<SecuritySystemCode, string> = {
   S162a: '/safetysecurity/life-safety',
 };
 
+/** S164 Permit-to-Work: one screen with its dashboard, register, types and analytics as tabs. */
+export const permitPaths = {
+  dashboard: '/safetysecurity/permits',
+  register: '/safetysecurity/permits/register',
+};
+
 /**
  * S175 Crisis & Evacuation Drill Management. The register is also the calendar; a drill's own screen carries
  * it from plan to roll-call to after-action review, because one drill is one piece of work. Compliance is its
@@ -1316,6 +1322,22 @@ export const navSections: NavSection[] = [
         description: 'Hazard templates and review intervals',
         permission: 'RISK_ASSESSMENT_READ',
         capability: ['RISK_ASSESSMENT_CONFIGURE'],
+      },
+    ],
+  },
+  {
+    // Phase 2 S164. Every gate is read off PermitPermissionMatrix and the services that enforce it.
+    heading: 'Permit to work',
+    programme: 'SSEMP',
+    system: 'S164',
+    items: [
+      {
+        label: 'Permit to work',
+        to: permitPaths.dashboard,
+        icon: 'shield-check',
+        matchPrefix: permitPaths.dashboard,
+        description: 'Request, verify, approve, suspend and close out high-risk work',
+        permission: 'PERMIT_READ',
       },
     ],
   },
