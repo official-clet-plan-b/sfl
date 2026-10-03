@@ -7,6 +7,7 @@ import gh.edu.clet.sfl.common.security.SflRole;
 import gh.edu.clet.sfl.safetysecurity.accesscontrol.domain.policy.AccessControlPermissionMatrix;
 import gh.edu.clet.sfl.safetysecurity.cctv.domain.policy.CctvPermissionMatrix;
 import gh.edu.clet.sfl.safetysecurity.drill.domain.policy.DrillPermissionMatrix;
+import gh.edu.clet.sfl.safetysecurity.permit.domain.policy.PermitPermissionMatrix;
 import gh.edu.clet.sfl.safetysecurity.emergency.domain.policy.EmergencyPermissionMatrix;
 import gh.edu.clet.sfl.safetysecurity.incident.domain.policy.IncidentPermissionMatrix;
 import gh.edu.clet.sfl.safetysecurity.intrusion.domain.policy.IntrusionPermissionMatrix;
@@ -79,7 +80,8 @@ public class ActorPermissionsController {
                         || IntrusionPermissionMatrix.grants(roles, permission)
                         || LifeSafetyPermissionMatrix.grants(roles, permission)
                         || RiskAssessmentPermissionMatrix.grants(roles, permission)
-                        || DrillPermissionMatrix.grants(roles, permission))
+                        || DrillPermissionMatrix.grants(roles, permission)
+                        || PermitPermissionMatrix.grants(roles, permission))
                 .map(Enum::name)
                 .sorted()
                 .toList());

@@ -461,5 +461,23 @@ public enum SflPermission {
     DRILL_REVIEW,
     DRILL_CAPA_MANAGE,
     DRILL_COMPLIANCE_READ,
-    DRILL_CONFIGURE
+    DRILL_CONFIGURE,
+    /** S164: see permits, their lifecycle and the dashboard. */
+    PERMIT_READ,
+    /** S164: request a permit, add workers and isolations, record completion and evidence. */
+    PERMIT_REQUEST,
+    /** S164: verify isolations and workers' competence, and record isolation removal - never for one's own request. */
+    PERMIT_VERIFY_ISOLATION,
+    /** S164: approve as the issuing authority (stage one), or reject. */
+    PERMIT_APPROVE,
+    /** S164: the independent safety sign-off that a higher-risk permit type needs as stage two. */
+    PERMIT_SAFETY_SIGN_OFF,
+    /** S164: suspend an active permit with a reason, and review flags - authorisers and the SOC. */
+    PERMIT_SUSPEND,
+    /** S164: define permit types, their approvals and validity rules. */
+    PERMIT_CONFIGURE,
+    /** S164: analytics across permits. */
+    PERMIT_ANALYTICS_READ,
+    /** S164: take the permit register out as a statutory evidence file; every export names a reason and is audited. */
+    PERMIT_EXPORT
 }

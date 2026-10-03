@@ -57,11 +57,14 @@ public class ActivationService implements EmergencyDrillTrigger {
     private final CctvEvidencePort cctv;
     private final CommandIdempotencyPort idempotency;
     private final Clock clock;
+    private final java.util.List<gh.edu.clet.sfl.safetysecurity.emergency.application.contract.EmergencyActivationObserver> observers;
 
     public ActivationService(EmergencyRepository repository, EmergencyAccessPolicy access, AuditPort audit,
             IntegrationEventPublisher events, NotificationGatewayPort gateway, EvidencePort evidence,
             LifeSafetyEventPort lifeSafety, AccessControlLockdownPort lockdown, CctvEvidencePort cctv,
-            CommandIdempotencyPort idempotency, Clock clock) {
+            CommandIdempotencyPort idempotency, Clock clock,
+            java.util.List<gh.edu.clet.sfl.safetysecurity.emergency.application.contract.EmergencyActivationObserver> observers) {
+        this.observers = java.util.List.copyOf(observers);
         this.repository = repository;
         this.access = access;
         this.audit = audit;
@@ -161,6 +164,7 @@ public class ActivationService implements EmergencyDrillTrigger {
         events.publish(EmergencyEventType.EMERGENCY_NOTIFICATION_ACTIVATED, "NotificationActivation", id.toString(),
                 after.siteCode().value(), actor, Map.of("activationId", id, "channels", channelNames(after),
                         "mode", after.mode()));
+        announce(after, false, actor);
         return after;
     }
 
@@ -217,7 +221,18 @@ public class ActivationService implements EmergencyDrillTrigger {
                         after.mode()));
         idempotency.recordResult("break-glass-emergency-activation", c.idempotencyKey(), fingerprint, after.id(),
                 site.value(), c.actor().actorId());
+        announce(after, true, c.actor());
         return after;
+    }
+
+    /** Tells the observers a real emergency went out - never a drill - so what depends on the affected zones can react in the same transaction. */
+    private void announce(NotificationActivation activation, boolean breakGlass, ActorContext actor) {
+        if (activation.mode() == NotificationActivation.Mode.DRILL) {
+            return;
+        }
+        var emergency = new gh.edu.clet.sfl.safetysecurity.emergency.application.contract.EmergencyActivationObserver.ActivatedEmergency(
+                activation.id(), activation.activationNumber(), activation.siteCode().value(), activation.recipientZoneIds(), breakGlass, actor);
+        observers.forEach(observer -> observer.activated(emergency));
     }
 
     private Map<String, Object> activationPayload(CreateActivation c) {

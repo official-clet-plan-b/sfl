@@ -48,7 +48,10 @@ class RiskAssessmentRowLevelSecurityTest extends SafetySecurityPostgresSupport {
     private static final Set<String> S175_POLICED = Set.of("drills", "drill_expectations", "drill_executions",
             "drill_baseline_persons", "drill_roll_call_gaps", "drill_reviews", "drill_findings",
             "drill_corrective_actions", "drill_frequency_requirements");
-    private static final Set<String> PHASE_2_POLICED = java.util.stream.Stream.of(S165_POLICED, S175_POLICED)
+    private static final Set<String> S164_POLICED = Set.of("permits", "permit_workers", "permit_competency_checks",
+            "permit_isolations", "permit_approvals", "permit_extensions", "permit_suspensions", "permit_notifications",
+            "permit_evidence", "permit_flags", "permit_escalations", "permit_history");
+    private static final Set<String> PHASE_2_POLICED = java.util.stream.Stream.of(S165_POLICED, S175_POLICED, S164_POLICED)
             .flatMap(Set::stream).collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     @Autowired private DataSource dataSource;
