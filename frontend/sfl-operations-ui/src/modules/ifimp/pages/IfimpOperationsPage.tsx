@@ -22,7 +22,9 @@ import type { TableColumn } from '@rfdtech/components';
 import DataState from 'shared/components/DataState';
 import SiteSelect, { defaultSite, sflSites } from 'shared/components/SiteSelect';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
+import { permits } from 'shared/layout/actorPermissions';
 import { facilitiesPaths } from 'shared/layout/navigation';
+import type { SflPermission } from 'shared/layout/permissions';
 import { IfimpRecord, readIfimpDataset } from '../api/ifimpPhase2Api';
 import IfimpCreateDialog, { CreateAction } from '../components/IfimpCreateDialog';
 import IfimpRecordDialog, { visibleRecordActions } from '../components/IfimpRecordDialog';
@@ -31,11 +33,18 @@ import IfimpValue, { humaniseIfimpField } from '../components/IfimpValue';
 export interface IfimpView {
   label: string;
   path: string;
+  endpoint?: string;
   description: string;
   columns?: Array<{ key: string; label: string }>;
   create?: CreateAction;
   actions?: CreateAction[];
   query?: Record<string, string>;
+  /**
+   * What it takes to create or change a record on this view. When set, a role without it sees the
+   * records and no Create or Manage controls - the service would refuse every write, so the screen
+   * does not offer one.
+   */
+  writePermission?: SflPermission;
 }
 
 /** Stable route segment used by both the sidebar and the compact secondary navigation. */
@@ -123,13 +132,16 @@ const IfimpOperationsPage = ({
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<IfimpRecord>();
   const active = views.find((candidate) => viewSlug(candidate) === requestedView) ?? views[0];
+  const canWrite = !active.writePermission || permits(active.writePermission);
+  const createAction = canWrite ? active.create : undefined;
+  const recordActions = canWrite ? active.actions : undefined;
   const basePath = requestedView
     ? location.pathname.slice(0, location.pathname.lastIndexOf('/'))
     : location.pathname;
   useBreadcrumbs([{ label: 'Facilities', href: facilitiesPaths.dashboard }, { label: system }]);
   const query = useApiQuery(
-    (signal) => readIfimpDataset(active.path, siteCode, active.query, signal),
-    [active.path, siteCode],
+    (signal) => readIfimpDataset(active.endpoint ?? active.path, siteCode, active.query, signal),
+    [active.endpoint, active.path, siteCode],
   );
 
   const inferredKeys = Object.keys(query.data?.rows[0] ?? {}).slice(0, 6);
@@ -147,7 +159,7 @@ const IfimpOperationsPage = ({
     header: 'Actions',
     align: 'right',
     cell: ({ row }) => {
-      const canManage = visibleRecordActions(active.actions ?? [], row).length > 0;
+      const canManage = visibleRecordActions(recordActions ?? [], row).length > 0;
       return (
         <Button
           size="sm"
@@ -176,10 +188,10 @@ const IfimpOperationsPage = ({
               <RefreshCw size={14} strokeWidth={1.5} aria-hidden="true" />
               Refresh
             </Button>
-            {active.create && (
+            {createAction && (
               <Button variant="primary" onClick={() => setCreating(true)}>
                 <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
-                {active.create.label}
+                {createAction.label}
               </Button>
             )}
           </SectionActions>
@@ -198,7 +210,7 @@ const IfimpOperationsPage = ({
             value={siteCode}
             onChange={setSiteCode}
             required
-            helperText="Phase 2 operations are shown for one site at a time."
+            helperText="Records are shown for one site at a time."
           />
         </div>
       </PageSection>
@@ -251,8 +263,8 @@ const IfimpOperationsPage = ({
           </Table>
         </DataState>
       </PageSection>
-      {active.create && <IfimpCreateDialog key={`${active.path}-${creating}`} action={active.create} siteCode={siteCode} open={creating} onClose={() => setCreating(false)} onCreated={query.refetch} />}
-      {selected && <IfimpRecordDialog record={selected} title={active.label} siteCode={siteCode} actions={active.actions} onClose={() => setSelected(undefined)} onChanged={query.refetch} />}
+      {createAction && <IfimpCreateDialog key={`${active.path}-${creating}`} action={createAction} siteCode={siteCode} open={creating} onClose={() => setCreating(false)} onCreated={query.refetch} />}
+      {selected && <IfimpRecordDialog record={selected} title={active.label} siteCode={siteCode} actions={recordActions} onClose={() => setSelected(undefined)} onChanged={query.refetch} />}
     </>
   );
 };

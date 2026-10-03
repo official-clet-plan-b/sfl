@@ -337,6 +337,7 @@ public final class FacilitiesPermissionMatrix {
         matrix.put(SflRole.HSE_MANAGER, union(READ_ONLY, SflPermission.FACILITIES_DASHBOARD_DRILLDOWN));
 
         grantPhaseTwo(matrix);
+        grantEstateRegisters(matrix);
 
         return Map.copyOf(matrix);
     }
@@ -371,6 +372,24 @@ public final class FacilitiesPermissionMatrix {
      *       who could post telemetry could fabricate a breach and raise a work order with it.</li>
      * </ul>
      */
+    /**
+     * The estate-register grants (SRS-SFL-S170, "Common Roles" §2.3).
+     *
+     * <p>S170 is owned by Facilities and HSE: the facilities director and manager and the HSE manager read
+     * and manage it. The auditor / reporting viewer reads it without mutation rights, which is the
+     * compliance officer and the technical administrator. Nobody else holds either permission - in
+     * particular not the requester or the contractor, because hygiene findings carry evidence the SRS
+     * (4.2) keeps from requester views.
+     */
+    private static void grantEstateRegisters(Map<SflRole, Set<SflPermission>> matrix) {
+        Set<SflPermission> read = EnumSet.of(SflPermission.FACILITIES_HYGIENE_READ);
+        grant(matrix, SflRole.FACILITIES_DIRECTOR, read, SflPermission.FACILITIES_HYGIENE_MANAGE);
+        grant(matrix, SflRole.FACILITIES_MANAGER, read, SflPermission.FACILITIES_HYGIENE_MANAGE);
+        grant(matrix, SflRole.HSE_MANAGER, read, SflPermission.FACILITIES_HYGIENE_MANAGE);
+        grant(matrix, SflRole.COMPLIANCE_OFFICER, read);
+        grant(matrix, SflRole.DTI_ADMIN, read);
+    }
+
     private static void grantPhaseTwo(Map<SflRole, Set<SflPermission>> matrix) {
         Set<SflPermission> phaseTwoRead = EnumSet.of(
                 SflPermission.FACILITIES_BMS_READ,

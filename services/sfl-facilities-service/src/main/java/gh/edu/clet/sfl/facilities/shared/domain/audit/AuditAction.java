@@ -280,6 +280,11 @@ public enum AuditAction {
     VENDOR_MESSAGE_REJECTED,
     // ---- end of block
 
+    // ---- Estate registers - S170, S172, S177, S178 and S179.
+    REGISTER_RECORD_CREATED,
+    REGISTER_RECORD_UPDATED,
+    // ---- end of block
+
     // Governance - SRS-SFL-S152-03, -04, -05
     RUNTIME_CONFIGURATION_CHANGED,
     DASHBOARD_SNAPSHOT_GENERATED,

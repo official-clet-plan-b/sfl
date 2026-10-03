@@ -89,7 +89,7 @@ export const allProgrammes = Object.keys(programmes) as ProgrammeCode[];
  */
 export type SystemCode =
   | 'S152' | 'S153' | 'S156' | 'S157' | 'S158' | 'S159'
-  | 'S160' | 'S160a' | 'S161' | 'S162' | 'S162a' | 'S163' | 'S165' | 'S166' | 'S167' | 'S168' | 'S168a' | 'AVAMP' | 'S169' | 'S171' | 'S173' | 'S174' | 'S175' | 'S176';
+  | 'S160' | 'S160a' | 'S161' | 'S162' | 'S162a' | 'S163' | 'S165' | 'S166' | 'S167' | 'S168' | 'S168a' | 'AVAMP' | 'S169' | 'S170' | 'S171' | 'S172' | 'S173' | 'S174' | 'S175' | 'S176' | 'S177' | 'S178' | 'S179';
 
 export interface SflSystem {
   code: SystemCode;
@@ -120,11 +120,16 @@ export const systems: Record<SystemCode, SflSystem> = {
   S168a: { code: 'S168a', label: 'VIP trip booking', programme: 'FTLMP' },
   AVAMP: { code: 'AVAMP', label: 'Asset tagging & inventory', programme: 'FTLMP' },
   S169: { code: 'S169', label: 'Cleaning operations', programme: 'IFIMP' },
+  S170: { code: 'S170', label: 'Hygiene & pest control', programme: 'IFIMP' },
   S171: { code: 'S171', label: 'Courier & dispatch', programme: 'FTLMP' },
+  S172: { code: 'S172', label: 'Catering & cafeteria', programme: 'IFIMP' },
   S173: { code: 'S173', label: 'Event logistics', programme: 'IFIMP' },
   S174: { code: 'S174', label: 'Emergency mass notification', programme: 'SSEMP' },
   S175: { code: 'S175', label: 'Crisis & evacuation drills', programme: 'SSEMP' },
   S176: { code: 'S176', label: 'Construction projects', programme: 'IFIMP' },
+  S177: { code: 'S177', label: 'Lease & tenancy', programme: 'IFIMP' },
+  S178: { code: 'S178', label: 'Waste & recycling', programme: 'IFIMP' },
+  S179: { code: 'S179', label: 'Lost & found', programme: 'IFIMP' },
 };
 
 export const allSystems = Object.keys(systems) as SystemCode[];
@@ -247,19 +252,19 @@ export const roleSystems: Record<string, SystemCode[]> = {
   // `FACILITIES_SETUP_TASK_MANAGE` and no booking-request permission at all. A technician turns rooms
   // around; a technician who could reserve a hall would be scheduling the estate from the shop floor.
   // The section renders for them with the turnaround queue and nothing that books anything.
-  FACILITIES_DIRECTOR: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S169', 'S173', 'S176'],
-  FACILITIES_MANAGER: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S169', 'S173', 'S176'],
-  IFIMP_MAINTENANCE_SUPERVISOR: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S169', 'S173', 'S176'],
-  IFIMP_TECHNICIAN: ['S152', 'S153', 'S156', 'S159', 'S169'],
-  IFIMP_REQUESTER: ['S152', 'S153', 'S158', 'S159', 'S169'],
-  VENDOR_TECHNICIAN: ['S152', 'S153', 'S169'],
-  FACILITIES_ENGINEER: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S169', 'S173', 'S176'],
+  FACILITIES_DIRECTOR: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S169', 'S170', 'S172', 'S173', 'S176', 'S177', 'S178', 'S179'],
+  FACILITIES_MANAGER: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S169', 'S170', 'S172', 'S173', 'S176', 'S177', 'S178', 'S179'],
+  IFIMP_MAINTENANCE_SUPERVISOR: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S169', 'S170', 'S172', 'S173', 'S176', 'S177', 'S178', 'S179'],
+  IFIMP_TECHNICIAN: ['S152', 'S153', 'S156', 'S159', 'S169', 'S170', 'S178'],
+  IFIMP_REQUESTER: ['S152', 'S153', 'S158', 'S159', 'S169', 'S172', 'S179'],
+  VENDOR_TECHNICIAN: ['S152', 'S153', 'S169', 'S170', 'S178'],
+  FACILITIES_ENGINEER: ['S152', 'S153', 'S156', 'S157', 'S158', 'S159', 'S169', 'S170', 'S172', 'S173', 'S176', 'S177', 'S178', 'S179'],
   ENERGY_SUSTAINABILITY_OFFICER: ['S152', 'S153', 'S156', 'S157', 'S159'],
-  SPACE_PLANNING_OFFICER: ['S152', 'S153', 'S158', 'S159', 'S176'],
+  SPACE_PLANNING_OFFICER: ['S152', 'S153', 'S158', 'S159', 'S176', 'S177', 'S178'],
   // S165 too: both systems' work needs a current risk assessment linked, so both roles read the library
   // (RiskAssessmentPermissionMatrix, read only).
   CONSTRUCTION_PROJECT_MANAGER: ['S152', 'S153', 'S158', 'S159', 'S165', 'S176'],
-  EVENT_LOGISTICS_COORDINATOR: ['S152', 'S153', 'S159', 'S165', 'S169', 'S173'],
+  EVENT_LOGISTICS_COORDINATOR: ['S152', 'S153', 'S159', 'S165', 'S169', 'S170', 'S172', 'S173', 'S178'],
 
   // SFL.FTLMP - all three systems live in `sfl-fleet-logistics-service`
   FLEET_MANAGER: ['S166', 'S167', 'S168', 'S168a', 'AVAMP', 'S171'],
@@ -290,7 +295,7 @@ export const roleSystems: Record<string, SystemCode[]> = {
   // An HSE manager reads the estate to place an incident and judge a location's standing. It takes
   // the matrix's shared READ_ONLY set, which carries FACILITIES_BOOKING_READ - so the diary is
   // readable, and nothing in the section can book, approve or turn a room around.
-  HSE_MANAGER: ['S152', 'S153', 'S156', 'S159', 'S163', 'S165', 'S173', 'S174', 'S175', 'S176'],
+  HSE_MANAGER: ['S152', 'S153', 'S156', 'S159', 'S163', 'S165', 'S170', 'S173', 'S174', 'S175', 'S176'],
 
   // Roles that span programmes at the system grain too
   SECURITY_OFFICER: ['S160a', 'S161', 'S162', 'S162a', 'S171', 'S174'],

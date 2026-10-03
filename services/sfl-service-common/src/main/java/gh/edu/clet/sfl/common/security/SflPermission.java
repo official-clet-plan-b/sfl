@@ -387,6 +387,13 @@ public enum SflPermission {
     // Phase 2 vendor-integration governance (SRS CORR-07, §5.2)
     FACILITIES_VENDOR_INTEGRATION_READ,
 
+    // S170 Pest-Control & Hygiene Audit Tracker (SRS-SFL-S170). Split by authority, not by screen: the
+    // register is read by the roles that own or audit hygiene, and written only by those that own it. Neither
+    // is FACILITIES_CONFIG_MANAGE, which is a platform-configuration grant held by administrators and the
+    // integration engineer - gating a hygiene officer's daily work on it left the system owners locked out.
+    FACILITIES_HYGIENE_READ,
+    FACILITIES_HYGIENE_MANAGE,
+
     // S165 Risk Assessment Library (Phase 2 SRS §3.2, SSEMP). Additive only - adding enum constants
     // changes no existing signature and no existing service behaviour. Split by authority level, not by
     // screen: authoring, publishing and signing off are separate acts, and S165-02 requires the last to
