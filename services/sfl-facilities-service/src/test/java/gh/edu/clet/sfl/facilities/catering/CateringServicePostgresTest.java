@@ -84,10 +84,12 @@ class CateringServicePostgresTest {
         FacilitiesPostgresSupport.datasource(registry);
     }
 
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired private CateringConfigService config;
     @Autowired private CateringServiceService services;
     @Autowired private CateringOpsService ops;
     @Autowired private gh.edu.clet.sfl.facilities.catering.application.CateringWorkOrderService catWorkOrders;
+    @Autowired private gh.edu.clet.sfl.facilities.retention.application.RetentionService retention;
     @MockitoBean private CateringEstatePort estate;
     @MockitoBean private gh.edu.clet.sfl.facilities.catering.application.ports.CateringWorkOrderPort s153;
 
@@ -319,6 +321,33 @@ class CateringServicePostgresTest {
             assertThat(w.state()).isEqualTo("RAISED");
             assertThat(w.workOrderNumber()).isEqualTo("WO-5");
         });
+    }
+
+    @Test
+    @DisplayName("a dietary need is anonymised once its period after the service has ended - the need stays, who it was does not - and a second run does nothing")
+    void dietary_data_is_anonymised_after_retention() {
+        CateringService s = confirmed();
+        DietaryRequest need = services.addDietary(s.id(), "P-RET-1", NeedType.ALLERGY, "PEANUTS", "Event lead", coordinator);
+        jdbc.update("UPDATE facilities.cat_services SET service_date = current_date - 400 WHERE id = ?", s.id());
+
+        int first = retention.anonymiseDietary(director.actor());
+        int second = retention.anonymiseDietary(director.actor());
+
+        assertThat(first).isGreaterThanOrEqualTo(1);
+        assertThat(second).isZero();
+        assertThat(jdbc.queryForObject("SELECT person_reference FROM facilities.cat_dietary_requests WHERE id = ?", String.class, need.id())).startsWith("ANON-");
+        assertThat(jdbc.queryForObject("SELECT need_code FROM facilities.cat_dietary_requests WHERE id = ?", String.class, need.id())).isEqualTo("PEANUTS");
+    }
+
+    @Test
+    @DisplayName("a service inside the period keeps its dietary person reference")
+    void recent_dietary_data_is_kept() {
+        CateringService s = confirmed();
+        DietaryRequest need = services.addDietary(s.id(), "P-RET-2", NeedType.ALLERGY, "PEANUTS", "Event lead", coordinator);
+
+        retention.anonymiseDietary(director.actor());
+
+        assertThat(jdbc.queryForObject("SELECT person_reference FROM facilities.cat_dietary_requests WHERE id = ?", String.class, need.id())).isEqualTo("P-RET-2");
     }
 
     @Test

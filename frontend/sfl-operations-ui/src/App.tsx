@@ -81,6 +81,7 @@ const TelematicsDashboardPage = lazy(() => import('modules/phase2/pages/Phase2Op
 const VipTripPortalPage = lazy(() => import('modules/phase2/pages/Phase2OperationsPages').then((module) => ({ default: module.VipTripPortalPage })));
 const AssetVisibilityPage = lazy(() => import('modules/phase2/pages/Phase2OperationsPages').then((module) => ({ default: module.AssetVisibilityPage })));
 const HygienePage = lazy(() => import('modules/hygiene/pages/HygienePage'));
+const RetentionPage = lazy(() => import('modules/retention/pages/RetentionPage'));
 const CateringPage = lazy(() => import('modules/catering/pages/CateringPage'));
 const LeasePage = lazy(() => import('modules/lease/pages/LeasePage'));
 const WastePage = lazy(() => import('modules/waste/pages/WastePage'));
@@ -293,6 +294,7 @@ const App = () => {
                 <Route path=":checklistId" element={<ReadinessChecklistDetailPage />} />
               </Route>
               <Route path="audit" element={<FacilitiesAuditPage />} />
+              <Route path="retention" element={<RetentionPage />} />
               <Route path="configuration" element={<FacilitiesConfigurationPage />} />
               </Route>
             </Route>

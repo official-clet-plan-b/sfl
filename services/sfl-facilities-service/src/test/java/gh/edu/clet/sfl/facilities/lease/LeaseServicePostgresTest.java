@@ -93,6 +93,7 @@ class LeaseServicePostgresTest {
     @Autowired private LeaseOpsService ops;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private LeaseWorkOrderService leaseWorkOrders;
+    @Autowired private gh.edu.clet.sfl.facilities.retention.application.RetentionService retention;
     @Autowired private gh.edu.clet.sfl.facilities.lease.application.LeaseExportService exports;
     @MockitoBean private LeaseEstatePort estate;
     @MockitoBean private LeaseWorkOrderPort s153;
@@ -428,6 +429,30 @@ class LeaseServicePostgresTest {
 
         assertThatThrownBy(() -> exports.export(site, null, "Quarterly lease audit", manager)).isInstanceOf(FacilitiesException.class);
         assertThatThrownBy(() -> exports.export(site, null, "audit", director)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("retention periods are set by the director or compliance officer with a stated basis; evidence past its period is reported, not deleted")
+    void retention_policy_and_due_report() {
+        Agreement a = draft();
+        file(a.id(), DocumentKind.SIGNED_AGREEMENT, null);
+        jdbc.update("UPDATE facilities.lease_documents SET submitted_at = now() - interval '5 days' WHERE agreement_id = ?", a.id());
+        assertThat(retention.due("S177", director)).noneMatch(d -> d.siteCode().equals(site));
+
+        var changed = retention.set("S177", "LEGAL", 1, "Board decision 2026/14", director);
+        try {
+            assertThat(changed.retentionDays()).isEqualTo(1);
+            assertThat(retention.due("S177", compliance)).anyMatch(d -> d.siteCode().equals(site) && d.recordClass().equals("LEGAL"));
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM facilities.lease_documents WHERE agreement_id = ?", Integer.class, a.id())).isEqualTo(1);
+        } finally {
+            retention.set("S177", "LEGAL", 3650, "Default pending statutory confirmation", director);
+        }
+
+        assertThatThrownBy(() -> retention.set("S177", "LEGAL", 30, "x", manager)).isInstanceOf(FacilitiesException.class);
+        assertThatThrownBy(() -> retention.set("S177", "LEGAL", 0, "x", director)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> retention.set("S177", "LEGAL", 30, " ", director)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> retention.set("S177", "NOPE", 30, "x", director)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> retention.policies(manager)).isInstanceOf(FacilitiesException.class);
     }
 
     @Test

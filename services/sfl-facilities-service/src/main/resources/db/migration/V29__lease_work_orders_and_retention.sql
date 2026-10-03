@@ -40,7 +40,7 @@ CREATE TABLE facilities.record_retention_policies (
 -- here, not in code. Operational evidence is kept two years, compliance seven, safety-critical and legal ten.
 INSERT INTO facilities.record_retention_policies (system_code, record_class, retention_days, action, basis, updated_by, updated_at)
 SELECT s.code, c.name, c.days, 'REVIEW', 'Default pending statutory confirmation', 'system', now()
-FROM (VALUES ('S170'), ('S172'), ('S177'), ('S178')) AS s (code)
+FROM (VALUES ('S170'), ('S172'), ('S177'), ('S178'), ('S179')) AS s (code)
 CROSS JOIN (VALUES ('OPERATIONAL', 730), ('COMPLIANCE', 2555), ('SAFETY_CRITICAL', 3650), ('EXAMINATION', 1825), ('LEGAL', 3650)) AS c (name, days);
 INSERT INTO facilities.record_retention_policies (system_code, record_class, retention_days, action, basis, updated_by, updated_at)
 VALUES ('S172', 'DIETARY_DATA', 90, 'ANONYMISE', 'Dietary and allergy needs are sensitive: kept 90 days after the service, then anonymised', 'system', now());

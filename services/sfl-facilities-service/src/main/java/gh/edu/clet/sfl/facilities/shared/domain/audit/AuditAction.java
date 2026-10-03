@@ -90,6 +90,9 @@ public enum AuditAction {
     EVIDENCE_EXPORTED,
     /** A register left CLET as a file: who, which register, how many rows and the stated reason. */
     REGISTER_EXPORTED,
+    RETENTION_POLICY_CHANGED,
+    /** Sensitive personal data was anonymised because its retention period ended. */
+    RECORD_ANONYMISED,
     /** The retention period ran out and the reference was cleared. The row survives; see V13. */
     EVIDENCE_DISPOSED,
     EVIDENCE_LEGAL_HOLD_CHANGED,
