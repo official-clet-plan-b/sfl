@@ -121,7 +121,7 @@ const SiteRegisterPage = () => {
         <SectionHeader>
           <SectionTitle>Sites</SectionTitle>
           <SectionDescription>CLET centres, and the operating mode each is running under</SectionDescription>
-          <SectionActions>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <ControlButton state={createSiteControl()} variant="primary" onClick={() => setAdding(true)}>
               <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
               Add a site

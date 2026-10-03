@@ -143,7 +143,7 @@ const FacilitiesConfigurationPage = () => {
           <SectionDescription>
             The thresholds the facilities rules are evaluated against, and which value is in force
           </SectionDescription>
-          <SectionActions>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <SiteSelect
               value={siteCode}
               onChange={setSiteCode}

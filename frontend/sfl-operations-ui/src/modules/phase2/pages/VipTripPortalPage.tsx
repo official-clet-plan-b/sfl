@@ -131,7 +131,7 @@ export const VipTripPortalPage = () => {
       <PageSection>
         <SectionHeader>
           <SectionTitle>VIP trip & driver booking</SectionTitle>
-          <SectionActions style={{ alignItems: 'flex-end' }}>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <SiteSelect value={siteCode} onChange={setSiteCode} required />
             {canAssign && (
               <Button variant="outline" className="whitespace-nowrap" onClick={() => navigate(fleetPaths.trips)}>

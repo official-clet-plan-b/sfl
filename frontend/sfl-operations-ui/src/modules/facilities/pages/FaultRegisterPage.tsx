@@ -174,7 +174,7 @@ const FaultRegisterPage = () => {
           <SectionDescription>
             Reported problems, what they are blocking, and what is late
           </SectionDescription>
-          <SectionActions>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <SiteSelect value={siteCode} onChange={setSiteCode} />
             {canReportFaults() && (
               <Button variant="primary" onClick={() => setReporting(true)}>

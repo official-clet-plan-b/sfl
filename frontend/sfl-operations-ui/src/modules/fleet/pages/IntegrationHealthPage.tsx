@@ -211,7 +211,7 @@ const IntegrationHealthPage = () => {
           {health.data && (
             <SectionDescription>Checked {formatDateTime(health.data.checkedAt)}</SectionDescription>
           )}
-          <SectionActions>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <Button variant="outline" onClick={refreshAll}>
               <Icon name="refresh" size={14} aria-hidden="true" />
               Refresh

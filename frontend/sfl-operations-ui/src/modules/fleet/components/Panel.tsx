@@ -43,7 +43,7 @@ const Panel = ({
         <SectionHeader className="[--clet-section-header-margin-bottom:16px] [--clet-section-header-title-size:20px]">
           <SectionTitle>{title}</SectionTitle>
           {description && <SectionDescription>{description}</SectionDescription>}
-          {actions && <SectionActions>{actions}</SectionActions>}
+          {actions && <SectionActions className="items-end [&_button]:whitespace-nowrap">{actions}</SectionActions>}
         </SectionHeader>
       )}
       {children}

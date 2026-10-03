@@ -242,7 +242,7 @@ function FleetTable<T>({
               {heading.description && (
                 <SectionDescription>{heading.description}</SectionDescription>
               )}
-              {heading.actions && <SectionActions>{heading.actions}</SectionActions>}
+              {heading.actions && <SectionActions className="items-end [&_button]:whitespace-nowrap">{heading.actions}</SectionActions>}
             </SectionHeader>
           )}
           {tabs && tab !== undefined && (

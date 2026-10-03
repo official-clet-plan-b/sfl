@@ -94,7 +94,7 @@ export const AssetVisibilityPage = () => {
       <PageSection>
         <SectionHeader>
           <SectionTitle>Asset tagging & inventory</SectionTitle>
-          <SectionActions style={{ alignItems: 'flex-end' }}>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <SiteSelect value={siteCode} onChange={setSiteCode} required />
             {canManage && (
               <Button variant="primary" className="whitespace-nowrap" onClick={() => setRegistering(true)}>

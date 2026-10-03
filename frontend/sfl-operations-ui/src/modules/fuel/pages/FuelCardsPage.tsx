@@ -181,7 +181,7 @@ const FuelCardsPage = () => {
       <PageSection>
         <SectionHeader>
           <SectionTitle>Fuel cards</SectionTitle>
-          <SectionActions>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <SiteSelect value={siteCode} onChange={setSiteCode} required />
             <Button variant="outline" onClick={query.refetch}>
               <RefreshCw size={14} strokeWidth={1.5} aria-hidden />

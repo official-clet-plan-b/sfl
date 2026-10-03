@@ -113,7 +113,7 @@ const SiteDetailPage = () => {
               <SectionHeader>
                 <SectionTitle>{site.data.name}</SectionTitle>
                 <SectionDescription>{site.data.siteCode}</SectionDescription>
-                <SectionActions>
+                <SectionActions className="items-end [&_button]:whitespace-nowrap">
                   <EditRowAction
                     size="md"
                     state={editSiteControl(site.data)}

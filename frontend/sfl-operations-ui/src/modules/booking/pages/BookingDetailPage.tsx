@@ -182,7 +182,7 @@ const BookingDetailPage = () => {
                 <SectionDescription>
                   {`${record.bookingReference} · ${orDash(record.roomCode)} · ${record.siteCode}`}
                 </SectionDescription>
-                <SectionActions>
+                <SectionActions className="items-end [&_button]:whitespace-nowrap">
                   <ControlButton state={canDecide(record)} variant="primary" onClick={() => setDialog('decide')}>
                     Decide
                   </ControlButton>

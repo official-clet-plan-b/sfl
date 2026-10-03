@@ -145,7 +145,7 @@ const DriverLogbooksPage = () => {
       <PageSection>
         <SectionHeader>
           <SectionTitle>Driver logbooks</SectionTitle>
-          <SectionActions>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <SiteSelect value={siteCode} onChange={setSiteCode} required />
             {/*
               A driver holds this - the logbook is their own journey record. A reporting viewer

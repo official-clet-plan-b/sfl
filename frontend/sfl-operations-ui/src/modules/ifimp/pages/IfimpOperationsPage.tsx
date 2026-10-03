@@ -183,7 +183,7 @@ const IfimpOperationsPage = ({
         <SectionHeader>
           <SectionTitle>{title}</SectionTitle>
           <SectionDescription>{subtitle}</SectionDescription>
-          <SectionActions>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <Button variant="outline" onClick={query.refetch}>
               <RefreshCw size={14} strokeWidth={1.5} aria-hidden="true" />
               Refresh

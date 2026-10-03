@@ -218,7 +218,7 @@ const ZonesPage = () => {
           <SectionDescription>
             How safety, life-safety and emergency systems address this estate
           </SectionDescription>
-          <SectionActions>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <SiteSelect
               value={siteCode}
               onChange={(value) => {
@@ -271,7 +271,7 @@ const ZonesPage = () => {
             <SectionDescription>
               {`${selected.name}${selected.purpose ? ` · ${selected.purpose}` : ''}`}
             </SectionDescription>
-            <SectionActions>
+            <SectionActions className="items-end [&_button]:whitespace-nowrap">
               <ControlButton
                 state={manageZoneMembersControl(selected)}
                 variant="outline"

@@ -137,7 +137,7 @@ const BookableResourcesPage = () => {
           <SectionDescription>
             Projectors, furniture and everything else booked alongside a room
           </SectionDescription>
-          <SectionActions>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
             <ControlButton
               state={canManageResources()}

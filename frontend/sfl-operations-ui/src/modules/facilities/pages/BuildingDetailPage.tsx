@@ -192,7 +192,7 @@ const BuildingDetailPage = () => {
                 <SectionDescription>
                   {`${building.data.buildingCode} · ${building.data.siteCode}`}
                 </SectionDescription>
-                <SectionActions>
+                <SectionActions className="items-end [&_button]:whitespace-nowrap">
                   <StatusBadge value={building.data.lifecycleStatus} size="md" />
                   {mayManage && (
                     <Button variant="primary" onClick={() => setAddingFloor(true)}>

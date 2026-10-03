@@ -413,7 +413,7 @@ const EvidenceAuditPage = () => {
                       <SectionDescription>
                         {`${evidence.relatedRecordType} ${evidence.relatedRecordId}`}
                       </SectionDescription>
-                      <SectionActions>
+                      <SectionActions className="items-end [&_button]:whitespace-nowrap">
                         <Button
                           size="sm"
                           variant="outline"

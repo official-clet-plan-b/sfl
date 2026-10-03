@@ -149,7 +149,7 @@ const DeviceReferencesPage = () => {
         <SectionHeader>
           <SectionTitle>Device references</SectionTitle>
           <SectionDescription>Where each vendor-operated device sits on this estate</SectionDescription>
-          <SectionActions>
+          <SectionActions className="items-end [&_button]:whitespace-nowrap">
             <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
             <ControlButton state={registerDeviceControl()} variant="primary" onClick={() => setAdding(true)}>
               <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
