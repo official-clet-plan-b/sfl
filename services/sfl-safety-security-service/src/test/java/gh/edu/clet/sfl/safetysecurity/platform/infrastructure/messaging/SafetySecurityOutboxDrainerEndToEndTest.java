@@ -66,6 +66,12 @@ class SafetySecurityOutboxDrainerEndToEndTest extends SafetySecurityPostgresSupp
     void setUp() {
         transport = new RecordingTransport();
         jdbc.update("DELETE FROM safety_security.outbox_messages WHERE aggregate_type = 'DrainerTest'");
+        // The e2e database is shared, and other suites leave pending rows behind - hundreds, once a module like S164 records
+        // an event per step. The drainer claims one batch per tick, so unless that backlog is out of the way a test's own row can
+        // fall outside the first batch and never be sent. Those rows are leftovers nothing reads again; settling them leaves
+        // each test with a queue that holds only what it inserted.
+        jdbc.update("UPDATE safety_security.outbox_messages SET status = 'PUBLISHED', published_at = now(), next_attempt_at = NULL"
+                + " WHERE status = 'PENDING' AND aggregate_type <> 'DrainerTest'");
         drainer = new SafetySecurityOutboxDrainer(jdbc, transport, transactionManager, clock, 3, 100,
                 Duration.ofSeconds(30), Duration.ofHours(1));
     }
