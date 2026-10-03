@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RegisterRecordService {
 
-    public static final Set<String> SYSTEMS = Set.of("S172", "S177", "S178", "S179");
+    public static final Set<String> SYSTEMS = Set.of("S172", "S177", "S179");
 
     private final JdbcTemplate jdbc;
     private final FacilitiesAuthorization authorization;

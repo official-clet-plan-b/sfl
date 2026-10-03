@@ -133,6 +133,10 @@ public enum FacilitiesErrorCode {
     // S170 Hygiene & Pest-Control Audit Tracker
     HYGIENE_SELF_VERIFICATION("A finding or action must be verified by someone other than the person who completed it."),
     HYGIENE_PROVIDER_UNCONFIRMED("The pest-control provider has not confirmed this visit; it cannot be completed."),
+    WASTE_CARRIER_UNAPPROVED("The carrier is not approved for this waste; the handover is blocked."),
+    WASTE_DESTINATION_UNAPPROVED("The destination is not approved for this waste; the handover is blocked."),
+    WASTE_CHAIN_OPEN("The chain of custody is incomplete; the collection stays open and has been escalated."),
+    WASTE_SELF_VERIFICATION("Evidence must be accepted by someone other than the person who submitted it."),
     HYGIENE_CLOSURE_BLOCKED("A finding closes only with accepted evidence or an approved exception."),
     // ---- end of block
 

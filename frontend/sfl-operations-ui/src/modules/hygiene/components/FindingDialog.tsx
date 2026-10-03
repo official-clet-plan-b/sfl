@@ -8,7 +8,8 @@ import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { permits } from 'shared/layout/actorPermissions';
 import { humanise } from 'modules/fleet/api/enums';
 import { hygieneApi, type ActionStatus, type HygieneAction, type HygieneEvidence } from '../api/hygieneApi';
-import { ActionFormDialog, EvidenceFormDialog, ReasonDialog } from './HygieneDialogs';
+import { ActionFormDialog, EvidenceFormDialog } from './HygieneDialogs';
+import ReasonDialog from 'shared/components/ReasonDialog';
 import HistoryList from './HistoryList';
 import { HygieneBadge, linkText } from './hygieneUi';
 

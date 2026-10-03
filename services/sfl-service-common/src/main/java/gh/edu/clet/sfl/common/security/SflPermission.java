@@ -399,6 +399,13 @@ public enum SflPermission {
     FACILITIES_HYGIENE_EVIDENCE_READ,
     FACILITIES_HYGIENE_VERIFY,
 
+    // S178 Waste Management & Recycling Tracking. Reading, running the programme (configuration and
+    // collections), and verifying evidence are three grants because they are three different people:
+    // the person who records a hazardous handover must not be the one who accepts its receiving evidence.
+    FACILITIES_WASTE_READ,
+    FACILITIES_WASTE_MANAGE,
+    FACILITIES_WASTE_VERIFY,
+
     // S165 Risk Assessment Library (Phase 2 SRS §3.2, SSEMP). Additive only - adding enum constants
     // changes no existing signature and no existing service behaviour. Split by authority level, not by
     // screen: authoring, publishing and signing off are separate acts, and S165-02 requires the last to

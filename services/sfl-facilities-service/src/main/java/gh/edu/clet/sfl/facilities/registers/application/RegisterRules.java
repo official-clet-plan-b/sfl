@@ -6,19 +6,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** System-specific vocabulary and lifecycle rules for S172, S177, S178 and S179 (S170 has its own module, {@code facilities.hygiene}). */
+/** System-specific vocabulary and lifecycle rules for S172, S177 and S179 (S170 and S178 have their own modules). */
 final class RegisterRules {
 
     private static final Map<String, Set<String>> TYPES = Map.of(
             "S172", Set.of("SERVICE", "MENU", "DIETARY_REQUIREMENT", "SUPPLIER_CHECK", "FOOD_SAFETY_CHECK", "RECONCILIATION", "VARIANCE"),
             "S177", Set.of("LEASE", "TENANCY", "OBLIGATION", "RENEWAL", "RENT_REVIEW", "AMENDMENT", "TERMINATION"),
-            "S178", Set.of("COLLECTION", "WASTE_STREAM", "MANIFEST", "CERTIFICATE", "DESTINATION_RECEIPT", "EXCEPTION", "CORRECTIVE_ACTION"),
             "S179", Set.of("FOUND_ITEM", "STORAGE", "CLAIM", "VERIFICATION", "CUSTODY_TRANSFER", "RELEASE", "DISPOSAL"));
 
     private static final Map<String, Set<String>> STATUSES = Map.of(
             "S172", Set.of("DRAFT", "PENDING_APPROVAL", "CONFIRMED", "DELIVERED", "RECONCILIATION_PENDING", "CLOSED"),
             "S177", Set.of("DRAFT", "ACTIVE", "DUE", "PENDING_APPROVAL", "RENEWED", "TERMINATED"),
-            "S178", Set.of("PLANNED", "IN_TRANSIT", "RECEIVED", "EXCEPTION", "CLOSED"),
             "S179", Set.of("INTAKE", "STORED", "CLAIM_PENDING", "RELEASED", "DISPOSED", "CLOSED"));
 
     private RegisterRules() {

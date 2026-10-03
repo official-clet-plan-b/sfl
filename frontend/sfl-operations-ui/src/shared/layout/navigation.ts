@@ -800,13 +800,22 @@ export const navSections: NavSection[] = [
     ],
   },
   {
+    // S178 has its own permission trio, like S170: the people who run waste are not the people who hold the
+    // platform-configuration grant.
+    heading: 'Waste & recycling',
+    programme: 'IFIMP',
+    system: 'S178',
+    items: [
+      { label: 'Waste & recycling', to: estateRegisterPaths.waste, icon: 'refresh', description: 'Collections, chain of custody and exceptions', permission: 'FACILITIES_WASTE_READ' },
+    ],
+  },
+  {
     heading: 'Estate services',
     programme: 'IFIMP',
     system: 'S172',
     items: [
       { label: 'Catering & cafeteria', to: estateRegisterPaths.catering, icon: 'calendar', description: 'Services, dietary checks and reconciliation', permission: 'FACILITIES_SITE_READ', capability: 'FACILITIES_CONFIG_MANAGE' },
       { label: 'Lease & tenancy', to: estateRegisterPaths.leases, icon: 'document', description: 'Agreements, obligations and renewals', permission: 'FACILITIES_SITE_READ', capability: 'FACILITIES_CONFIG_MANAGE' },
-      { label: 'Waste & recycling', to: estateRegisterPaths.waste, icon: 'refresh', description: 'Collections, certificates and exceptions', permission: 'FACILITIES_SITE_READ', capability: 'FACILITIES_CONFIG_MANAGE' },
       { label: 'Lost & found', to: estateRegisterPaths.lostFound, icon: 'search', description: 'Secure intake, claims and release', permission: 'FACILITIES_SITE_READ', capability: 'FACILITIES_CONFIG_MANAGE' },
     ],
   },

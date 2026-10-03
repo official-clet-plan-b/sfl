@@ -270,12 +270,34 @@ describe('who is offered the hygiene register (S170)', () => {
     expect(labelsFor(['S172'])).not.toContain('Hygiene & pest control');
   });
 
-  it('keeps the other four estate registers on the grants they were built with', () => {
+  it('keeps the other estate registers on the grants they were built with', () => {
     holding(['FACILITIES_SITE_READ', 'FACILITIES_CONFIG_MANAGE']);
     expect(labelsFor(['S172'])).toEqual(
-      expect.arrayContaining(['Catering & cafeteria', 'Lease & tenancy', 'Waste & recycling', 'Lost & found']),
+      expect.arrayContaining(['Catering & cafeteria', 'Lease & tenancy', 'Lost & found']),
     );
     holding(OWNER);
     expect(labelsFor(['S172'])).not.toContain('Catering & cafeteria');
+  });
+});
+
+describe('who is offered waste & recycling (S178)', () => {
+  const OWNER = ['FACILITIES_SITE_READ', 'FACILITIES_WASTE_READ', 'FACILITIES_WASTE_MANAGE'];
+  const AUDITOR = ['FACILITIES_SITE_READ', 'FACILITIES_WASTE_READ'];
+
+  it('offers it to a role that runs waste, and to a read-only auditor', () => {
+    holding(OWNER);
+    expect(labelsFor(['S178'])).toContain('Waste & recycling');
+    holding(AUDITOR);
+    expect(labelsFor(['S178'])).toContain('Waste & recycling');
+  });
+
+  it('does not offer it on the platform-configuration grant alone', () => {
+    holding(['FACILITIES_SITE_READ', 'FACILITIES_CONFIG_MANAGE']);
+    expect(labelsFor(['S178'])).not.toContain('Waste & recycling');
+  });
+
+  it('does not offer it to an actor who is not entitled to S178', () => {
+    holding(OWNER);
+    expect(labelsFor(['S172'])).not.toContain('Waste & recycling');
   });
 });

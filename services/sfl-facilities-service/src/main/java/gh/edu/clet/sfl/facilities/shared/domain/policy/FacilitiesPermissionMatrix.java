@@ -338,6 +338,7 @@ public final class FacilitiesPermissionMatrix {
 
         grantPhaseTwo(matrix);
         grantEstateRegisters(matrix);
+        grantWaste(matrix);
 
         return Map.copyOf(matrix);
     }
@@ -392,6 +393,22 @@ public final class FacilitiesPermissionMatrix {
         grant(matrix, SflRole.HSE_MANAGER, read, SflPermission.FACILITIES_HYGIENE_MANAGE,
                 SflPermission.FACILITIES_HYGIENE_EVIDENCE_READ, SflPermission.FACILITIES_HYGIENE_VERIFY);
         grant(matrix, SflRole.COMPLIANCE_OFFICER, read, SflPermission.FACILITIES_HYGIENE_EVIDENCE_READ);
+        grant(matrix, SflRole.DTI_ADMIN, read);
+    }
+
+    /**
+     * The S178 waste grants. Facilities runs the programme day to day and the sustainability officer
+     * does the same; only the director and the HSE manager verify evidence and so can sign off a
+     * hazardous chain of custody. The compliance officer and technical administrator read.
+     */
+    private static void grantWaste(Map<SflRole, Set<SflPermission>> matrix) {
+        Set<SflPermission> read = EnumSet.of(SflPermission.FACILITIES_WASTE_READ);
+        grant(matrix, SflRole.FACILITIES_DIRECTOR, read, SflPermission.FACILITIES_WASTE_MANAGE,
+                SflPermission.FACILITIES_WASTE_VERIFY);
+        grant(matrix, SflRole.FACILITIES_MANAGER, read, SflPermission.FACILITIES_WASTE_MANAGE);
+        grant(matrix, SflRole.ENERGY_SUSTAINABILITY_OFFICER, read, SflPermission.FACILITIES_WASTE_MANAGE);
+        grant(matrix, SflRole.HSE_MANAGER, read, SflPermission.FACILITIES_WASTE_VERIFY);
+        grant(matrix, SflRole.COMPLIANCE_OFFICER, read);
         grant(matrix, SflRole.DTI_ADMIN, read);
     }
 
