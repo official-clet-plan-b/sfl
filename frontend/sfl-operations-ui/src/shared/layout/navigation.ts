@@ -201,6 +201,14 @@ export const ifimpPhase2Paths = {
   constructionIntegrations: '/facilities/construction/integrations',
 };
 
+export const estateRegisterPaths = {
+  hygiene: '/facilities/hygiene',
+  catering: '/facilities/catering',
+  leases: '/facilities/leases',
+  waste: '/facilities/waste',
+  lostFound: '/facilities/lost-found',
+};
+
 export const fleetPaths = {
   dashboard: '/fleetvehicle/fleet',
   vehicles: '/fleetvehicle/fleet/vehicles',
@@ -779,6 +787,27 @@ export const navSections: NavSection[] = [
       { label: 'Projects', to: ifimpPhase2Paths.constructionProjects, icon: 'building', description: 'Projects, variations and handover', permission: 'FACILITIES_PROJECT_READ', capability: ['FACILITIES_PROJECT_MANAGE', 'FACILITIES_PROJECT_APPROVE', 'FACILITIES_PROJECT_HANDOVER'] },
       { label: 'Contractors', to: ifimpPhase2Paths.constructionContractors, icon: 'users', description: 'Competency, insurance and site access', permission: 'FACILITIES_PROJECT_READ', capability: 'FACILITIES_CONTRACTOR_MANAGE' },
       { label: 'Construction integrations', to: ifimpPhase2Paths.constructionIntegrations, icon: 'workflow', description: 'Procurement and project-system status', permission: 'FACILITIES_PROJECT_READ' },
+    ],
+  },
+  {
+    // S170 is its own section: it has its own permission pair, so entitlement and visibility are decided by
+    // what hygiene needs - not by the platform-configuration grant the other four still wait on.
+    heading: 'Hygiene operations',
+    programme: 'IFIMP',
+    system: 'S170',
+    items: [
+      { label: 'Hygiene & pest control', to: estateRegisterPaths.hygiene, icon: 'clipboard-list', description: 'Inspections, findings and corrective actions', permission: 'FACILITIES_HYGIENE_READ' },
+    ],
+  },
+  {
+    heading: 'Estate services',
+    programme: 'IFIMP',
+    system: 'S172',
+    items: [
+      { label: 'Catering & cafeteria', to: estateRegisterPaths.catering, icon: 'calendar', description: 'Services, dietary checks and reconciliation', permission: 'FACILITIES_SITE_READ', capability: 'FACILITIES_CONFIG_MANAGE' },
+      { label: 'Lease & tenancy', to: estateRegisterPaths.leases, icon: 'document', description: 'Agreements, obligations and renewals', permission: 'FACILITIES_SITE_READ', capability: 'FACILITIES_CONFIG_MANAGE' },
+      { label: 'Waste & recycling', to: estateRegisterPaths.waste, icon: 'refresh', description: 'Collections, certificates and exceptions', permission: 'FACILITIES_SITE_READ', capability: 'FACILITIES_CONFIG_MANAGE' },
+      { label: 'Lost & found', to: estateRegisterPaths.lostFound, icon: 'search', description: 'Secure intake, claims and release', permission: 'FACILITIES_SITE_READ', capability: 'FACILITIES_CONFIG_MANAGE' },
     ],
   },
   {

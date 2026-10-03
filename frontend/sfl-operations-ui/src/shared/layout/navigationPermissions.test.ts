@@ -233,3 +233,49 @@ describe('fleet navigation order', () => {
     expect(workflow).toBeLessThan(trips);
   });
 });
+
+describe('who is offered the hygiene register (S170)', () => {
+  /*
+    S170 has its own permission pair, because the one it was first built on - FACILITIES_CONFIG_MANAGE - is a
+    platform-configuration grant held by the administrator and the integration engineer. The owners the SRS
+    names, Facilities and HSE, held neither, so the register was hidden from the people it exists for, and
+    from every read-only role too, because the entry demanded a write verb as well as the read.
+  */
+  const OWNER = ['FACILITIES_SITE_READ', 'FACILITIES_HYGIENE_READ', 'FACILITIES_HYGIENE_MANAGE'];
+  const AUDITOR = ['FACILITIES_SITE_READ', 'FACILITIES_HYGIENE_READ'];
+  const INTEGRATION_ENGINEER = ['FACILITIES_SITE_READ', 'FACILITIES_CONFIG_MANAGE'];
+
+  it('offers the register to a facilities or HSE owner', () => {
+    holding(OWNER);
+    expect(labelsFor(['S170'])).toContain('Hygiene & pest control');
+  });
+
+  it('offers it to a read-only auditor too - reading is their whole job', () => {
+    holding(AUDITOR);
+    expect(labelsFor(['S170'])).toContain('Hygiene & pest control');
+  });
+
+  it('does not offer it to a role that can read the estate but holds no hygiene permission', () => {
+    holding(['FACILITIES_SITE_READ', 'FACILITIES_WORK_ORDER_READ']);
+    expect(labelsFor(['S170'])).not.toContain('Hygiene & pest control');
+  });
+
+  it('does not offer it on the configuration grant alone - that is not what owns hygiene', () => {
+    holding(INTEGRATION_ENGINEER);
+    expect(labelsFor(['S170'])).not.toContain('Hygiene & pest control');
+  });
+
+  it('does not offer it to an actor who is not entitled to S170, however much they hold', () => {
+    holding(OWNER);
+    expect(labelsFor(['S172'])).not.toContain('Hygiene & pest control');
+  });
+
+  it('keeps the other four estate registers on the grants they were built with', () => {
+    holding(['FACILITIES_SITE_READ', 'FACILITIES_CONFIG_MANAGE']);
+    expect(labelsFor(['S172'])).toEqual(
+      expect.arrayContaining(['Catering & cafeteria', 'Lease & tenancy', 'Waste & recycling', 'Lost & found']),
+    );
+    holding(OWNER);
+    expect(labelsFor(['S172'])).not.toContain('Catering & cafeteria');
+  });
+});

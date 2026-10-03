@@ -80,6 +80,11 @@ const IntegrationHealthPage = lazy(() => import('modules/fleet/pages/Integration
 const TelematicsDashboardPage = lazy(() => import('modules/phase2/pages/Phase2OperationsPages').then((module) => ({ default: module.TelematicsDashboardPage })));
 const VipTripPortalPage = lazy(() => import('modules/phase2/pages/Phase2OperationsPages').then((module) => ({ default: module.VipTripPortalPage })));
 const AssetVisibilityPage = lazy(() => import('modules/phase2/pages/Phase2OperationsPages').then((module) => ({ default: module.AssetVisibilityPage })));
+const HygienePage = lazy(() => import('modules/ifimp/pages/registerPages').then((module) => ({ default: module.HygienePage })));
+const CateringPage = lazy(() => import('modules/ifimp/pages/registerPages').then((module) => ({ default: module.CateringPage })));
+const LeasePage = lazy(() => import('modules/ifimp/pages/registerPages').then((module) => ({ default: module.LeasePage })));
+const WastePage = lazy(() => import('modules/ifimp/pages/registerPages').then((module) => ({ default: module.WastePage })));
+const LostFoundPage = lazy(() => import('modules/ifimp/pages/registerPages').then((module) => ({ default: module.LostFoundPage })));
 
 const FuelDashboardPage = lazy(() => import('modules/fuel/pages/FuelDashboardPage'));
 const FuelTransactionsPage = lazy(() => import('modules/fuel/pages/FuelTransactionsPage'));
@@ -335,6 +340,26 @@ const App = () => {
               one out among the three.
             */}
             <Route path="facilities">
+              <Route path="hygiene" element={<SystemRoutes system="S170" />}>
+                <Route index element={<HygienePage />} />
+                <Route path=":view" element={<HygienePage />} />
+              </Route>
+              <Route path="catering" element={<SystemRoutes system="S172" />}>
+                <Route index element={<CateringPage />} />
+                <Route path=":view" element={<CateringPage />} />
+              </Route>
+              <Route path="leases" element={<SystemRoutes system="S177" />}>
+                <Route index element={<LeasePage />} />
+                <Route path=":view" element={<LeasePage />} />
+              </Route>
+              <Route path="waste" element={<SystemRoutes system="S178" />}>
+                <Route index element={<WastePage />} />
+                <Route path=":view" element={<WastePage />} />
+              </Route>
+              <Route path="lost-found" element={<SystemRoutes system="S179" />}>
+                <Route index element={<LostFoundPage />} />
+                <Route path=":view" element={<LostFoundPage />} />
+              </Route>
               <Route path="bookings" element={<SystemRoutes system="S159" />}>
                 <Route index element={<BookingDiaryPage />} />
                 <Route path="availability" element={<AvailabilitySearchPage />} />

@@ -25,8 +25,13 @@ describe('programme entitlement', () => {
         'S158',
         'S159',
         'S169',
+        'S170',
+        'S172',
         'S173',
         'S176',
+        'S177',
+        'S178',
+        'S179',
       ]);
       expect(programmesFor(['FACILITIES_MANAGER'])).toEqual(['IFIMP']);
     });
@@ -107,7 +112,7 @@ describe('programme entitlement', () => {
       expect(systemsFor(['HSE_MANAGER'])).toContain('S165');
       // Both keep their IFIMP systems and gain the library, read only.
       expect(systemsFor(['CONSTRUCTION_PROJECT_MANAGER'])).toEqual(['S152', 'S153', 'S158', 'S159', 'S165', 'S176']);
-      expect(systemsFor(['EVENT_LOGISTICS_COORDINATOR'])).toEqual(['S152', 'S153', 'S159', 'S165', 'S169', 'S173']);
+      expect(systemsFor(['EVENT_LOGISTICS_COORDINATOR'])).toEqual(['S152', 'S153', 'S159', 'S165', 'S169', 'S170', 'S172', 'S173', 'S178']);
       expect(programmesFor(['CONSTRUCTION_PROJECT_MANAGER'])).toEqual(['IFIMP', 'SSEMP']);
       // A role with no S165 grant does not see it.
       expect(systemsFor(['SOC_OPERATOR'])).not.toContain('S165');
