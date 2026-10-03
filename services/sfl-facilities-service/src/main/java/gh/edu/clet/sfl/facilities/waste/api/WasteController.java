@@ -2,7 +2,7 @@ package gh.edu.clet.sfl.facilities.waste.api;
 
 import gh.edu.clet.sfl.common.api.ApiResponse;
 import gh.edu.clet.sfl.common.security.ActorContext;
-import gh.edu.clet.sfl.facilities.hygiene.application.HygieneCommands.Caller;
+import gh.edu.clet.sfl.facilities.shared.application.Caller;
 import gh.edu.clet.sfl.facilities.shared.api.PageResponse;
 import gh.edu.clet.sfl.facilities.shared.domain.audit.SourceChannel;
 import gh.edu.clet.sfl.facilities.waste.application.WasteCollectionService;

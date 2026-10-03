@@ -2,7 +2,7 @@ package gh.edu.clet.sfl.facilities.waste.application;
 
 import gh.edu.clet.sfl.common.security.ActorContext;
 import gh.edu.clet.sfl.common.security.SflPermission;
-import gh.edu.clet.sfl.facilities.hygiene.application.HygieneCommands.Caller;
+import gh.edu.clet.sfl.facilities.shared.application.Caller;
 import gh.edu.clet.sfl.facilities.shared.application.FacilitiesAuthorization;
 import gh.edu.clet.sfl.facilities.shared.application.ServiceOutbox;
 import gh.edu.clet.sfl.facilities.shared.application.port.AuditPort;

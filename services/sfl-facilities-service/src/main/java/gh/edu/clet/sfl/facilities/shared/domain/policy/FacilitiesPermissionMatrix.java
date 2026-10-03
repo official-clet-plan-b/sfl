@@ -339,6 +339,7 @@ public final class FacilitiesPermissionMatrix {
         grantPhaseTwo(matrix);
         grantEstateRegisters(matrix);
         grantWaste(matrix);
+        grantLostFound(matrix);
 
         return Map.copyOf(matrix);
     }
@@ -408,6 +409,30 @@ public final class FacilitiesPermissionMatrix {
         grant(matrix, SflRole.FACILITIES_MANAGER, read, SflPermission.FACILITIES_WASTE_MANAGE);
         grant(matrix, SflRole.ENERGY_SUSTAINABILITY_OFFICER, read, SflPermission.FACILITIES_WASTE_MANAGE);
         grant(matrix, SflRole.HSE_MANAGER, read, SflPermission.FACILITIES_WASTE_VERIFY);
+        grant(matrix, SflRole.COMPLIANCE_OFFICER, read);
+        grant(matrix, SflRole.DTI_ADMIN, read);
+    }
+
+    /**
+     * The S179 grants. Front desk, security and facilities run the register; only the facilities director and
+     * the security director approve a release or a disposal. Private detail and claimant data go to the roles
+     * that must match a claim to an item; the compliance officer and technical administrator read the masked
+     * register only.
+     */
+    private static void grantLostFound(Map<SflRole, Set<SflPermission>> matrix) {
+        Set<SflPermission> read = EnumSet.of(SflPermission.FACILITIES_LOSTFOUND_READ);
+        grant(matrix, SflRole.FACILITIES_DIRECTOR, read, SflPermission.FACILITIES_LOSTFOUND_MANAGE,
+                SflPermission.FACILITIES_LOSTFOUND_PRIVATE_READ, SflPermission.FACILITIES_LOSTFOUND_APPROVE);
+        grant(matrix, SflRole.FACILITIES_MANAGER, read, SflPermission.FACILITIES_LOSTFOUND_MANAGE,
+                SflPermission.FACILITIES_LOSTFOUND_PRIVATE_READ);
+        grant(matrix, SflRole.SECURITY_DIRECTOR, read, SflPermission.FACILITIES_LOSTFOUND_MANAGE,
+                SflPermission.FACILITIES_LOSTFOUND_PRIVATE_READ, SflPermission.FACILITIES_LOSTFOUND_APPROVE);
+        grant(matrix, SflRole.SECURITY_OFFICER, read, SflPermission.FACILITIES_LOSTFOUND_MANAGE,
+                SflPermission.FACILITIES_LOSTFOUND_PRIVATE_READ);
+        grant(matrix, SflRole.RECEPTION_OFFICER, read, SflPermission.FACILITIES_LOSTFOUND_MANAGE,
+                SflPermission.FACILITIES_LOSTFOUND_PRIVATE_READ);
+        grant(matrix, SflRole.CENTRE_MANAGER, read, SflPermission.FACILITIES_LOSTFOUND_MANAGE,
+                SflPermission.FACILITIES_LOSTFOUND_PRIVATE_READ);
         grant(matrix, SflRole.COMPLIANCE_OFFICER, read);
         grant(matrix, SflRole.DTI_ADMIN, read);
     }

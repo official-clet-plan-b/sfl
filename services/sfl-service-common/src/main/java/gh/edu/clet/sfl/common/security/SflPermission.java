@@ -406,6 +406,15 @@ public enum SflPermission {
     FACILITIES_WASTE_MANAGE,
     FACILITIES_WASTE_VERIFY,
 
+    // S179 Lost-and-Found Register. Four grants because four different questions: may you see the register
+    // at all, may you run it, may you see what the item and the claimant actually are (private detail,
+    // photographs, claimant data - every such read is audited), and may you approve a release or a
+    // disposal. The person who releases an item must not be the person who approved the release.
+    FACILITIES_LOSTFOUND_READ,
+    FACILITIES_LOSTFOUND_MANAGE,
+    FACILITIES_LOSTFOUND_PRIVATE_READ,
+    FACILITIES_LOSTFOUND_APPROVE,
+
     // S165 Risk Assessment Library (Phase 2 SRS §3.2, SSEMP). Additive only - adding enum constants
     // changes no existing signature and no existing service behaviour. Split by authority level, not by
     // screen: authoring, publishing and signing off are separate acts, and S165-02 requires the last to

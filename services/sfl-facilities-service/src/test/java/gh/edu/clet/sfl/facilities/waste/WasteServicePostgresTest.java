@@ -11,7 +11,7 @@ import gh.edu.clet.sfl.common.security.ActorContext;
 import gh.edu.clet.sfl.common.security.SflRole;
 import gh.edu.clet.sfl.common.security.SiteScopedPrincipal;
 import gh.edu.clet.sfl.facilities.FacilitiesPostgresSupport;
-import gh.edu.clet.sfl.facilities.hygiene.application.HygieneCommands.Caller;
+import gh.edu.clet.sfl.facilities.shared.application.Caller;
 import gh.edu.clet.sfl.facilities.shared.domain.audit.SourceChannel;
 import gh.edu.clet.sfl.facilities.shared.domain.error.FacilitiesErrorCode;
 import gh.edu.clet.sfl.facilities.shared.domain.error.FacilitiesException;
