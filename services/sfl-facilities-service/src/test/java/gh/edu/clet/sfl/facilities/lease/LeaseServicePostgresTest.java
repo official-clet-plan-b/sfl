@@ -74,6 +74,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
         "sfl.waste.scheduling.enabled=false",
         "sfl.lostfound.scheduling.enabled=false",
         "sfl.lease.scheduling.enabled=false",
+        "sfl.catering.scheduling.enabled=false",
 })
 @EnabledIf(value = "gh.edu.clet.sfl.facilities.FacilitiesPostgresSupport#databaseAvailable",
         disabledReason = "No PostgreSQL available; see FacilitiesPostgresSupport.unavailableReason()")

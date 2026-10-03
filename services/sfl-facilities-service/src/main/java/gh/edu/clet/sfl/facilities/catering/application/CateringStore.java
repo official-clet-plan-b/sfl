@@ -288,6 +288,44 @@ public class CateringStore {
                 ts(since));
     }
 
+    // ---- exception work orders (S153)
+
+    public record ExceptionWorkOrder(UUID exceptionId, String siteCode, String state, UUID workOrderId, String workOrderNumber) {
+    }
+
+    /** Open exceptions that need corrective work and have no request recorded yet. */
+    public List<CateringException> exceptionsNeedingWorkOrder() {
+        return jdbc.query("SELECT " + EXCEPTION + " FROM facilities.cat_exceptions e WHERE status = 'OPEN' AND exception_type <> 'SUBSTITUTION'"
+                + " AND NOT EXISTS (SELECT 1 FROM facilities.cat_exception_work_orders w WHERE w.exception_id = e.id)", (rs, n) -> exception(rs));
+    }
+
+    public boolean insertWorkOrderRequest(CateringException e, Instant at) {
+        return jdbc.update("INSERT INTO facilities.cat_exception_work_orders (exception_id, site_code, state, requested_at, updated_at)"
+                + " VALUES (?, ?, 'PENDING_MANUAL', ?, ?) ON CONFLICT DO NOTHING", e.id(), e.siteCode(), ts(at), ts(at)) == 1;
+    }
+
+    public List<UUID> pendingWorkOrderRequests() {
+        return jdbc.queryForList("SELECT exception_id FROM facilities.cat_exception_work_orders WHERE state = 'PENDING_MANUAL'"
+                + " ORDER BY requested_at", UUID.class);
+    }
+
+    public void linkWorkOrder(UUID exceptionId, UUID workOrderId, String number, Instant at) {
+        jdbc.update("UPDATE facilities.cat_exception_work_orders SET state = 'RAISED', work_order_id = ?, work_order_number = ?, updated_at = ?"
+                + " WHERE exception_id = ?", workOrderId, number, ts(at), exceptionId);
+    }
+
+    public List<ExceptionWorkOrder> workOrdersAt(String site) {
+        return jdbc.query("SELECT * FROM facilities.cat_exception_work_orders WHERE site_code = ?", (rs, n) -> new ExceptionWorkOrder(
+                rs.getObject("exception_id", UUID.class), rs.getString("site_code"), rs.getString("state"), rs.getObject("work_order_id", UUID.class),
+                rs.getString("work_order_number")), site);
+    }
+
+    public Optional<ExceptionWorkOrder> workOrderOf(UUID exceptionId) {
+        return jdbc.query("SELECT * FROM facilities.cat_exception_work_orders WHERE exception_id = ?", (rs, n) -> new ExceptionWorkOrder(
+                rs.getObject("exception_id", UUID.class), rs.getString("site_code"), rs.getString("state"), rs.getObject("work_order_id", UUID.class),
+                rs.getString("work_order_number")), exceptionId).stream().findFirst();
+    }
+
     // ---- exceptions
 
     public void insert(CateringException e) {

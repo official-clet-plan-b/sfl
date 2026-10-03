@@ -61,8 +61,11 @@ public class CateringController {
     private final CateringConfigService config;
     private final CateringServiceService services;
     private final CateringOpsService ops;
+    private final gh.edu.clet.sfl.facilities.catering.application.CateringWorkOrderService workOrders;
 
-    public CateringController(CateringConfigService config, CateringServiceService services, CateringOpsService ops) {
+    public CateringController(CateringConfigService config, CateringServiceService services, CateringOpsService ops,
+            gh.edu.clet.sfl.facilities.catering.application.CateringWorkOrderService workOrders) {
+        this.workOrders = workOrders;
         this.config = config;
         this.services = services;
         this.ops = ops;
@@ -242,6 +245,17 @@ public class CateringController {
             ActorContext actor, SourceChannel channel) {
         return created(ops.raiseException(r.siteCode(), r.serviceId(), r.exceptionType(), r.description(),
                 r.ownerReference(), new Caller(actor, channel)));
+    }
+
+    @GetMapping("/exceptions/work-orders")
+    public ApiResponse<java.util.List<CateringStore.ExceptionWorkOrder>> exceptionWorkOrders(@RequestParam String siteCode, ActorContext actor,
+            SourceChannel channel) {
+        return ApiResponse.ok(workOrders.at(siteCode, new Caller(actor, channel)));
+    }
+
+    @PostMapping("/exceptions/{id}/work-order/retry")
+    public ApiResponse<CateringStore.ExceptionWorkOrder> retryWorkOrder(@PathVariable UUID id, ActorContext actor, SourceChannel channel) {
+        return ApiResponse.ok(workOrders.retry(id, new Caller(actor, channel)));
     }
 
     @PostMapping("/exceptions/{id}/resolve")

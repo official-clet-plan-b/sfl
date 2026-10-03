@@ -47,4 +47,17 @@ VALUES ('S172', 'DIETARY_DATA', 90, 'ANONYMISE', 'Dietary and allergy needs are 
 
 ALTER TABLE facilities.cat_dietary_requests ADD COLUMN anonymised_at TIMESTAMPTZ;
 
+-- S172: corrective work for catering exceptions (SRS section 5, S153). One row per exception; PENDING_MANUAL until S153 answers.
+CREATE TABLE facilities.cat_exception_work_orders (
+    exception_id UUID PRIMARY KEY REFERENCES facilities.cat_exceptions (id),
+    site_code VARCHAR(40) NOT NULL,
+    state VARCHAR(16) NOT NULL,
+    work_order_id UUID,
+    work_order_number VARCHAR(40),
+    requested_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT ck_cat_ewo_state CHECK (state IN ('RAISED', 'PENDING_MANUAL'))
+);
+CREATE INDEX ix_cat_ewo_pending ON facilities.cat_exception_work_orders (state) WHERE state = 'PENDING_MANUAL';
+
 SELECT facilities.apply_site_scope_policies();

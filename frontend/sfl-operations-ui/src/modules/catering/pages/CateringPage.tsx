@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Plus, RefreshCw } from 'lucide-react';
 import { Banner, Button, Dropdown, MetricCards, PageSection, Tabs, TabsList, TabsTrigger, useTableState, type TableColumn } from '@rfdtech/components';
@@ -142,10 +142,33 @@ const Exceptions = ({ siteCode, refresh, onChanged }: { siteCode: string; refres
   const canApprove = permits('FACILITIES_CATERING_APPROVE');
   const { page, pageSize } = useTableState({ paramPrefix: 'exceptions', defaultPageSize: DEFAULT_PAGE_SIZE, pageSizeOptions: PAGE_SIZE_OPTIONS });
   const query = useApiQuery((signal) => cateringApi.exceptions({ siteCode, page: page - 1, size: pageSize }, signal), [siteCode, page, pageSize, refresh]);
+  const notifier = useNotifier();
+  const orders = useApiQuery((signal) => cateringApi.exceptionWorkOrders(siteCode, signal), [siteCode, refresh]);
+  const orderOf = useMemo(() => new Map((orders.data ?? []).map((o) => [o.exceptionId, o])), [orders.data]);
+  const refetchOrders = orders.refetch;
+  const retryOrder = useCallback(async (id: string) => {
+    try {
+      await cateringApi.retryWorkOrder(id);
+    } catch (cause) {
+      notifier.notifyError(cause);
+    }
+    refetchOrders();
+  }, [notifier, refetchOrders]);
   const columns = useMemo<TableColumn<CateringException>[]>(() => [
     { id: 'exception', header: 'Exception', width: 320, cell: ({ row }) => <CellStack primary={humanise(row.exceptionType)} secondary={`${row.reference} · ${row.description}`} /> },
     { id: 'owner', header: 'Owner', width: 150, hideBelowLg: true, cell: ({ row }) => row.ownerReference },
     { id: 'incident', header: 'Incident (S163)', width: 200, hideBelowLg: true, cell: ({ row }) => (row.incidentState === 'NOT_REQUIRED' ? '-' : row.incidentState === 'LINKED' ? row.incidentReference : 'Pending - not confirmed by S163') },
+    {
+      id: 'work', header: 'Work order (S153)', width: 200, hideBelowLg: true,
+      cell: ({ row }) => {
+        const order = orderOf.get(row.id);
+        if (row.exceptionType === 'SUBSTITUTION') return '-';
+        if (!order) return 'Not requested yet';
+        return order.state === 'RAISED' ? order.workOrderNumber : (
+          <span className="inline-flex items-center gap-2">Pending - not confirmed by S153 {canManage && <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); void retryOrder(row.id); }}>Retry</Button>}</span>
+        );
+      },
+    },
     {
       id: 'state', header: 'State', width: 260, align: 'right',
       cell: ({ row }) => (
@@ -156,7 +179,7 @@ const Exceptions = ({ siteCode, refresh, onChanged }: { siteCode: string; refres
         </span>
       ),
     },
-  ], [canManage, canApprove]);
+  ], [canManage, canApprove, orderOf, retryOrder]);
   return (
     <PageSection>
       <Panel title="Exceptions" subtitle="Shortages, substitutions, service exceptions and food-safety incidents. A food-safety incident blocks delivery until an approver resolves it."

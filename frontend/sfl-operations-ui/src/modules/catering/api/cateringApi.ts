@@ -40,6 +40,7 @@ export interface Dashboard {
   servicesWithPassingCheck: number; checkedPercent: number | null; dietaryRequests: number; dietaryExceptions: number; dietaryExceptionPercent: number | null;
   openVariances: number; variancesUpTo7Days: number; variances8To14Days: number; variancesOver14Days: number; netQuantityVariance: number; openExceptions: number; awaitingFinance: number;
 }
+export interface ExceptionWorkOrder { exceptionId: string; siteCode: string; state: 'RAISED' | 'PENDING_MANUAL'; workOrderId: string | null; workOrderNumber: string | null }
 export interface Pack { service: CateringService; variances: Variance[]; checks: Check[]; exceptions: CateringException[]; evidence: Array<{ id: string; kind: EvidenceKind; fileName: string; reference: string }>; finance: { provider: string; available: boolean; matched: boolean }; portionDifference: number | null }
 
 const base = '/api/v1/facilities/catering';
@@ -72,6 +73,8 @@ export const cateringApi = {
   exceptions: (query: { siteCode: string; status?: string; page: number; size: number }, signal?: AbortSignal) => get<Page<CateringException>>('/exceptions', { ...query }, signal),
   raiseException: (body: { siteCode: string; serviceId?: string; exceptionType: ExceptionType; description: string; ownerReference: string }) => post<CateringException>('/exceptions', body),
   resolveException: (e: CateringException, resolution: string) => post<CateringException>(`/exceptions/${e.id}/resolve`, { resolution, version: e.version }),
+  exceptionWorkOrders: (siteCode: string, signal?: AbortSignal) => get<ExceptionWorkOrder[]>('/exceptions/work-orders', { siteCode }, signal),
+  retryWorkOrder: (id: string) => post<ExceptionWorkOrder>(`/exceptions/${id}/work-order/retry`),
   linkIncident: (id: string, text: string) => post<CateringException>(`/exceptions/${id}/link-incident`, { text }),
   recordVariance: (serviceId: string, body: { kind: VarianceKind; planned: number; actual: number; ownerReference: string; reason: string }) => post<Variance>(`/services/${serviceId}/variances`, body),
   approveVariance: (id: string) => post<Variance>(`/variances/${id}/approve`),
