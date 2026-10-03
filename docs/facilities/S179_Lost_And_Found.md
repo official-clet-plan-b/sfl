@@ -35,3 +35,7 @@ Open items by age and by storage location; mean time from claim to verified rele
 
 ## Events
 `sfl.ifimp.found-item-registered.v1`, `-found-item-released.v1`, `-found-item-disposed.v1`, `-found-item-handed-to-authorities.v1`, `-found-item-isolated.v1`, `-lost-found-escalated.v1`, `-lost-found-incident-requested.v1`. Payloads carry references, categories and dates - never a description, name or contact.
+
+## Export and retention
+- `GET /api/v1/facilities/lost-found/exports/items?siteCode=&reason=` downloads found items. The private description and finder columns are blank unless the caller holds the private-read grant. It needs `FACILITIES_REGISTER_EXPORT` and a reason, is watermarked and audited.
+- Item and personal-data retention keep their own per-category periods (`lf_retention_policies`); evidence classes follow Record retention.
