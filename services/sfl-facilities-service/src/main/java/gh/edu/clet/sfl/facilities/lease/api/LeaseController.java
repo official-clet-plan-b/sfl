@@ -6,6 +6,8 @@ import gh.edu.clet.sfl.facilities.lease.application.LeaseAgreementService;
 import gh.edu.clet.sfl.facilities.lease.application.LeaseConfigService;
 import gh.edu.clet.sfl.facilities.lease.application.LeaseOpsService;
 import gh.edu.clet.sfl.facilities.lease.application.LeaseStore;
+import gh.edu.clet.sfl.facilities.lease.application.LeaseWorkOrderService;
+import gh.edu.clet.sfl.facilities.lease.domain.LeaseWorkOrder;
 import gh.edu.clet.sfl.facilities.lease.domain.Agreement;
 import gh.edu.clet.sfl.facilities.lease.domain.AgreementKind;
 import gh.edu.clet.sfl.facilities.lease.domain.Amendment;
@@ -54,8 +56,10 @@ public class LeaseController {
     private final LeaseAgreementService agreements;
     private final LeaseConfigService config;
     private final LeaseOpsService ops;
+    private final LeaseWorkOrderService workOrders;
 
-    public LeaseController(LeaseAgreementService agreements, LeaseConfigService config, LeaseOpsService ops) {
+    public LeaseController(LeaseAgreementService agreements, LeaseConfigService config, LeaseOpsService ops, LeaseWorkOrderService workOrders) {
+        this.workOrders = workOrders;
         this.agreements = agreements;
         this.config = config;
         this.ops = ops;
@@ -213,6 +217,22 @@ public class LeaseController {
     @PostMapping("/obligations/{id}/waive")
     public ApiResponse<Obligation> waive(@PathVariable UUID id, @Valid @RequestBody ReasonRequest r, ActorContext actor, SourceChannel channel) {
         return ApiResponse.ok(agreements.waiveObligation(id, r.reason(), r.version(), new Caller(actor, channel)));
+    }
+
+    // ---- corrective work (S153)
+
+    public record WorkOrderRequest(UUID obligationId, @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 2000) String description) {
+    }
+
+    @PostMapping("/agreements/{id}/work-orders")
+    public ResponseEntity<ApiResponse<LeaseWorkOrder>> raiseWorkOrder(@PathVariable UUID id, @Valid @RequestBody WorkOrderRequest r, ActorContext actor,
+            SourceChannel channel) {
+        return created(workOrders.raise(id, r.obligationId(), r.description(), new Caller(actor, channel)));
+    }
+
+    @PostMapping("/work-orders/{id}/retry")
+    public ApiResponse<LeaseWorkOrder> retryWorkOrder(@PathVariable UUID id, ActorContext actor, SourceChannel channel) {
+        return ApiResponse.ok(workOrders.retry(id, new Caller(actor, channel)));
     }
 
     // ---- shapes

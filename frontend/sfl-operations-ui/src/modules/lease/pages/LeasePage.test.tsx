@@ -32,7 +32,7 @@ const agreement = (overrides = {}) => ({
 
 const detail = (overrides = {}) => ({
   agreement: agreement(), blockers: ['No notice period is set, so no notice date can be calculated.', 'No approval evidence is filed.'], warnings: ['The counterparty is recorded, not verified.'],
-  documents: [], obligations: [], amendments: [], versions: [], alerts: [], history: [], financialView: false, pastEndDate: false, ...overrides,
+  documents: [], obligations: [], amendments: [], versions: [], alerts: [], history: [], financialView: false, pastEndDate: false, workOrders: [], ownerVerified: false, ...overrides,
 });
 
 const renderAt = (path: string) =>

@@ -29,9 +29,10 @@ export interface Obligation { id: string; agreementId: string; kind: ObligationK
 export interface LeaseDocument { id: string; kind: DocumentKind; reference: string; fileName: string; contentHash: string; expiresOn: string | null; submittedBy: string; submittedAt: string }
 export interface Alert { id: string; agreementId: string; obligationId: string | null; level: 'OWNER' | 'MANAGER' | 'DIRECTOR' | 'LEGAL'; reason: string; detail: string | null; raisedAt: string; acknowledgedBy: string | null; acknowledgedAt: string | null }
 export interface HistoryEntry { id: string; subjectType: string; fromStatus: string | null; toStatus: string; actor: string; reason: string | null; occurredAt: string }
+export interface WorkOrderRequest { id: string; agreementId: string; obligationId: string | null; trigger: 'EXPIRED_REVIEW' | 'MANUAL'; description: string; state: 'RAISED' | 'PENDING_MANUAL'; workOrderNumber: string | null; requestedBy: string; createdAt: string; version: number }
 export interface Detail {
   agreement: Agreement; blockers: string[]; warnings: string[]; documents: Array<{ document: LeaseDocument; expired: boolean }>; obligations: Obligation[];
-  amendments: Amendment[]; versions: AgreementVersion[]; alerts: Alert[]; history: HistoryEntry[]; financialView: boolean; pastEndDate: boolean;
+  amendments: Amendment[]; versions: AgreementVersion[]; alerts: Alert[]; history: HistoryEntry[]; financialView: boolean; pastEndDate: boolean; workOrders: WorkOrderRequest[]; ownerVerified: boolean;
 }
 export interface Page<T> { items: T[]; totalElements: number; totalPages: number; page: number; size: number }
 export interface Calendar { timezone: string; weekend: string[]; holidays: Array<{ date: string; name: string }> }
@@ -76,5 +77,7 @@ export const leaseApi = {
   complete: (o: Obligation, note?: string) => post<Obligation>(`/obligations/${o.id}/complete`, { note, version: o.version }),
   waive: (o: Obligation, reason: string) => post<Obligation>(`/obligations/${o.id}/waive`, { reason, version: o.version }),
   alerts: (query: { siteCode: string; openOnly: boolean; page: number; size: number }, signal?: AbortSignal) => get<Page<Alert>>('/alerts', { ...query }, signal),
+  raiseWorkOrder: (id: string, description: string, obligationId?: string) => post<WorkOrderRequest>(`/agreements/${id}/work-orders`, { description, obligationId }),
+  retryWorkOrder: (id: string) => post<WorkOrderRequest>(`/work-orders/${id}/retry`),
   acknowledge: (id: string) => post<Alert>(`/alerts/${id}/acknowledge`),
 };

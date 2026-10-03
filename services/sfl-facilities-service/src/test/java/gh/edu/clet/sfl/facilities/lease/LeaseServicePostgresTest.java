@@ -3,6 +3,7 @@ package gh.edu.clet.sfl.facilities.lease;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import gh.edu.clet.sfl.common.security.ActorContext;
@@ -13,6 +14,9 @@ import gh.edu.clet.sfl.facilities.lease.application.LeaseAgreementService;
 import gh.edu.clet.sfl.facilities.lease.application.LeaseAgreementService.Propose;
 import gh.edu.clet.sfl.facilities.lease.application.LeaseAgreementService.Register;
 import gh.edu.clet.sfl.facilities.lease.application.LeaseConfigService;
+import gh.edu.clet.sfl.facilities.lease.application.LeaseWorkOrderService;
+import gh.edu.clet.sfl.facilities.lease.application.ports.LeaseWorkOrderPort;
+import gh.edu.clet.sfl.facilities.lease.domain.LeaseWorkOrder;
 import gh.edu.clet.sfl.facilities.lease.application.LeaseOpsService;
 import gh.edu.clet.sfl.facilities.lease.application.ports.LeaseEstatePort;
 import gh.edu.clet.sfl.facilities.lease.domain.Agreement;
@@ -38,6 +42,7 @@ import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -86,7 +91,9 @@ class LeaseServicePostgresTest {
     @Autowired private LeaseConfigService config;
     @Autowired private LeaseOpsService ops;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private LeaseWorkOrderService leaseWorkOrders;
     @MockitoBean private LeaseEstatePort estate;
+    @MockitoBean private LeaseWorkOrderPort s153;
 
     private String site;
     private Caller manager;
@@ -351,6 +358,72 @@ class LeaseServicePostgresTest {
         assertThat(agreements.get(a.id(), manager).agreement().status()).isEqualTo(AgreementStatus.EXPIRED);
         assertThat(ops.alerts(site, true, 0, 50, manager).items()).filteredOn(x -> x.reason() == AlertReason.EXPIRED).extracting(x -> x.level())
                 .contains(AlertLevel.DIRECTOR, AlertLevel.LEGAL);
+    }
+
+    private Agreement expiredAgreement() {
+        Agreement a = agreements.register(new Register(site, null, "Old premises", AgreementKind.LEASE, Direction.INBOUND, "Old lease", "CP-3", null, null,
+                "owner", TODAY.minusDays(400), TODAY.minusDays(2), RenewalType.NONE, null, 30, null, null, null, null, manager));
+        active(a);
+        return a;
+    }
+
+    @Test
+    @DisplayName("a lapsed agreement gets one S153 review order for whoever relied on it, however often the control runs")
+    void expiry_raises_one_review_order() {
+        when(s153.raise(any(), any(), anyString(), any())).thenReturn(new LeaseWorkOrderPort.RaisedWorkOrder(UUID.randomUUID(), "WO-77"));
+        Agreement a = expiredAgreement();
+
+        ops.dailyControl(system());
+        ops.dailyControl(system());
+
+        List<LeaseWorkOrder> orders = agreements.get(a.id(), manager).workOrders();
+        assertThat(orders).hasSize(1);
+        assertThat(orders.get(0).state()).isEqualTo("RAISED");
+        assertThat(orders.get(0).workOrderNumber()).isEqualTo("WO-77");
+        assertThat(orders.get(0).description()).contains("without renewal");
+    }
+
+    @Test
+    @DisplayName("when S153 refuses, the request stays PENDING_MANUAL, never shown as raised, and a retry links it")
+    void s153_outage_is_pending_then_retried() {
+        when(s153.raise(any(), any(), anyString(), any())).thenThrow(new IllegalStateException("S153 down"));
+        Agreement a = expiredAgreement();
+
+        ops.dailyControl(system());
+
+        LeaseWorkOrder pending = agreements.get(a.id(), manager).workOrders().get(0);
+        assertThat(pending.state()).isEqualTo("PENDING_MANUAL");
+        assertThat(pending.workOrderNumber()).isNull();
+
+        org.mockito.Mockito.doReturn(new LeaseWorkOrderPort.RaisedWorkOrder(UUID.randomUUID(), "WO-78")).when(s153).raise(any(), any(), anyString(), any());
+        LeaseWorkOrder retried = leaseWorkOrders.retry(pending.id(), manager);
+
+        assertThat(retried.state()).isEqualTo("RAISED");
+        assertThat(retried.workOrderNumber()).isEqualTo("WO-78");
+    }
+
+    @Test
+    @DisplayName("corrective work can be raised by hand by a manager, and not by a role that can only read")
+    void manual_work_order() {
+        when(s153.raise(any(), any(), anyString(), any())).thenReturn(new LeaseWorkOrderPort.RaisedWorkOrder(UUID.randomUUID(), "WO-79"));
+        Agreement a = active();
+
+        LeaseWorkOrder order = leaseWorkOrders.raise(a.id(), null, "Roof leak reported by the landlord", manager);
+
+        assertThat(order.state()).isEqualTo("RAISED");
+        assertThatThrownBy(() -> leaseWorkOrders.raise(a.id(), null, "x", compliance)).isInstanceOf(FacilitiesException.class);
+        assertThatThrownBy(() -> leaseWorkOrders.raise(a.id(), null, " ", manager)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("an owner is shown as not verified against HR while no HR system is connected")
+    void owner_is_not_verified() {
+        Agreement a = draft();
+
+        LeaseAgreementService.Detail detail = agreements.get(a.id(), manager);
+
+        assertThat(detail.ownerVerified()).isFalse();
+        assertThat(detail.warnings()).anyMatch(w -> w.contains("S140"));
     }
 
     @Test
