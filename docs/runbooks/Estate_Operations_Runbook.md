@@ -2,6 +2,11 @@
 
 For whoever operates and supports S170, S172, S177, S178 and S179. Owners and sign-off at the end are for the operational owners to fill in; nothing here is a sign-off.
 
+## Open items before production
+- [ ] **Owners and sign-off:** operational owner, support owner and readiness sign-off for each of S170, S172, S177, S178 and S179 (table at the end of this file).
+- [ ] **Retention periods:** the shipped periods are placeholders. Owners confirm the period and basis for each record class (SRS Appendix B), then a migration sets them. Until then the Record retention screen shows "Default pending statutory confirmation".
+- [ ] **Integrations:** S136 contract, finance, S140 HR and the provider interfaces are not connected (see below).
+
 ## What runs on a timer
 | Job | Property | Default | Does |
 |---|---|---|---|
