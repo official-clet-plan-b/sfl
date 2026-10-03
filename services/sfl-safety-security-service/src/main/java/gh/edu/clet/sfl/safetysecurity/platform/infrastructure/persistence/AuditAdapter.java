@@ -49,7 +49,10 @@ public class AuditAdapter implements AuditPort {
         String previousHash = jdbc.query(
                 "SELECT record_hash FROM safety_security.audit_log WHERE sequence_no=?",
                 rs -> rs.next() ? rs.getString(1) : null, sequence - 1);
-        Instant occurredAt = clock.instant();
+        // PostgreSQL stores microseconds; a Java Instant on Linux carries nanoseconds. The hash is over epoch milliseconds, so an
+        // instant a fraction of a microsecond short of a millisecond boundary is hashed in one millisecond and read back, rounded up,
+        // in the next - and that record replays as tampered. Truncating first makes what is stored and what is hashed the same.
+        Instant occurredAt = clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         String recordHash = hash(sequence, actor.actorId(), action, resourceType, resourceId, siteScope,
                 sourceChannel, occurredAt, previousHash);
         jdbc.update("""
