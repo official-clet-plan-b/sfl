@@ -138,6 +138,22 @@ The first four were reserved by S173 before S165 existed and are reused verbatim
 | `sfl.ssemp.risk-assessment-review-due.v1` | The review reminder, sent once ahead of the date. |
 | `sfl.ssemp.risk-assessment-review-flagged.v1` | An S163 incident flags the assessment for out-of-cycle review. |
 
+#### S175 Crisis & Evacuation Drill Management additions (Phase 2)
+
+Added October 2026 with S175. Published from schema `safety_security` and delivered by
+`SafetySecurityOutboxDrainer`. Distinct from S174's `emergency-drill-completed`, which is S174's own drill-run
+record; an S175 drill also produces S174's `emergency-drill-notification-sent` for its notification. Every drill
+payload carries `drillId, reference, siteCode, drillType`; references and counts only - who was missing at
+roll-call stays in S175.
+
+| Event | Trigger |
+|---|---|
+| `sfl.ssemp.drill-scheduled.v1` | A drill plan is put on the calendar (`scheduledFor`). |
+| `sfl.ssemp.drill-started.v1` | A drill starts: baseline taken, S162a muster opened, S174 drill notification sent (`baselineCount`, `baselineStale`). |
+| `sfl.ssemp.drill-completed.v1` | Roll-call closes and the gap list is recorded (`checkedInCount`, `gapCount`, `notificationToMusterSeconds`). |
+| `sfl.ssemp.drill-closed.v1` | A reviewed drill is closed (`openCorrectiveActions`, `deferralReason`). |
+| `sfl.ssemp.drill-compliance-gap.v1` | A site passes its required interval for a drill type - "Compliance Gap", once per due date (aggregate `DrillFrequencyRequirement`). |
+
 ### SFL.FTLMP
 
 | Event | Trigger |

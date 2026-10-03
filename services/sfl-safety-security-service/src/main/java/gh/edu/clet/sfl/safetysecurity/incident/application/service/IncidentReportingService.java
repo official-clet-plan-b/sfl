@@ -19,6 +19,7 @@ import gh.edu.clet.sfl.safetysecurity.platform.application.port.AuditPort;
 import gh.edu.clet.sfl.safetysecurity.platform.application.port.IntegrationEventPublisher;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -141,6 +142,13 @@ public class IncidentReportingService {
     public Dashboard dashboard(String siteCode, ActorContext actor) {
         access.require(actor, SflPermission.INCIDENT_REPORT_READ, siteCode, "SecurityIncident", null);
         return new Dashboard(repository.countByStatus(siteCode), repository.countBySeverity(siteCode));
+    }
+
+    /** The incident half of the HSE dashboard's shared incidents-and-drills corrective-action panel. */
+    @Transactional(readOnly = true)
+    public SecurityIncidentRepository.CapaCounts correctiveActionCounts(String siteCode, ActorContext actor) {
+        access.require(actor, SflPermission.INCIDENT_REPORT_READ, siteCode, "SecurityIncident", null);
+        return repository.capaCounts(siteCode, LocalDate.now(clock));
     }
 
     SecurityIncident findOrThrow(UUID id) {

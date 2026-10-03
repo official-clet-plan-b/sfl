@@ -146,6 +146,29 @@ class SecurityIncidentMandatoryScenariosEndToEndTest extends SafetySecurityPostg
         assertThat(closed.status()).isEqualTo(IncidentStatus.CLOSED);
     }
 
+    /** The incident half of the HSE dashboard's shared incidents-and-drills corrective-action panel (S175-03). */
+    @Test
+    void corrective_action_counts_include_overdue_actions() {
+        ActorContext hse = actor("hse-e2e", SflRole.HSE_MANAGER);
+        var before = reporting.correctiveActionCounts(SITE, hse);
+        SecurityIncident reported = report(false);
+        SecurityIncident triaged = triage.triage(new IncidentTriageService.Triage(reported.id(), Severity.LOW,
+                new RiskRating(Likelihood.RARE, Impact.MINOR), false, null, reported.metadata().version(), hse,
+                SourceChannel.WEB));
+        SecurityIncident investigating = investigation.openOrUpdateInvestigation(
+                new IncidentInvestigationService.OpenOrUpdateInvestigation(triaged.id(), "investigator-e2e", null,
+                        triaged.metadata().version(), actor("investigator-e2e", SflRole.INCIDENT_INVESTIGATOR),
+                        SourceChannel.WEB));
+        correctiveActions.open(new CorrectiveActionService.OpenCorrectiveAction(investigating.id(),
+                "Already late.", "supervisor-e2e", LocalDate.now().minusDays(1), false,
+                actor("investigator-e2e", SflRole.INCIDENT_INVESTIGATOR), SourceChannel.WEB));
+
+        var after = reporting.correctiveActionCounts(SITE, hse);
+        assertThat(after.open()).isEqualTo(before.open() + 1);
+        assertThat(after.overdue()).isEqualTo(before.overdue() + 1);
+        assertThat(after.ageing().get(0)).isEqualTo(before.ageing().get(0) + 1);
+    }
+
     @Test
     void search_finds_a_reported_incident_by_site_and_status() {
         SecurityIncident reported = report(true);

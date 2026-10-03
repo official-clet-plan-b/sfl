@@ -20,10 +20,10 @@ public class RecordedNotificationGateway implements NotificationGatewayPort {
 
     @Override
     public GatewaySendResult send(UUID activationId, ChannelType channel, String siteCode, int targetCount,
-            boolean degradedMode, ActorContext actor) {
-        String provider = channel.name() + (degradedMode ? "-DIRECT" : "-SIMULATOR");
-        log.info("Recorded emergency dispatch activation={} channel={} site={} target={} degraded={} provider={}",
-                activationId, channel, siteCode, targetCount, degradedMode, provider);
+            boolean degradedMode, boolean drill, ActorContext actor) {
+        String provider = channel.name() + (degradedMode ? "-DIRECT" : "-SIMULATOR") + (drill ? "-DRILL" : "");
+        log.info("Recorded emergency dispatch activation={} channel={} site={} target={} degraded={} drill={} provider={}",
+                activationId, channel, siteCode, targetCount, degradedMode, drill, provider);
         return new GatewaySendResult(provider, Math.max(targetCount, 0), degradedMode);
     }
 }

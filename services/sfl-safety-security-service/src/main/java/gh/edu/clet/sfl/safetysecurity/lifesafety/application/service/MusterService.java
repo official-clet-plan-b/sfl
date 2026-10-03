@@ -21,8 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * SRS-SFL-S162a-04: evacuation roll-call. Opens against the affected zone on a fire/panic event,
  * captures muster-point check-ins, and highlights who has not yet been accounted for against
- * whatever {@link OnSitePopulationPort} returns (empty by default in Phase 1 - see that port's
- * javadoc). A supplement to - never a replacement for - the certified system's own alarms.
+ * whatever {@link OnSitePopulationPort} returns (S160 visitors and S160a occupancy since Phase 2 - see
+ * that port's javadoc). A supplement to - never a replacement for - the certified system's own alarms.
  */
 @Service
 public class MusterService {

@@ -159,7 +159,9 @@ public class LifeSafetyRepositoryAdapter implements LifeSafetyRepository {
 
     @Override
     public Optional<MusterSession> findOpenMusterSession(String siteCode, String zoneCode) {
-        return musterSessions.findFirstBySiteCodeAndZoneCodeAndStatus(siteCode, zoneCode, MusterStatus.OPEN)
+        // A drill's session is never the one a real event joins: a fire during a drill opens its own.
+        return musterSessions.findFirstBySiteCodeAndZoneCodeAndStatusAndDrillIdIsNull(siteCode, zoneCode,
+                        MusterStatus.OPEN)
                 .map(MusterSessionJpaEntity::toDomain);
     }
 

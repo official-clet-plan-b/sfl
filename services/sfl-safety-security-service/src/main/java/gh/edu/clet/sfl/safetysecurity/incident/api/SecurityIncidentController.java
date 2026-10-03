@@ -2,6 +2,7 @@ package gh.edu.clet.sfl.safetysecurity.incident.api;
 
 import gh.edu.clet.sfl.common.api.ApiResponse;
 import gh.edu.clet.sfl.safetysecurity.emergency.api.EmergencyPageResponse;
+import gh.edu.clet.sfl.safetysecurity.incident.application.port.SecurityIncidentRepository;
 import gh.edu.clet.sfl.safetysecurity.incident.application.service.CorrectiveActionService;
 import gh.edu.clet.sfl.safetysecurity.incident.application.service.IncidentClosureService;
 import gh.edu.clet.sfl.safetysecurity.incident.application.service.IncidentInvestigationService;
@@ -218,6 +219,14 @@ public class SecurityIncidentController {
     public ApiResponse<IncidentReportingService.Dashboard> dashboard(@RequestParam String siteCode,
             HttpServletRequest http) {
         return ApiResponse.ok(reporting.dashboard(siteCode, actors.resolve(http)));
+    }
+
+    @GetMapping("/corrective-actions/summary")
+    @Operation(summary = "Corrective-action counts", description = "Open, overdue, verified, cancelled and the "
+            + "ageing of open actions - the incident half of the HSE dashboard's shared corrective-action panel.")
+    public ApiResponse<SecurityIncidentRepository.CapaCounts> correctiveActionSummary(@RequestParam String siteCode,
+            HttpServletRequest http) {
+        return ApiResponse.ok(reporting.correctiveActionCounts(siteCode, actors.resolve(http)));
     }
 
     /**

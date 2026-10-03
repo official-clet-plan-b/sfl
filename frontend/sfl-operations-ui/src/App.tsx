@@ -148,6 +148,10 @@ const ReviewFlagsPage = lazy(() => import('modules/riskassessment/pages/ReviewFl
 const RiskCoveragePage = lazy(() => import('modules/riskassessment/pages/RiskCoveragePage'));
 const RiskConfigurationPage = lazy(() => import('modules/riskassessment/pages/RiskConfigurationPage'));
 const SecuritySystemsPage = lazy(() => import('modules/security/SecuritySystemsPage'));
+const DrillDashboardPage = lazy(() => import('modules/drill/pages/DrillDashboardPage'));
+const DrillsPage = lazy(() => import('modules/drill/pages/DrillsPage'));
+const DrillDetailPage = lazy(() => import('modules/drill/pages/DrillDetailPage'));
+const DrillCompliancePage = lazy(() => import('modules/drill/pages/DrillCompliancePage'));
 
 /**
  * The router basename comes from Vite's `BASE_URL`, which is set by `base` in `vite.config.ts`.
@@ -482,6 +486,15 @@ const App = () => {
                 <Route path="review-flags" element={<ReviewFlagsPage />} />
                 <Route path="coverage" element={<RiskCoveragePage />} />
                 <Route path="configuration" element={<RiskConfigurationPage />} />
+              </Route>
+              {/* Phase 2 S175 - crisis and evacuation drills. */}
+              <Route path="drills" element={<SystemRoutes system="S175" />}>
+                <Route index element={<DrillDashboardPage />} />
+                <Route path="register">
+                  <Route index element={<DrillsPage />} />
+                  <Route path=":drillId" element={<DrillDetailPage />} />
+                </Route>
+                <Route path="compliance" element={<DrillCompliancePage />} />
               </Route>
               <Route path="emergency" element={<SystemRoutes system="S174" />}>
               <Route index element={<EmergencyDashboardPage />} />

@@ -12,6 +12,7 @@ import PageHeading from 'modules/emergency/components/PageHeading';
 import Panel from 'modules/emergency/components/Panel';
 import StatMetric from 'modules/emergency/components/StatMetric';
 import StatusBadge from 'modules/emergency/components/StatusBadge';
+import CorrectiveActionPanel from '../components/CorrectiveActionPanel';
 
 const IncidentDashboardPage = () => {
   const navigate = useNavigate();
@@ -45,6 +46,7 @@ const IncidentDashboardPage = () => {
           <Panel title="Cases by severity"><div className="space-y-3">{(['EMERGENCY', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as Severity[]).map((severity) => <div key={severity} className="flex items-center justify-between border-b border-[var(--clet-border-subtle)] pb-3 last:border-0"><StatusBadge value={severity} /><strong className="tabular-nums">{countSeverity(severity)}</strong></div>)}</div></Panel>
         </div>
       </PageSection>
+      {siteCode && <PageSection><CorrectiveActionPanel siteCode={siteCode} /></PageSection>}
     </DataState>
   </>;
 };

@@ -10,6 +10,7 @@ import gh.edu.clet.sfl.safetysecurity.incident.domain.model.IncidentEvidence;
 import gh.edu.clet.sfl.safetysecurity.incident.domain.model.IncidentStatus;
 import gh.edu.clet.sfl.safetysecurity.incident.domain.model.SecurityIncident;
 import gh.edu.clet.sfl.safetysecurity.incident.domain.model.Severity;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -118,6 +119,23 @@ public final class IncidentTestDoubles {
                     .filter(i -> i.severity() != null)
                     .forEach(i -> counts.merge(i.severity(), 1L, Long::sum));
             return counts;
+        }
+
+        @Override
+        public CapaCounts capaCounts(String siteCode, LocalDate today) {
+            List<CorrectiveAction> site = correctiveActions.values().stream()
+                    .filter(a -> a.siteCode().equalsIgnoreCase(siteCode)).toList();
+            List<CorrectiveAction> open = site.stream().filter(a -> !a.status().isTerminal()).toList();
+            long[] ageing = new long[4];
+            open.forEach(a -> {
+                long days = java.time.temporal.ChronoUnit.DAYS.between(
+                        LocalDate.ofInstant(a.createdAt(), java.time.ZoneOffset.UTC), today);
+                ageing[days <= 30 ? 0 : days <= 60 ? 1 : days <= 90 ? 2 : 3]++;
+            });
+            return new CapaCounts(open.size(), open.stream().filter(a -> a.isOverdue(today)).count(),
+                    site.stream().filter(a -> a.status() == CapaStatus.VERIFIED).count(),
+                    site.stream().filter(a -> a.status() == CapaStatus.CANCELLED).count(),
+                    List.of(ageing[0], ageing[1], ageing[2], ageing[3]));
         }
 
         public List<SecurityIncident> all() {
