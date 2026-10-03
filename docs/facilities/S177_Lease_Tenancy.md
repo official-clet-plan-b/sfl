@@ -1,6 +1,6 @@
 # S177 Lease & Tenancy
 
-Module `facilities.lease` (domain, application with ports, infrastructure integration and scheduling, api). Migration `V27__lease_tenancy.sql`. Replaces the generic register that used to stand in for S177; its `register_records` table is left in place, unused.
+Module `facilities.lease` (domain, application with ports, infrastructure integration and scheduling, api). Migration `V27__lease_tenancy.sql`. Replaces the generic register that used to stand in for S177; the generic `register_records` table is dropped by `V28__drop_register_records.sql`.
 
 ## Model
 - **Agreement**: a lease or tenancy for a property at a site, with CLET as tenant (inbound) or landlord (outbound), term, renewal type (none, option, automatic), notice period, notice date, rent review date, rent, deposit and currency. Status: draft, in review, active, expired, terminated, archived.
