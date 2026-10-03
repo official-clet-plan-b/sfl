@@ -32,7 +32,7 @@ public class LostFoundExportService {
         String why = RegisterExport.reason(reason);
         List<FoundItem> rows = RegisterExport.collect(page -> items.list(site, status, null, false, page, 100, caller).items());
         RegisterExport.Result result = RegisterExport.build("S179", "items", site, caller.actor().actorId(), why, support.now(),
-                List.of("Reference", "Claim reference", "Category", "Public description", "Private description", "Found at", "Found location", "Finder", "Status", "Unsafe", "Retention until"), rows, r -> List.<Object>of(r.reference(), r.claimReference(), r.category(), r.publicDescription(), r.privateDescription(), r.foundAt(), r.foundLocation(), r.finderReference(), r.status(), r.unsafe(), r.retentionUntil()));
+                List.of("Reference", "Claim reference", "Category", "Public description", "Private description", "Found at", "Found location", "Finder", "Status", "Unsafe", "Retention until"), rows, r -> java.util.Arrays.<Object>asList(r.reference(), r.claimReference(), r.category(), r.publicDescription(), r.privateDescription(), r.foundAt(), r.foundLocation(), r.finderReference(), r.status(), r.unsafe(), r.retentionUntil()));
         support.audit(caller, AuditAction.REGISTER_EXPORTED, "FoundItem", UUID.nameUUIDFromBytes(("S179:" + site).getBytes()), site, null,
                 "items: " + result.rows() + " row(s)" + (result.truncated() ? " (truncated)" : "") + "; reason: " + why);
         return result;

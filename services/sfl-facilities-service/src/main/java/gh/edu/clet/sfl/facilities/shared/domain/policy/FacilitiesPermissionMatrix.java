@@ -490,9 +490,10 @@ public final class FacilitiesPermissionMatrix {
         grant(matrix, SflRole.FACILITIES_DIRECTOR, export);
         grant(matrix, SflRole.COMPLIANCE_OFFICER, export);
         grant(matrix, SflRole.HSE_MANAGER, export);
-        // Retention periods are statutory decisions, so they belong to the director and the compliance officer, not to platform configuration.
-        grant(matrix, SflRole.FACILITIES_DIRECTOR, EnumSet.of(SflPermission.FACILITIES_RETENTION_MANAGE));
-        grant(matrix, SflRole.COMPLIANCE_OFFICER, EnumSet.of(SflPermission.FACILITIES_RETENTION_MANAGE));
+        // Retention periods are statutory decisions: the director sets them, and the compliance officer - an assurance role
+        // that changes nothing - can see them and what has outlived them.
+        grant(matrix, SflRole.FACILITIES_DIRECTOR, EnumSet.of(SflPermission.FACILITIES_RETENTION_READ, SflPermission.FACILITIES_RETENTION_MANAGE));
+        grant(matrix, SflRole.COMPLIANCE_OFFICER, EnumSet.of(SflPermission.FACILITIES_RETENTION_READ));
     }
 
     private static void grantPhaseTwo(Map<SflRole, Set<SflPermission>> matrix) {

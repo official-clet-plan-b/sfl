@@ -52,13 +52,13 @@ public class RetentionService {
             Instant dueSince) {
     }
 
-    private void require(Caller caller, String type, String id) {
-        authorization.require(caller.actor(), SflPermission.FACILITIES_RETENTION_MANAGE, caller.channel(), type, id, ORGANISATION);
+    private void require(Caller caller, SflPermission permission, String type, String id) {
+        authorization.require(caller.actor(), permission, caller.channel(), type, id, ORGANISATION);
     }
 
     @Transactional(readOnly = true)
     public List<Policy> policies(Caller caller) {
-        require(caller, "RetentionPolicy", "list");
+        require(caller, SflPermission.FACILITIES_RETENTION_READ, "RetentionPolicy", "list");
         return jdbc.query("SELECT * FROM facilities.record_retention_policies ORDER BY system_code, record_class", (rs, n) -> new Policy(
                 rs.getString("system_code"), rs.getString("record_class"), rs.getInt("retention_days"), rs.getString("action"), rs.getString("basis"),
                 rs.getString("updated_by"), rs.getTimestamp("updated_at").toInstant()));
@@ -66,7 +66,7 @@ public class RetentionService {
 
     @Transactional
     public Policy set(String systemCode, String recordClass, int retentionDays, String basis, Caller caller) {
-        require(caller, "RetentionPolicy", systemCode + ":" + recordClass);
+        require(caller, SflPermission.FACILITIES_RETENTION_MANAGE, "RetentionPolicy", systemCode + ":" + recordClass);
         String system = systemCode == null ? "" : systemCode.strip().toUpperCase();
         String cls = recordClass == null ? "" : recordClass.strip().toUpperCase();
         if (retentionDays < 1 || retentionDays > 36_500) {
@@ -92,7 +92,7 @@ public class RetentionService {
     /** Evidence past its period, for authorised disposal. Reported, never deleted by this service. */
     @Transactional(readOnly = true)
     public List<Due> due(String systemCode, Caller caller) {
-        require(caller, "RetentionDue", "list");
+        require(caller, SflPermission.FACILITIES_RETENTION_READ, "RetentionDue", "list");
         String system = systemCode == null || systemCode.isBlank() ? null : systemCode.strip().toUpperCase();
         if (system != null && !SYSTEMS.contains(system)) {
             throw new IllegalArgumentException("Unknown system " + system + ".");

@@ -111,7 +111,7 @@ export const authPaths = {
 
 export const facilitiesPaths = {
   dashboard: '/facilities',
-  retention: '/facilities/retention',
+  retention: '/facilities/estate/retention',
   sites: '/facilities/estate/sites',
   siteDetail: (siteId: string) => `/facilities/estate/sites/${siteId}`,
   /*
@@ -859,7 +859,7 @@ export const navSections: NavSection[] = [
         to: facilitiesPaths.retention,
         icon: 'clock',
         description: 'How long evidence and personal data are kept',
-        permission: 'FACILITIES_RETENTION_MANAGE',
+        permission: 'FACILITIES_RETENTION_READ',
       },
       {
         label: 'Configuration',

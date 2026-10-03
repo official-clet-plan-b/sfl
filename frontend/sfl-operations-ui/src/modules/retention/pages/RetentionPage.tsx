@@ -6,6 +6,7 @@ import DataState from 'shared/components/DataState';
 import { formatDate } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { useSubmit } from 'shared/hooks/useSubmit';
+import { permits } from 'shared/layout/actorPermissions';
 import { facilitiesPaths } from 'shared/layout/navigation';
 import { humanise } from 'modules/fleet/api/enums';
 import PageHeading from 'modules/emergency/components/PageHeading';
@@ -36,6 +37,7 @@ const PolicyDialog = ({ policy, onClose, onDone }: { policy: RetentionPolicy; on
 const RetentionPage = () => {
   const [refresh, setRefresh] = useState(0);
   const [editing, setEditing] = useState<RetentionPolicy>();
+  const canManage = permits('FACILITIES_RETENTION_MANAGE');
   const bump = () => setRefresh((value) => value + 1);
   const policies = useApiQuery((signal) => retentionApi.policies(signal), [refresh]);
   const due = useApiQuery((signal) => retentionApi.due(undefined, signal), [refresh]);
@@ -54,7 +56,7 @@ const RetentionPage = () => {
                     <p className="font-medium">{systemNames[p.systemCode] ?? p.systemCode} · {humanise(p.recordClass)}</p>
                     <p className="text-theme-xs text-gray-600">{p.retentionDays} days · {p.action === 'ANONYMISE' ? 'anonymised afterwards' : 'reported for disposal afterwards'} · {p.basis}</p>
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => setEditing(p)}>Change</Button>
+                  {canManage && <Button size="sm" variant="outline" onClick={() => setEditing(p)}>Change</Button>}
                 </li>
               ))}
             </ul>

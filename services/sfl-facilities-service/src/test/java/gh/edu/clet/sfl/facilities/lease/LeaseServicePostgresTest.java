@@ -427,6 +427,13 @@ class LeaseServicePostgresTest {
         assertThat(asDirector.rows()).isEqualTo(1);
         assertThat(asDirector.csv()).contains("# Reason: Quarterly lease audit").contains("director-user").contains("120000");
 
+        // An agreement with no optional terms has null cells; the file carries them as empty, it does not fail.
+        agreements.register(new Register(site, null, "Bare", AgreementKind.TENANCY, Direction.OUTBOUND, "Bare tenancy", null, null, null, null, TODAY, TODAY.plusDays(90),
+                RenewalType.NONE, null, null, null, null, null, null, manager));
+        var withNulls = exports.export(site, null, "Quarterly lease audit", director);
+        assertThat(withNulls.rows()).isEqualTo(2);
+        assertThat(withNulls.csv()).contains("Bare tenancy");
+
         assertThatThrownBy(() -> exports.export(site, null, "Quarterly lease audit", manager)).isInstanceOf(FacilitiesException.class);
         assertThatThrownBy(() -> exports.export(site, null, "audit", director)).isInstanceOf(IllegalArgumentException.class);
     }
@@ -449,6 +456,7 @@ class LeaseServicePostgresTest {
         }
 
         assertThatThrownBy(() -> retention.set("S177", "LEGAL", 30, "x", manager)).isInstanceOf(FacilitiesException.class);
+        assertThatThrownBy(() -> retention.set("S177", "LEGAL", 30, "x", compliance)).isInstanceOf(FacilitiesException.class);
         assertThatThrownBy(() -> retention.set("S177", "LEGAL", 0, "x", director)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> retention.set("S177", "LEGAL", 30, " ", director)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> retention.set("S177", "NOPE", 30, "x", director)).isInstanceOf(IllegalArgumentException.class);

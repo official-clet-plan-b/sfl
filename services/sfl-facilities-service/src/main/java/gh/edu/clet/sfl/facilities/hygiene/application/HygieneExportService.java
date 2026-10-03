@@ -32,7 +32,7 @@ public class HygieneExportService {
         String why = RegisterExport.reason(reason);
         List<HygieneFinding> rows = RegisterExport.collect(page -> findings.list(site, status, null, null, false, page, 100, caller).items());
         RegisterExport.Result result = RegisterExport.build("S170", "findings", site, caller.actor().actorId(), why, support.now(),
-                List.of("Reference", "Title", "Category", "Severity", "Status", "Owner", "Target date", "Escalation", "Work order (S153)", "Incident (S163)", "Created"), rows, r -> List.<Object>of(r.reference(), r.title(), r.category(), r.severity(), r.status(), r.ownerReference(), r.targetDate(), r.escalationLevel(), r.workOrderNumber(), r.incidentReference(), r.createdAt()));
+                List.of("Reference", "Title", "Category", "Severity", "Status", "Owner", "Target date", "Escalation", "Work order (S153)", "Incident (S163)", "Created"), rows, r -> java.util.Arrays.<Object>asList(r.reference(), r.title(), r.category(), r.severity(), r.status(), r.ownerReference(), r.targetDate(), r.escalationLevel(), r.workOrderNumber(), r.incidentReference(), r.createdAt()));
         support.audit(caller, AuditAction.REGISTER_EXPORTED, "HygieneFinding", UUID.nameUUIDFromBytes(("S170:" + site).getBytes()), site, null,
                 "findings: " + result.rows() + " row(s)" + (result.truncated() ? " (truncated)" : "") + "; reason: " + why);
         return result;

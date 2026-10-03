@@ -32,7 +32,7 @@ public class CateringExportService {
         String why = RegisterExport.reason(reason);
         List<CateringService> rows = RegisterExport.collect(page -> services.list(site, status, page, 100, caller).items());
         RegisterExport.Result result = RegisterExport.build("S172", "services", site, caller.actor().actorId(), why, support.now(),
-                List.of("Reference", "Title", "Context", "Context reference", "Service date", "Planned portions", "Delivered portions", "Status", "Requested by", "Approved by", "Purchase reference", "Invoice reference", "Finance state"), rows, r -> List.<Object>of(r.reference(), r.title(), r.contextType(), r.contextReference(), r.serviceDate(), r.plannedPortions(), r.deliveredPortions(), r.status(), r.requestedBy(), r.approvedBy(), r.purchaseReference(), r.invoiceReference(), r.financeState()));
+                List.of("Reference", "Title", "Context", "Context reference", "Service date", "Planned portions", "Delivered portions", "Status", "Requested by", "Approved by", "Purchase reference", "Invoice reference", "Finance state"), rows, r -> java.util.Arrays.<Object>asList(r.reference(), r.title(), r.contextType(), r.contextReference(), r.serviceDate(), r.plannedPortions(), r.deliveredPortions(), r.status(), r.requestedBy(), r.approvedBy(), r.purchaseReference(), r.invoiceReference(), r.financeState()));
         support.audit(caller, AuditAction.REGISTER_EXPORTED, "CateringService", UUID.nameUUIDFromBytes(("S172:" + site).getBytes()), site, null,
                 "services: " + result.rows() + " row(s)" + (result.truncated() ? " (truncated)" : "") + "; reason: " + why);
         return result;

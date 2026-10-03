@@ -32,7 +32,7 @@ public class WasteExportService {
         String why = RegisterExport.reason(reason);
         List<WasteCollection> rows = RegisterExport.collect(page -> collections.list(site, status, null, false, page, 100, caller).items());
         RegisterExport.Result result = RegisterExport.build("S178", "collections", site, caller.actor().actorId(), why, support.now(),
-                List.of("Reference", "Scheduled", "Collected", "Hazardous", "Quantity", "Unit", "Quantity (kg)", "Basis", "Manifest", "Certificate", "Contaminated", "Status"), rows, r -> List.<Object>of(r.reference(), r.scheduledFor(), r.collectedOn(), r.hazardous(), r.quantity(), r.unit(), r.quantityKg(), r.quantityBasis(), r.manifestReference(), r.certificateReference(), r.contaminated(), r.status()));
+                List.of("Reference", "Scheduled", "Collected", "Hazardous", "Quantity", "Unit", "Quantity (kg)", "Basis", "Manifest", "Certificate", "Contaminated", "Status"), rows, r -> java.util.Arrays.<Object>asList(r.reference(), r.scheduledFor(), r.collectedOn(), r.hazardous(), r.quantity(), r.unit(), r.quantityKg(), r.quantityBasis(), r.manifestReference(), r.certificateReference(), r.contaminated(), r.status()));
         support.audit(caller, AuditAction.REGISTER_EXPORTED, "WasteCollection", UUID.nameUUIDFromBytes(("S178:" + site).getBytes()), site, null,
                 "collections: " + result.rows() + " row(s)" + (result.truncated() ? " (truncated)" : "") + "; reason: " + why);
         return result;
