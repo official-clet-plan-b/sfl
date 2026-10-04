@@ -26,7 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * nothing here either.
  *
  * <p>This also proves the {@code OidcRolesConverter}/{@code OidcRoleClaims} generalisation actually
- * works against a Zitadel-shaped token end to end, not just that the pieces compile.
+ * works against a Keycloak-shaped token end to end, not just that the pieces compile.
  */
 @SpringBootTest(properties = {
         "sfl.security.enabled=true",
@@ -65,7 +65,7 @@ class FleetJwtSecurityTest extends FleetPostgresSupport {
     }
 
     @Test
-    @DisplayName("a Zitadel-shaped token is admitted - authenticated, not refused with 401")
+    @DisplayName("a Keycloak-shaped token is admitted - authenticated, not refused with 401")
     void a_valid_token_is_admitted() throws Exception {
         mockMvc.perform(get("/api/v1/fleet/vehicles").with(jwt().jwt(fleetManager())))
                 .andExpect(result -> {
@@ -94,7 +94,7 @@ class FleetJwtSecurityTest extends FleetPostgresSupport {
                 .subject("fleet.manager")
                 .claim("name", "Fleet Manager")
                 .claim("preferred_username", "fleet.manager")
-                .claim("urn:zitadel:iam:org:project:roles", Map.of("FLEET_MANAGER", Map.of("org-id", "clet")))
+                .claim("realm_access", Map.of("roles", List.of("FLEET_MANAGER")))
                 .claim("site_scopes", List.of("CLET-HQ"))
                 .build();
     }
