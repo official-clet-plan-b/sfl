@@ -1,4 +1,4 @@
-FROM mirror.gcr.io/library/maven:3.9-eclipse-temurin-17 AS build
+FROM mirror.gcr.io/library/maven:3-eclipse-temurin-26 AS build
 WORKDIR /workspace
 ARG VITE_SFL_IAM_ISSUER=http://localhost:8080/realms/sfl
 ARG VITE_SFL_IAM_CLIENT_ID=sfl-operations-ui
