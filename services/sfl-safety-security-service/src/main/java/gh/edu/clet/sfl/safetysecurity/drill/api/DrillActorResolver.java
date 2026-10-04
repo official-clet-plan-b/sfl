@@ -39,7 +39,7 @@ public class DrillActorResolver {
     private final String rolesClaim;
 
     public DrillActorResolver(
-            @Value("${sfl.security.roles-claim:urn:zitadel:iam:org:project:roles}") String rolesClaim) {
+            @Value("${sfl.security.roles-claim}") String rolesClaim) {
         this.rolesClaim = rolesClaim;
     }
 

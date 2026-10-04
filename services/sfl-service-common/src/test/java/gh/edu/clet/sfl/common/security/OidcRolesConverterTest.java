@@ -38,6 +38,17 @@ class OidcRolesConverterTest {
     }
 
     @Test
+    void reads_roles_from_a_nested_keycloak_style_claim() {
+        Jwt jwt = tokenWithClaim("realm_access", Map.of("roles", List.of("FLEET_DRIVER")));
+
+        AbstractAuthenticationToken token = new OidcRolesConverter("realm_access.roles").convert(jwt);
+
+        assertThat(token.getAuthorities())
+                .extracting(Object::toString)
+                .containsExactly("ROLE_FLEET_DRIVER");
+    }
+
+    @Test
     void an_absent_claim_grants_no_authorities() {
         Jwt jwt = tokenWithClaim("some-other-claim", "value");
 

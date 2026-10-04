@@ -97,9 +97,9 @@ export const facilitiesApiBaseUrl = readOptionalEnv(
 /**
  * Where the realm lives, and which client the dashboard signs in as.
  *
- * Both mirror `deploy/idp/sfl-realm.json` and the `SFL_IAM_ISSUER` the services read, so the
- * dashboard and the resource servers are talking about the same realm by construction rather than by
- * two people remembering to edit two files.
+ * The issuer is the only provider-specific setting. The authentication client uses its OIDC discovery
+ * document to resolve authorization, token and logout endpoints, so the same bundle can use Zitadel,
+ * Keycloak, or another conforming provider without changing application code.
  */
 export const iamIssuer = readEnv('VITE_SFL_IAM_ISSUER', 'http://localhost:8080/realms/sfl');
 export const iamClientId = readEnv('VITE_SFL_IAM_CLIENT_ID', 'sfl-operations-ui');

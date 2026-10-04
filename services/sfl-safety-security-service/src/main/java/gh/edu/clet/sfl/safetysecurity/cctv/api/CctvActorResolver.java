@@ -34,7 +34,7 @@ public class CctvActorResolver {
     private final String rolesClaim;
 
     public CctvActorResolver(
-            @Value("${sfl.security.roles-claim:urn:zitadel:iam:org:project:roles}") String rolesClaim) {
+            @Value("${sfl.security.roles-claim}") String rolesClaim) {
         this.rolesClaim = rolesClaim;
     }
 

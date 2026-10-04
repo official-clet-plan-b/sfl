@@ -44,6 +44,7 @@ spring:
     schemas: safety_security,emergency_notification
     locations: classpath:db/migration
   security:
+    roles-claim: ${SFL_SECURITY_ROLES_CLAIM:urn:zitadel:iam:org:project:roles}
     oauth2:
       resourceserver:
         jwt:

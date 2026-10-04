@@ -44,7 +44,7 @@ public class FleetActorResolver {
 
     private final String rolesClaim;
 
-    public FleetActorResolver(@Value("${sfl.security.roles-claim:urn:zitadel:iam:org:project:roles}") String rolesClaim) {
+    public FleetActorResolver(@Value("${sfl.security.roles-claim}") String rolesClaim) {
         this.rolesClaim = rolesClaim;
     }
 

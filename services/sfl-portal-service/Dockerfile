@@ -1,5 +1,9 @@
-FROM maven:3.9-eclipse-temurin-17 AS build
+FROM mirror.gcr.io/library/maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /workspace
+ARG VITE_SFL_IAM_ISSUER=http://localhost:8080/realms/sfl
+ARG VITE_SFL_IAM_CLIENT_ID=sfl-operations-ui
+ENV VITE_SFL_IAM_ISSUER=$VITE_SFL_IAM_ISSUER
+ENV VITE_SFL_IAM_CLIENT_ID=$VITE_SFL_IAM_CLIENT_ID
 COPY services/pom.xml services/pom.xml
 COPY services/sfl-service-common services/sfl-service-common
 COPY services/sfl-portal-service services/sfl-portal-service
@@ -17,7 +21,7 @@ COPY services/sfl-fleet-logistics-service/pom.xml services/sfl-fleet-logistics-s
 # successfully with an empty dashboard.
 RUN mvn -f services/pom.xml -pl sfl-portal-service -am -Pui package -DskipTests
 
-FROM eclipse-temurin:17-jre
+FROM mirror.gcr.io/library/eclipse-temurin:17-jre
 RUN groupadd -r spring && useradd -r -g spring spring
 WORKDIR /app
 COPY --from=build /workspace/services/sfl-portal-service/target/sfl-portal-service-0.1.0-SNAPSHOT.jar app.jar

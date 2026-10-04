@@ -40,7 +40,7 @@ public class IncidentActorResolver {
     private final String rolesClaim;
 
     public IncidentActorResolver(
-            @Value("${sfl.security.roles-claim:urn:zitadel:iam:org:project:roles}") String rolesClaim) {
+            @Value("${sfl.security.roles-claim}") String rolesClaim) {
         this.rolesClaim = rolesClaim;
     }
 

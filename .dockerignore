@@ -22,3 +22,15 @@ frontend/sfl-operations-ui/dist/
 .vscode/
 .DS_Store
 *.log
+
+# Runtime configuration, credentials and local-only state must never enter an image.
+**/.env
+**/.env.*
+!**/.env.example
+uploads/
+**/uploads/
+# Do not exclude a generic `vendor/` directory: Facilities has Java packages under
+# `shared/application/vendor/` that are required by the compile.
+outputs/
+**/outputs/
+.mcp.json
