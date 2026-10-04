@@ -370,7 +370,8 @@ public class LostFoundStore {
                 """, (rs, n) -> new long[] {rs.getLong(1), rs.getLong(2)}, site);
     }
 
-    public long count(String sql, Object... args) {
+    // Package-private: only the application service in this package can supply the fixed SQL templates.
+    long count(String sql, Object... args) {
         Long value = jdbc.queryForObject(sql, Long.class, args);
         return value == null ? 0 : value;
     }
