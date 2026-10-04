@@ -122,9 +122,9 @@ class FacilitiesJwtSecurityTest {
     }
 
     /**
-     * A token shaped the way the platform's OIDC provider (Zitadel) issues them.
+     * A token shaped the way the platform's primary OIDC provider (Keycloak) issues them.
      *
-     * <p>{@code urn:zitadel:iam:org:project:roles} and {@code site_scopes} are the two claims
+     * <p>{@code realm_access.roles} and {@code site_scopes} are the two claims
      * {@code FacilitiesActorResolver.fromJwt} reads (the first via {@code OidcRolesConverter}, the
      * second directly), so a change here or in {@code deploy/idp}'s bootstrap that is not made in both
      * places fails this test rather than surfacing in production as an actor with no roles and no
@@ -145,7 +145,7 @@ class FacilitiesJwtSecurityTest {
                 .subject(subject)
                 .claim("name", name)
                 .claim("preferred_username", subject)
-                .claim("urn:zitadel:iam:org:project:roles", Map.of(projectRole, Map.of("org-id", "clet")))
+                .claim("realm_access", Map.of("roles", List.of(projectRole)))
                 .claim("site_scopes", List.of("MAIN"))
                 .build();
     }

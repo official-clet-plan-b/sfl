@@ -54,7 +54,7 @@ class SafetySecurityJwtSecurityTest extends SafetySecurityPostgresSupport {
     }
 
     @Test
-    @DisplayName("a Zitadel-shaped token is admitted - authenticated, not refused with 401")
+    @DisplayName("a Keycloak-shaped token is admitted - authenticated, not refused with 401")
     void a_valid_token_is_admitted() throws Exception {
         mockMvc.perform(get("/api/v1/incidents").with(jwt().jwt(hseManager())))
                 .andExpect(result -> {
@@ -90,7 +90,7 @@ class SafetySecurityJwtSecurityTest extends SafetySecurityPostgresSupport {
                 .subject("hse.manager")
                 .claim("name", "HSE Manager")
                 .claim("preferred_username", "hse.manager")
-                .claim("urn:zitadel:iam:org:project:roles", Map.of("HSE_MANAGER", Map.of("org-id", "clet")))
+                .claim("realm_access", Map.of("roles", List.of("HSE_MANAGER")))
                 .claim("site_scopes", List.of("CLET-HQ"))
                 .build();
     }

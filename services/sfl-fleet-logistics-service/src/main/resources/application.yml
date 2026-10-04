@@ -71,7 +71,6 @@ spring:
     publisher-confirm-type: correlated
     publisher-returns: true
   security:
-    roles-claim: ${SFL_SECURITY_ROLES_CLAIM:urn:zitadel:iam:org:project:roles}
     oauth2:
       resourceserver:
         jwt:
@@ -120,6 +119,7 @@ sfl:
     schema: fleet_logistics,asset_visibility
     owns: "Fleet, Transport, Assets & Logistics Management Platform (SFL.FTLMP) - S166 Fleet and Vehicle Management, S168_fuel Fuel Management and Driver Logbooks, S171 Mailroom / Courier and Dispatch Tracking, and the AVAMP-Lite asset and device reference layer"
   security:
+    roles-claim: ${SFL_SECURITY_ROLES_CLAIM:realm_access.roles}
     # Secure unless deliberately opened. This defaulted to `false`, and the filter chain that opened
     # everything also carried `matchIfMissing = true` - so an environment that simply forgot the
     # variable ran with every endpoint unauthenticated and the actor taken from whatever the caller

@@ -76,7 +76,6 @@ spring:
         # a DLQ and this becomes `false`.
         default-requeue-rejected: true
   security:
-    roles-claim: ${SFL_SECURITY_ROLES_CLAIM:urn:zitadel:iam:org:project:roles}
     oauth2:
       resourceserver:
         jwt:
@@ -124,6 +123,7 @@ sfl:
     schema: facilities
     owns: "Facilities service for S152, S153, S159 and Phase 2 S156, S157, S158, S169, S173, S176"
   security:
+    roles-claim: ${SFL_SECURITY_ROLES_CLAIM:realm_access.roles}
     # Secure unless deliberately opened. This defaulted to `false`, and the filter chain that opened
     # everything also carried `matchIfMissing = true` - so an environment that simply forgot the
     # variable ran with every endpoint unauthenticated and the actor taken from whatever the caller

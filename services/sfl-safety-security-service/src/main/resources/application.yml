@@ -44,7 +44,6 @@ spring:
     schemas: safety_security,emergency_notification
     locations: classpath:db/migration
   security:
-    roles-claim: ${SFL_SECURITY_ROLES_CLAIM:urn:zitadel:iam:org:project:roles}
     oauth2:
       resourceserver:
         jwt:
@@ -96,6 +95,7 @@ management:
 
 sfl:
   security:
+    roles-claim: ${SFL_SECURITY_ROLES_CLAIM:realm_access.roles}
     # Secure unless deliberately opened, matching the other two platforms. This key was absent
     # entirely, and so was any filter chain to read it - which did not leave the service open, it
     # left Spring Security's default securing everything including /actuator/health, so the service

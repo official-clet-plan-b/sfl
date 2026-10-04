@@ -43,6 +43,8 @@
         <archunit.version>1.3.0</archunit.version>
         <springdoc-openapi.version>3.0.3</springdoc-openapi.version>
         <testcontainers.version>1.21.3</testcontainers.version>
+        <!-- Keep the PostgreSQL JDBC driver on the patched release required by Trivy. -->
+        <postgresql.version>42.7.12</postgresql.version>
     </properties>
 
     <dependencyManagement>
@@ -206,4 +208,3 @@
         </profile>
     </profiles>
 </project>
-
