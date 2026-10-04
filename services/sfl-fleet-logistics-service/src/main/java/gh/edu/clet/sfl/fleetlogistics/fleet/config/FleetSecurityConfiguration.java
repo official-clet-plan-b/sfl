@@ -63,7 +63,7 @@ class FleetSecurityConfiguration {
     @Bean
     @ConditionalOnProperty(name = "sfl.security.enabled", havingValue = "true", matchIfMissing = true)
     SecurityFilterChain resourceServerSecurity(HttpSecurity http,
-            @Value("${sfl.security.roles-claim:urn:zitadel:iam:org:project:roles}") String rolesClaim)
+            @Value("${sfl.security.roles-claim}") String rolesClaim)
             throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())

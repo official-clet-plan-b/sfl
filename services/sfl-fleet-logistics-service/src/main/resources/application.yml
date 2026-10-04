@@ -71,6 +71,7 @@ spring:
     publisher-confirm-type: correlated
     publisher-returns: true
   security:
+    roles-claim: ${SFL_SECURITY_ROLES_CLAIM:urn:zitadel:iam:org:project:roles}
     oauth2:
       resourceserver:
         jwt:

@@ -10,7 +10,7 @@ services:
     volumes:
       - sfl_facilities_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${SFL_FACILITIES_POSTGRES_USER:-sfl}"]
+      test: ["CMD-SHELL", "pg_isready -U ${SFL_FACILITIES_POSTGRES_USER:-sfl} -d ${SFL_FACILITIES_POSTGRES_DB:-sfl_facilities_service}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -26,7 +26,7 @@ services:
     volumes:
       - sfl_safety_security_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${SFL_SAFETY_SECURITY_POSTGRES_USER:-sfl}"]
+      test: ["CMD-SHELL", "pg_isready -U ${SFL_SAFETY_SECURITY_POSTGRES_USER:-sfl} -d ${SFL_SAFETY_SECURITY_POSTGRES_DB:-sfl_safety_security_service}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -42,15 +42,10 @@ services:
     volumes:
       - sfl_fleet_vehicle_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${SFL_FLEET_LOGISTICS_POSTGRES_USER:-sfl}"]
+      test: ["CMD-SHELL", "pg_isready -U ${SFL_FLEET_LOGISTICS_POSTGRES_USER:-sfl} -d ${SFL_FLEET_LOGISTICS_POSTGRES_DB:-sfl__fleet_vehicle_service}"]
       interval: 10s
       timeout: 5s
       retries: 10
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "127.0.0.1:6379:6379"
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -67,10 +62,56 @@ services:
       retries: 10
 
   idp-postgres:
-    # Zitadel requires Postgres (or CockroachDB) as its backing store - there is no embedded/in-memory
-    # mode. A dedicated instance, matching how every other service here gets its own Postgres rather
-    # than sharing one.
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_USER: ${SFL_KEYCLOAK_POSTGRES_USER:-keycloak}
+      POSTGRES_PASSWORD: ${SFL_KEYCLOAK_POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${SFL_KEYCLOAK_POSTGRES_DB:-keycloak}
+    volumes:
+      - sfl_keycloak_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${SFL_KEYCLOAK_POSTGRES_USER:-keycloak} -d ${SFL_KEYCLOAK_POSTGRES_DB:-keycloak}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  idp:
+    image: quay.io/keycloak/keycloak:26.3
+    command: ["start-dev", "--http-port=8080", "--health-enabled=true", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://idp-postgres:5432/${SFL_KEYCLOAK_POSTGRES_DB:-keycloak}
+      KC_DB_USERNAME: ${SFL_KEYCLOAK_POSTGRES_USER:-keycloak}
+      KC_DB_PASSWORD: ${SFL_KEYCLOAK_POSTGRES_PASSWORD:-change-me}
+      KEYCLOAK_ADMIN: ${SFL_KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${SFL_KEYCLOAK_ADMIN_PASSWORD:-Change-Me-1!}
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_HTTP_MANAGEMENT_PORT: "9000"
+      KC_HOSTNAME: ${SFL_KEYCLOAK_HOSTNAME:-localhost}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+    volumes:
+      - ../idp:/opt/keycloak/data/import:ro
+    depends_on:
+      idp-postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      # The official Keycloak image does not ship curl. Bash is present, so probe its management
+      # port directly without adding a utility layer to the image.
+      test: ["CMD-SHELL", "/usr/bin/bash -c 'exec 3<>/dev/tcp/127.0.0.1/9000'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  # Retained for migrations or environments that still use Zitadel. It is not part of the default
+  # stack and never receives application traffic unless the zitadel profile is explicitly enabled.
+  zitadel-postgres:
     image: postgres:16-alpine
+    profiles: ["zitadel"]
     environment:
       POSTGRES_USER: ${SFL_IDP_POSTGRES_USER:-zitadel}
       POSTGRES_PASSWORD: ${SFL_IDP_POSTGRES_PASSWORD:-change-me}
@@ -78,27 +119,17 @@ services:
     volumes:
       - sfl_idp_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${SFL_IDP_POSTGRES_USER:-zitadel}"]
+      test: ["CMD-SHELL", "pg_isready -U ${SFL_IDP_POSTGRES_USER:-zitadel} -d ${SFL_IDP_POSTGRES_DB:-zitadel}"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  idp:
-    # The platform's OIDC provider. Verified directly (not assumed) against v4.17.3 before this was
-    # written: start-from-init against idp-postgres brings up a working instance whose
-    # /.well-known/openid-configuration issuer is the bare externalDomain:externalPort - no
-    # Keycloak-style /realms/<name> path - which is exactly what every service's SFL_IAM_ISSUER
-    # default now expects (see each application.yml).
-    #
-    # Unlike Keycloak's --import-realm, Zitadel has no single declarative "import this realm" file for
-    # provisioning the platform's roles, personas and the site_scopes custom claim - that provisioning
-    # is not automated here and must be done once against the running instance's Console
-    # (http://localhost:8080/ui/console) or via Zitadel's official Terraform provider. See
-    # deploy/idp/README.md.
+  zitadel:
     image: ghcr.io/zitadel/zitadel:latest
+    profiles: ["zitadel"]
     command: ["start-from-init", "--masterkeyFromEnv", "--tlsMode", "disabled"]
     environment:
-      ZITADEL_DATABASE_POSTGRES_HOST: idp-postgres
+      ZITADEL_DATABASE_POSTGRES_HOST: zitadel-postgres
       ZITADEL_DATABASE_POSTGRES_PORT: "5432"
       ZITADEL_DATABASE_POSTGRES_DATABASE: ${SFL_IDP_POSTGRES_DB:-zitadel}
       ZITADEL_DATABASE_POSTGRES_USER_USERNAME: ${SFL_IDP_POSTGRES_USER:-zitadel}
@@ -107,27 +138,18 @@ services:
       ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: ${SFL_IDP_POSTGRES_USER:-zitadel}
       ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: ${SFL_IDP_POSTGRES_PASSWORD:-change-me}
       ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: disable
-      ZITADEL_EXTERNALDOMAIN: localhost
-      ZITADEL_EXTERNALPORT: "8080"
+      ZITADEL_EXTERNALDOMAIN: ${SFL_ZITADEL_EXTERNALDOMAIN:-localhost}
+      ZITADEL_EXTERNALPORT: ${SFL_ZITADEL_EXTERNALPORT:-8081}
       ZITADEL_EXTERNALSECURE: "false"
       ZITADEL_TLS_ENABLED: "false"
       ZITADEL_MASTERKEY: ${SFL_IDP_MASTERKEY:-ChangeThisMasterkey32Characters!}
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME: ${SFL_IDP_ADMIN:-admin}
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: ${SFL_IDP_ADMIN_PASSWORD:-Change-Me-1!}
     depends_on:
-      idp-postgres:
+      zitadel-postgres:
         condition: service_healthy
     ports:
-      - "127.0.0.1:8080:8080"
-    healthcheck:
-      # No shell in this image (confirmed: `docker exec ... sh` fails with "executable file not
-      # found"), so a CMD-SHELL healthcheck can never run here - `zitadel ready` is the binary's own
-      # equivalent, needs no shell, and is what this was verified with directly before being written.
-      test: ["CMD", "/app/zitadel", "ready"]
-      interval: 10s
-      timeout: 5s
-      retries: 20
-      start_period: 20s
+      - "127.0.0.1:8081:8080"
 
   sfl-facilities-service:
     build:
@@ -138,7 +160,8 @@ services:
       SFL_FACILITIES_DB_URL: jdbc:postgresql://facilities-postgres:5432/sfl_facilities_service
       SFL_FACILITIES_DB_USERNAME: ${SFL_FACILITIES_POSTGRES_USER:-sfl}
       SFL_FACILITIES_DB_PASSWORD: ${SFL_FACILITIES_POSTGRES_PASSWORD:-change-me}
-      SFL_IAM_ISSUER: http://idp:8080
+      SFL_IAM_ISSUER: ${SFL_IAM_ISSUER:-http://idp:8080/realms/sfl}
+      SFL_SECURITY_ROLES_CLAIM: ${SFL_SECURITY_ROLES_CLAIM:-realm_access.roles}
       SFL_RABBITMQ_HOST: rabbitmq
       SFL_RABBITMQ_USERNAME: ${SFL_RABBITMQ_USER:-sfl}
       SFL_RABBITMQ_PASSWORD: ${SFL_RABBITMQ_PASSWORD:-change-me}
@@ -174,7 +197,8 @@ services:
       SFL_SAFETY_SECURITY_DB_URL: jdbc:postgresql://safety-security-postgres:5432/sfl_safety_security_service
       SFL_SAFETY_SECURITY_DB_USERNAME: ${SFL_SAFETY_SECURITY_POSTGRES_USER:-sfl}
       SFL_SAFETY_SECURITY_DB_PASSWORD: ${SFL_SAFETY_SECURITY_POSTGRES_PASSWORD:-change-me}
-      SFL_IAM_ISSUER: http://idp:8080
+      SFL_IAM_ISSUER: ${SFL_IAM_ISSUER:-http://idp:8080/realms/sfl}
+      SFL_SECURITY_ROLES_CLAIM: ${SFL_SECURITY_ROLES_CLAIM:-realm_access.roles}
       SFL_RABBITMQ_HOST: rabbitmq
       SFL_RABBITMQ_USERNAME: ${SFL_RABBITMQ_USER:-sfl}
       SFL_RABBITMQ_PASSWORD: ${SFL_RABBITMQ_PASSWORD:-change-me}
@@ -210,7 +234,8 @@ services:
       SFL_FLEET_LOGISTICS_DB_URL: jdbc:postgresql://fleet-vehicle-postgres:5432/sfl__fleet_vehicle_service
       SFL_FLEET_LOGISTICS_DB_USERNAME: ${SFL_FLEET_LOGISTICS_POSTGRES_USER:-sfl}
       SFL_FLEET_LOGISTICS_DB_PASSWORD: ${SFL_FLEET_LOGISTICS_POSTGRES_PASSWORD:-change-me}
-      SFL_IAM_ISSUER: http://idp:8080
+      SFL_IAM_ISSUER: ${SFL_IAM_ISSUER:-http://idp:8080/realms/sfl}
+      SFL_SECURITY_ROLES_CLAIM: ${SFL_SECURITY_ROLES_CLAIM:-realm_access.roles}
       SFL_RABBITMQ_HOST: rabbitmq
       SFL_RABBITMQ_USERNAME: ${SFL_RABBITMQ_USER:-sfl}
       SFL_RABBITMQ_PASSWORD: ${SFL_RABBITMQ_PASSWORD:-change-me}
@@ -244,6 +269,9 @@ services:
     build:
       context: ../..
       dockerfile: services/sfl-portal-service/Dockerfile
+      args:
+        VITE_SFL_IAM_ISSUER: ${VITE_SFL_IAM_ISSUER:-http://localhost:8080/realms/sfl}
+        VITE_SFL_IAM_CLIENT_ID: ${VITE_SFL_IAM_CLIENT_ID:-sfl-operations-ui}
     environment:
       SFL_PORTAL_PORT: 8080
     ports:
@@ -264,4 +292,5 @@ volumes:
   sfl_facilities_postgres_data:
   sfl_safety_security_postgres_data:
   sfl_fleet_vehicle_postgres_data:
+  sfl_keycloak_postgres_data:
   sfl_idp_postgres_data:

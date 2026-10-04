@@ -6,9 +6,8 @@ import { SflSession, clearSession, readSession, sessionFromTokens, writeSession 
  *
  * <h2>Why the password grant rather than a redirect</h2>
  *
- * `sfl-operations-ui` is declared in `deploy/idp/sfl-realm.json` as a public client with
- * `directAccessGrantsEnabled: true`, so the dashboard can exchange an email and password for a token
- * directly. That is what makes an in-app login form possible at all.
+ * The configured client must permit the password grant for this current in-app login form. Endpoint
+ * URLs come from OIDC discovery, so the provider can be changed by configuration.
  *
  * It is worth being clear that this is **not** the flow to ship to production. The OAuth working
  * group deprecates the resource-owner password grant for public clients, for a reason that applies
@@ -25,7 +24,7 @@ import { SflSession, clearSession, readSession, sessionFromTokens, writeSession 
  *
  * "Cannot sign in" covers two completely different situations - the credentials are wrong, or the
  * identity provider is not running - and on a developer laptop it is nearly always the second. They
- * are reported separately, because telling somebody their password is wrong when Keycloak is simply
+ * are reported separately, because telling somebody their password is wrong when the provider is simply
  * down sends them to reset a password that was fine.
  */
 
@@ -39,7 +38,30 @@ export type SignInFailure =
 
 export type SignInResult = { ok: true; session: SflSession } | ({ ok: false } & SignInFailure);
 
-const tokenEndpoint = (): string => `${iamIssuer.replace(/\/$/, '')}/protocol/openid-connect/token`;
+interface OidcDiscovery {
+  token_endpoint?: string;
+  end_session_endpoint?: string;
+  revocation_endpoint?: string;
+}
+
+let discoveryPromise: Promise<OidcDiscovery> | null = null;
+
+const discover = async (): Promise<OidcDiscovery> => {
+  if (!discoveryPromise) {
+    discoveryPromise = fetch(`${iamIssuer.replace(/\/$/, '')}/.well-known/openid-configuration`)
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`OIDC discovery failed with HTTP ${response.status}`);
+        }
+        return (await response.json()) as OidcDiscovery;
+      })
+      .catch((error) => {
+        discoveryPromise = null;
+        throw error;
+      });
+  }
+  return discoveryPromise;
+};
 
 const form = (fields: Record<string, string>): string =>
   Object.entries(fields)
@@ -64,7 +86,11 @@ export const signIn = async (email: string, password: string): Promise<SignInRes
 
   let response: Response;
   try {
-    response = await fetch(tokenEndpoint(), {
+    const discovery = await discover();
+    if (!discovery.token_endpoint) {
+      throw new Error('OIDC discovery did not provide a token endpoint');
+    }
+    response = await fetch(discovery.token_endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: form({
@@ -77,14 +103,13 @@ export const signIn = async (email: string, password: string): Promise<SignInRes
       signal: controller.signal,
     });
   } catch {
-    // A network-level failure. On a laptop this is almost always Keycloak not running, so the
-    // message names that first rather than blaming the credentials.
+    // A network-level failure means the provider or its discovery endpoint is unavailable.
     return {
       ok: false,
       reason: 'unreachable',
       message:
         `Could not reach the identity provider at ${iamIssuer}. ` +
-        'Start Keycloak, or run the service with SFL_SECURITY_ENABLED=false for header-based local development.',
+        'Start the configured identity provider, or run the service with SFL_SECURITY_ENABLED=false for header-based local development.',
     };
   } finally {
     clearTimeout(timer);
@@ -149,7 +174,12 @@ export const signOut = async (): Promise<void> => {
     return;
   }
   try {
-    await fetch(`${iamIssuer.replace(/\/$/, '')}/protocol/openid-connect/logout`, {
+    const discovery = await discover();
+    const logoutEndpoint = discovery.end_session_endpoint ?? discovery.revocation_endpoint;
+    if (!logoutEndpoint) {
+      return;
+    }
+    await fetch(logoutEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: form({ client_id: iamClientId, refresh_token: session.refreshToken }),

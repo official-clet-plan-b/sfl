@@ -12,8 +12,10 @@ import org.springframework.security.oauth2.jwt.Jwt;
  * rather than as six near-identical private methods.
  *
  * <p>Accepts either shape a provider might put at the claim: a flat list of role-name strings, or a
- * map whose keys are role names (Zitadel's {@code urn:zitadel:iam:org:project:roles} shape). See
- * {@link OidcRolesConverter} for why both are handled rather than one provider's assumed.
+ * map whose keys are role names (Zitadel's {@code urn:zitadel:iam:org:project:roles} shape). A
+ * dotted claim name such as {@code realm_access.roles} also reads nested claims, which keeps the
+ * standard Keycloak token shape selectable through configuration without coupling the services to
+ * Keycloak.
  */
 public final class OidcRoleClaims {
 
@@ -22,6 +24,9 @@ public final class OidcRoleClaims {
 
     public static Set<String> roleNames(Jwt jwt, String claimName) {
         Object claim = jwt.getClaim(claimName);
+        if (claim == null && claimName.contains(".")) {
+            claim = nestedClaim(jwt, claimName);
+        }
         if (claim instanceof Map<?, ?> map) {
             return map.keySet().stream().map(String::valueOf).collect(Collectors.toUnmodifiableSet());
         }
@@ -29,5 +34,16 @@ public final class OidcRoleClaims {
             return list.stream().map(String::valueOf).collect(Collectors.toUnmodifiableSet());
         }
         return Set.of();
+    }
+
+    private static Object nestedClaim(Jwt jwt, String claimName) {
+        Object current = jwt.getClaims();
+        for (String segment : claimName.split("\\.")) {
+            if (!(current instanceof Map<?, ?> map)) {
+                return null;
+            }
+            current = map.get(segment);
+        }
+        return current;
     }
 }

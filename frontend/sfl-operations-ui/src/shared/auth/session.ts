@@ -48,7 +48,7 @@ export interface SflSession {
   siteScopes: string[];
 }
 
-interface KeycloakClaims {
+interface OidcClaims {
   sub?: string;
   exp?: number;
   preferred_username?: string;
@@ -57,6 +57,9 @@ interface KeycloakClaims {
   family_name?: string;
   email?: string;
   realm_access?: { roles?: string[] };
+  roles?: string[];
+  'urn:zitadel:iam:org:project:roles'?: Record<string, unknown>;
+  [claim: string]: unknown;
   site_scopes?: string[] | string;
 }
 
@@ -69,7 +72,7 @@ interface KeycloakClaims {
  * What this is for is deciding which nav items to draw, and a tampered token buys nothing: the
  * services refuse it.
  */
-export const decodeClaims = (token: string): KeycloakClaims | null => {
+export const decodeClaims = (token: string): OidcClaims | null => {
   const payload = token.split('.')[1];
   if (!payload) {
     return null;
@@ -79,7 +82,7 @@ export const decodeClaims = (token: string): KeycloakClaims | null => {
     const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
     const binary = atob(base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '='));
     const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-    return JSON.parse(new TextDecoder().decode(bytes)) as KeycloakClaims;
+    return JSON.parse(new TextDecoder().decode(bytes)) as OidcClaims;
   } catch {
     return null;
   }
@@ -94,6 +97,16 @@ const parseScopes = (value: string[] | string | undefined): string[] => {
     return value.split(',').map((entry) => entry.trim()).filter(Boolean);
   }
   return [];
+};
+
+const parseRoles = (claims: OidcClaims): string[] => {
+  if (claims.realm_access?.roles) {
+    return claims.realm_access.roles;
+  }
+  if (claims.roles) {
+    return claims.roles;
+  }
+  return Object.keys(claims['urn:zitadel:iam:org:project:roles'] ?? {});
 };
 
 export const sessionFromTokens = (
@@ -116,7 +129,7 @@ export const sessionFromTokens = (
     username,
     displayName: fullName || username,
     email: claims.email ?? null,
-    roles: claims.realm_access?.roles ?? [],
+    roles: parseRoles(claims),
     siteScopes: parseScopes(claims.site_scopes),
   };
 };

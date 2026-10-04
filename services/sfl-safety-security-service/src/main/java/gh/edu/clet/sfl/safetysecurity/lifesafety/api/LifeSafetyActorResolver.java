@@ -36,7 +36,7 @@ public class LifeSafetyActorResolver {
     private final String rolesClaim;
 
     public LifeSafetyActorResolver(
-            @Value("${sfl.security.roles-claim:urn:zitadel:iam:org:project:roles}") String rolesClaim) {
+            @Value("${sfl.security.roles-claim}") String rolesClaim) {
         this.rolesClaim = rolesClaim;
     }
 

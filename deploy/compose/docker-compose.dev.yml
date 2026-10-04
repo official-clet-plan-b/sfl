@@ -14,15 +14,6 @@ services:
     volumes:
       - sfl_postgres_data:/var/lib/postgresql/data
 
-  redis:
-    image: redis:7-alpine
-    container_name: sfl-dev-redis
-    command: ["redis-server", "--appendonly", "yes"]
-    ports:
-      - "127.0.0.1:6379:6379"
-    volumes:
-      - sfl_redis_data:/data
-
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: sfl-dev-rabbitmq
@@ -100,6 +91,5 @@ services:
 
 volumes:
   sfl_postgres_data:
-  sfl_redis_data:
   sfl_rabbitmq_data:
   sfl_idp_postgres_data:
