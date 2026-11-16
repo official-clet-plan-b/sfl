@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
@@ -42,22 +43,16 @@ public class SflFeatureGateFilter extends OncePerRequestFilter {
         response.setStatus(HttpServletResponse.SC_NOT_FOUND);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType("application/json");
-        String correlationId = Optional.ofNullable(request.getHeader("X-Correlation-Id")).orElse("");
-        response.getWriter().write("{\"data\":null,\"error\":{\"code\":\"" + ERROR_CODE + "\","
-                + "\"message\":\"" + json(system.get()) + " is switched off in this deployment.\","
-                + "\"correlationId\":\"" + json(correlationId) + "\","
-                + "\"timestamp\":\"" + Instant.now() + "\"}}");
+        /*
+         * Nothing from the request is written back - not the path, not a caller-supplied correlation
+         * header. The body is built only from constants and server-generated values, so it cannot
+         * carry injected content. The system code stays out of it too: which module refused is for
+         * the server's log, and the dashboard already words the message for people.
+         */
+        response.getWriter().write(REFUSAL_PREFIX + UUID.randomUUID() + "\",\"timestamp\":\""
+                + Instant.now() + "\"}}");
     }
 
-    private static String json(String value) {
-        StringBuilder out = new StringBuilder(value.length());
-        for (char c : value.toCharArray()) {
-            if (c == '"' || c == '\\') {
-                out.append('\\').append(c);
-            } else if (c >= 0x20) {
-                out.append(c);
-            }
-        }
-        return out.toString();
-    }
+    private static final String REFUSAL_PREFIX = "{\"data\":null,\"error\":{\"code\":\"" + ERROR_CODE + "\","
+            + "\"message\":\"This module is switched off in this deployment.\",\"correlationId\":\"";
 }

@@ -79,9 +79,13 @@ class SflFeatureGateTest {
 
         MockHttpServletResponse refused = new MockHttpServletResponse();
         MockFilterChain refusedChain = new MockFilterChain();
-        filter.doFilter(new MockHttpServletRequest("GET", "/api/v1/dispatch/items"), refused, refusedChain);
+        MockHttpServletRequest refusedRequest = new MockHttpServletRequest("GET", "/api/v1/dispatch/items");
+        // A caller-supplied header is never reflected into the body.
+        refusedRequest.addHeader("X-Correlation-Id", "<script>alert(1)</script>");
+        filter.doFilter(refusedRequest, refused, refusedChain);
         assertThat(refused.getStatus()).isEqualTo(404);
-        assertThat(refused.getContentAsString()).contains(SflFeatureGateFilter.ERROR_CODE).contains("S171");
+        assertThat(refused.getContentAsString()).contains(SflFeatureGateFilter.ERROR_CODE)
+                .contains("switched off").doesNotContain("/api/v1/dispatch").doesNotContain("<script>");
         assertThat(refusedChain.getRequest()).isNull();
 
         MockHttpServletResponse served = new MockHttpServletResponse();
