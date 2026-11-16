@@ -21,7 +21,7 @@ COPY services/sfl-fleet-logistics-service/pom.xml services/sfl-fleet-logistics-s
 # successfully with an empty dashboard.
 RUN mvn -f services/pom.xml -pl sfl-portal-service -am -Pui package -DskipTests
 
-FROM mirror.gcr.io/library/eclipse-temurin:17-jre
+FROM mirror.gcr.io/library/eclipse-temurin:25-jre
 RUN groupadd -r spring && useradd -r -g spring spring
 WORKDIR /app
 COPY --from=build /workspace/services/sfl-portal-service/target/sfl-portal-service-0.1.0-SNAPSHOT.jar app.jar
