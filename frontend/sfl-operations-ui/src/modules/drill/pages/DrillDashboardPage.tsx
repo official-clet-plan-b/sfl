@@ -109,7 +109,7 @@ const DrillDashboardPage = () => {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-theme-sm text-gray-600">No frequency requirements are set. Until CLET sets them, no site can show a compliance gap.</p>
+                  <p className="text-theme-sm text-gray-600">No frequency requirements are set. Until GSL sets them, no site can show a compliance gap.</p>
                 )}
               </Panel>
             )}

@@ -6,7 +6,7 @@ import {
   TimelineTitle,
   type TimelineItemMode,
 } from '@rfdtech/components';
-import { formatDateTime } from 'shared/components/format';
+import { formatDateTime, personName } from 'shared/components/format';
 
 export interface TimelineEntry {
   id: string;
@@ -49,7 +49,9 @@ const FleetTimeline = ({
           <TimelineTitle>{entry.title}</TimelineTitle>
           <TimelineData>{formatDateTime(entry.occurredAt)}</TimelineData>
           {entry.detail && <TimelineData>{entry.detail}</TimelineData>}
-          {entry.actor && <TimelineFooter>by {entry.actor}</TimelineFooter>}
+          {entry.actor && personName(entry.actor) && (
+            <TimelineFooter>by {personName(entry.actor)}</TimelineFooter>
+          )}
         </TimelineItem>
       ))}
     </Timeline>

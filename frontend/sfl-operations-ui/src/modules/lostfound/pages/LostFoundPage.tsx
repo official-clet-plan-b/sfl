@@ -198,7 +198,7 @@ const Escalations = ({ siteCode, refresh, onChanged }: { siteCode: string; refre
   const columns = useMemo<TableColumn<Escalation>[]>(() => [
     { id: 'reason', header: 'Reason', width: 260, cell: ({ row }) => <CellStack primary={humanise(row.reason)} secondary={row.detail ?? undefined} /> },
     { id: 'to', header: 'Escalated to', width: 170, hideBelowLg: true, cell: ({ row }) => humanise(row.escalatedTo) },
-    { id: 'incident', header: 'Incident (S163)', width: 190, hideBelowLg: true, cell: ({ row }) => (row.incidentState === 'NOT_REQUIRED' ? '-' : row.incidentState === 'LINKED' ? row.incidentReference : 'Pending - not confirmed by S163') },
+    { id: 'incident', header: 'Incident', width: 190, hideBelowLg: true, cell: ({ row }) => (row.incidentState === 'NOT_REQUIRED' ? '-' : row.incidentState === 'LINKED' ? row.incidentReference : 'Pending - not confirmed by Incident Reporting') },
     { id: 'raised', header: 'Raised', width: 160, hideBelowLg: true, cell: ({ row }) => formatDateTime(row.raisedAt) },
     {
       id: 'state', header: 'State', width: 260, align: 'right',
@@ -222,7 +222,7 @@ const Escalations = ({ siteCode, refresh, onChanged }: { siteCode: string; refre
         </DataState>
       </Panel>
       {linking && (
-        <ReasonDialog title="Link the incident" description="Enter the reference Incident Reporting (S163) gave this incident." label="Incident reference" submitLabel="Link incident"
+        <ReasonDialog title="Link the incident" description="Enter the reference Incident Reporting gave this incident." label="Incident reference" submitLabel="Link incident"
           write={(text) => lostFoundApi.linkIncident(linking.id, text)} onClose={() => setLinking(undefined)} onDone={() => { setLinking(undefined); query.refetch(); onChanged(); }} />
       )}
     </PageSection>

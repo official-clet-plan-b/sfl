@@ -16,6 +16,18 @@ COPY services/sfl-portal-service/pom.xml services/sfl-portal-service/pom.xml
 # but ships with an empty dashboard - the copy-resources step treats a missing dist/ as optional, not
 # fatal, so this failure mode is silent.
 COPY frontend frontend
+# The bundled dashboard is served from this service's own origin (/home/), so it calls the API
+# same-origin and signs in through the identity provider. Without these the build fell back to
+# .env.production - the seeded, security-off sign-in - which cannot work against a secured service.
+ARG VITE_AUTH_PROVIDER=oidc
+ARG VITE_SFL_IAM_ISSUER=http://localhost:8080/realms/sfl
+ARG VITE_SFL_IAM_CLIENT_ID=sfl-operations-ui
+ENV VITE_AUTH_PROVIDER=$VITE_AUTH_PROVIDER \
+    VITE_SFL_IAM_ISSUER=$VITE_SFL_IAM_ISSUER \
+    VITE_SFL_IAM_CLIENT_ID=$VITE_SFL_IAM_CLIENT_ID \
+    VITE_FLEET_API_BASE_URL= \
+    VITE_SAFETY_SECURITY_API_BASE_URL= \
+    VITE_FACILITIES_API_BASE_URL=
 RUN mvn -f services/pom.xml -pl sfl-fleet-logistics-service -am -Pui package -DskipTests
 
 FROM mirror.gcr.io/library/eclipse-temurin:17-jre

@@ -3,7 +3,7 @@ package gh.edu.clet.sfl.safetysecurity.lifesafety.domain.exception;
 /** S162a error catalog, following S163's {@code IncidentErrorCode} shape. */
 public enum LifeSafetyErrorCode {
 
-    LIFESAFETY_MISSING_SITE_SCOPE(400, "Select a valid CLET site before saving this life-safety record."),
+    LIFESAFETY_MISSING_SITE_SCOPE(400, "Select a valid GSL site before saving this life-safety record."),
     LIFESAFETY_UNAUTHORIZED_SCOPE(403, "You are not authorised to access this site or record."),
     LIFESAFETY_SOURCE_NOT_ALLOWED(401, "This source system is not allowed to send life-safety events."),
     LIFESAFETY_INVALID_SIGNATURE(401, "The inbound life-safety message failed authentication."),

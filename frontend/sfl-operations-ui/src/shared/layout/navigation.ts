@@ -29,6 +29,11 @@ export interface NavItem {
   icon: IconName;
   /** Matches child routes too - `/fleetvehicle/fleet/vehicles/42` still highlights "Vehicle register". */
   matchPrefix?: string;
+  /**
+   * The system this screen belongs to, when it differs from its section's - e.g. GPS & telematics
+   * (S167) listed under the fleet operations section (S166). Lets a feature flag hide the one item.
+   */
+  system?: SystemCode;
   description?: string;
   /**
    * The permission this screen's first read requires, when it is more than the section's system.
@@ -107,6 +112,11 @@ export interface NavSection {
  */
 export const authPaths = {
   login: '/login',
+};
+
+/** Platform administration - outside every system, offered to SFL_ADMIN and DTI_ADMIN only. */
+export const adminPaths = {
+  modules: '/admin/modules',
 };
 
 export const facilitiesPaths = {
@@ -227,6 +237,7 @@ export const fleetPaths = {
 
 export const phase2FleetPaths = {
   telematics: '/fleetvehicle/telematics',
+  liveMap: '/fleetvehicle/live-map',
   vipTransport: '/fleetvehicle/vip-transport',
   assetVisibility: '/fleetvehicle/asset-visibility',
 };
@@ -925,11 +936,20 @@ export const navSections: NavSection[] = [
         ],
       },
       {
+        label: 'Live fleet map',
+        to: phase2FleetPaths.liveMap,
+        icon: 'map',
+        description: 'Where every vehicle is, and which are moving',
+        permission: 'FLEET_VEHICLE_READ',
+        system: 'S167',
+      },
+      {
         label: 'GPS & telematics',
         to: phase2FleetPaths.telematics,
         icon: 'map-pin',
         description: 'Tracking freshness and untracked vehicles',
         permission: 'FLEET_VEHICLE_READ',
+        system: 'S167',
       },
       {
         label: 'VIP transport requests',
@@ -937,6 +957,7 @@ export const navSections: NavSection[] = [
         icon: 'calendar',
         description: 'Dignitary transport requests and assignments',
         permission: 'FLEET_TRIP_READ',
+        system: 'S168a',
       },
       {
         label: 'Asset tagging & inventory',
@@ -944,6 +965,7 @@ export const navSections: NavSection[] = [
         icon: 'package',
         description: 'Stable asset identity, tags and custody',
         permission: 'ASSET_REFERENCE_READ',
+        system: 'AVAMP',
       },
     ],
   },
@@ -1511,7 +1533,12 @@ export const entitledSections = (): NavSection[] =>
     // a failed lookup hides everything and the shell says why; it no longer shows the whole sidebar.
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => offered(item) && suitsPersona(item.persona)),
+      items: section.items.filter(
+        (item) =>
+          offered(item) &&
+          suitsPersona(item.persona) &&
+          (item.system === undefined || entitledToSystem(item.system)),
+      ),
     }))
     .filter((section) => section.items.length > 0);
 

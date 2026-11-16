@@ -33,7 +33,7 @@ import { useOwnLocationReporting } from 'modules/fleet/hooks/useOwnLocationRepor
 import DataState from 'shared/components/DataState';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
 import { useNotifier } from 'shared/components/Notifier';
-import { formatDateTime, formatNumber, formatOdometer } from 'shared/components/format';
+import { formatDateTime, formatNumber, formatOdometer, personName } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fleetPaths } from 'shared/layout/navigation';
 
@@ -150,13 +150,19 @@ const TripDetailPage = () => {
     vehicle.refetch();
   };
 
+  // Names for "by ..." lines: the assigned driver, by whichever id their sign-in carries.
+  const knownPeople: Record<string, string> = {};
+  if (driver.data) {
+    knownPeople[driver.data.staffReference] = driver.data.displayName;
+  }
+
   const timeline: TimelineEntry[] = trip.data
     ? [
         {
           id: 'created',
           title: 'Trip planned',
           detail: `${trip.data.origin} → ${trip.data.destination}`,
-          actor: trip.data.createdBy,
+          actor: personName(trip.data.createdBy, knownPeople),
           occurredAt: trip.data.createdAt,
         },
         ...(trip.data.actualStart
@@ -363,7 +369,6 @@ const TripDetailPage = () => {
                         label: 'Distance covered',
                         value: formatOdometer(trip.data.distanceCovered),
                       },
-                      { label: 'Record version', value: trip.data.version },
                     ]}
                   />
 
@@ -397,7 +402,7 @@ const TripDetailPage = () => {
                             ? [
                                 {
                                   label: 'Closure evidence',
-                                  value: trip.data.closureEvidenceId,
+                                  value: 'Document on file',
                                   span: 2 as const,
                                 },
                               ]
@@ -415,10 +420,17 @@ const TripDetailPage = () => {
                             ? [
                                 {
                                   label: 'Closed by',
-                                  value:
-                                    driver.data && driver.data.staffReference === trip.data.closedBy
-                                      ? `${trip.data.closedBy} (the assigned driver)`
-                                      : `${trip.data.closedBy} - on the driver's behalf`,
+                                  value: (() => {
+                                    const name = personName(trip.data.closedBy, knownPeople);
+                                    const byDriver =
+                                      driver.data &&
+                                      (driver.data.staffReference === trip.data.closedBy ||
+                                        name === driver.data.displayName);
+                                    if (byDriver) {
+                                      return `${name ?? driver.data?.displayName} (the assigned driver)`;
+                                    }
+                                    return name ? `${name}, on the driver's behalf` : "The fleet office, on the driver's behalf";
+                                  })(),
                                   span: 2 as const,
                                 },
                               ]
@@ -514,7 +526,7 @@ const TripDetailPage = () => {
                           </div>
                           <p className="mt-0.5 text-theme-xs text-gray-500">
                             {formatDateTime(inspection.performedAt)} ·{' '}
-                            {inspection.performedBy ?? 'unknown operator'} ·{' '}
+                            {personName(inspection.performedBy, knownPeople) ?? 'Recorded'} ·{' '}
                             {formatNumber(inspection.odometerReading)} km
                           </p>
                         </div>

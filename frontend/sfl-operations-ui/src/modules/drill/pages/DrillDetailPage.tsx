@@ -106,7 +106,7 @@ const DrillDetailPage = () => {
             {status === 'IN_PROGRESS' && <RollCallPanel drillId={drill.id} canCheckIn={permits('DRILL_EXECUTE')} onOutstanding={onOutstanding} />}
 
             {detail.execution && status !== 'IN_PROGRESS' && (
-              <Panel title="What happened" subtitle="Measured on the day - S175-03's timing and participation.">
+              <Panel title="What happened" subtitle="Measured on the day - timing and participation.">
                 <KeyValueGrid
                   columns={4}
                   items={[
@@ -124,7 +124,7 @@ const DrillDetailPage = () => {
             )}
 
             {detail.gaps.length > 0 && (
-              <Panel title="Roll-call gaps" subtitle="On site per S160/S160a at the start and not checked in when roll-call closed.">
+              <Panel title="Roll-call gaps" subtitle="On site per visitor and access-control records at the start and not checked in when roll-call closed.">
                 <ul className="divide-y divide-[var(--clet-border-subtle)]">
                   {detail.gaps.map((gap) => (
                     <li key={gap.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
@@ -228,7 +228,7 @@ const DrillDetailPage = () => {
                   { label: 'Scenario', value: drill.plan.scenario, span: 2 },
                   { label: 'Expected participants', value: drill.plan.expectedParticipants, span: 2 },
                   { label: 'Assembly point', value: drill.plan.assemblyZone },
-                  { label: 'S174 drill template', value: drill.plan.notificationTemplateId ? records.templateName(drill.plan.notificationTemplateId) : 'Not chosen' },
+                  { label: 'Drill notification template', value: drill.plan.notificationTemplateId ? records.templateName(drill.plan.notificationTemplateId) : 'Not chosen' },
                   { label: 'Audience groups', value: drill.plan.audienceGroupIds.map(records.audienceName).join(', ') || '-' },
                   { label: 'Recipient zones', value: drill.plan.recipientZoneIds.map(records.zoneName).join(', ') || '-' },
                 ]}

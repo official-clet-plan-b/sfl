@@ -1,5 +1,6 @@
 import { sflActor } from 'shared/api/config';
 import { readActorOverride } from 'shared/dev/actorOverride';
+import { isSystemEnabled } from './featureFlags';
 import {
   ProgrammeCode,
   SystemCode,
@@ -44,14 +45,12 @@ export const isCrossProgrammeActor: boolean = isCrossProgramme(actorRoles);
  * The programmes this actor may see.
  *
  * Derived from roles, because that is what IAM will do - there is no separate entitlement list to
- * drift out of step with the roles the actor already sends. `VITE_SFL_PROGRAMMES` overrides it
- * outright, which is how to look at one programme's screens without rewriting a role list; the
- * development actor switcher sets the same field, and takes precedence over the environment because
- * it is the more recent instruction.
+ * drift out of step with the roles the actor already sends. The development actor switcher can narrow
+ * it (dev builds only); there is no build-time override, so a production bundle always follows the
+ * signed-in roles.
  */
 export const actorProgrammes: ProgrammeCode[] = (() => {
-  const requested =
-    readActorOverride()?.programmes || (import.meta.env.VITE_SFL_PROGRAMMES as string | undefined) || '';
+  const requested = readActorOverride()?.programmes || '';
   const override = parseList(requested).filter((code): code is ProgrammeCode =>
     allProgrammes.includes(code as ProgrammeCode),
   );
@@ -68,12 +67,12 @@ export const entitledTo = (code: ProgrammeCode): boolean => actorProgrammes.incl
  * alone shows a mailroom officer the whole fleet register and a driver the courier manifests - screens
  * they can open and cannot use, because the service refuses every call behind them.
  *
- * `VITE_SFL_SYSTEMS` overrides it outright, the same way `VITE_SFL_PROGRAMMES` overrides the coarser
- * grain: it is how to look at one system's screens without inventing a role list to justify it.
+ * Whether a system *exists* in this deployment is a separate question, answered at runtime by the
+ * services' feature flags (see `featureFlags.ts`) - not by this list and not by a build-time variable.
+ * The development actor switcher can still narrow the list to preview one system (dev builds only).
  */
 export const actorSystems: SystemCode[] = (() => {
-  const requested =
-    readActorOverride()?.systems || (import.meta.env.VITE_SFL_SYSTEMS as string | undefined) || '';
+  const requested = readActorOverride()?.systems || '';
   const override = parseList(requested).filter((code): code is SystemCode =>
     allSystems.includes(code as SystemCode),
   );
@@ -84,6 +83,19 @@ export const actorSystems: SystemCode[] = (() => {
   return systemsFor(actorRoles).filter((code) => actorProgrammes.includes(systems[code].programme));
 })();
 
-export const entitledToSystem = (code: SystemCode): boolean => actorSystems.includes(code);
+/**
+ * Whether the actor may see a system: their roles entitle them to it **and** the deployment has it
+ * switched on. Both the sidebar and the route guard go through here.
+ */
+export const entitledToSystem = (code: SystemCode): boolean =>
+  actorSystems.includes(code) && isSystemEnabled(code);
 
 export const portalLabel = (): string => portalLabelFor(actorProgrammes);
+
+/**
+ * Whether the actor can switch modules on and off. The services enforce the same rule; this only
+ * decides whether to offer the Modules screen.
+ */
+export const isPlatformAdministrator: boolean = actorRoles.some(
+  (role) => role === 'SFL_ADMIN' || role === 'DTI_ADMIN',
+);

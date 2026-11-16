@@ -69,7 +69,7 @@ describe('sessionFromTokens', () => {
 
     expect(session?.username).toBe('fleet.manager');
     expect(session?.email).toBe('fleetmanager@clet.gh');
-    expect(session?.roles).toEqual(['FLEET_MANAGER', 'offline_access']);
+    expect(session?.roles).toEqual(['FLEET_MANAGER']);
     expect(session?.siteScopes).toEqual(['CLET-HQ']);
   });
 
@@ -140,7 +140,7 @@ describe('storage', () => {
     const seed = sessionFromTokens(
       tokenWith({
         exp: inAnHour(),
-        preferred_username: 'kwame.driver',
+        preferred_username: 'abena.boateng',
         realm_access: { roles: ['FLEET_DRIVER'] },
       }),
       null,
@@ -149,7 +149,7 @@ describe('storage', () => {
 
     const { readSession: read } = await freshModule();
     expect(read()?.roles).toEqual(['FLEET_DRIVER']);
-    expect(read()?.username).toBe('kwame.driver');
+    expect(read()?.username).toBe('abena.boateng');
   });
 
   it('clears an expired session rather than returning it', async () => {
@@ -178,5 +178,19 @@ describe('storage', () => {
     expect(() => writeSession(session)).not.toThrow();
     expect(readSession()?.expiresAt).toBe(session.expiresAt);
     setItem.mockRestore();
+  });
+});
+
+describe('identity provider roles', () => {
+  it('are not SFL roles and never reach the session or the header', () => {
+    const session = sessionFromTokens(
+      tokenWith({
+        exp: inAnHour(),
+        preferred_username: 'abena.boateng',
+        realm_access: { roles: ['default-roles-sfl', 'offline_access', 'uma_authorization', 'FLEET_DRIVER'] },
+      }),
+      null,
+    );
+    expect(session?.roles).toEqual(['FLEET_DRIVER']);
   });
 });

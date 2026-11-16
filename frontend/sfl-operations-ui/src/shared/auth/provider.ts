@@ -42,11 +42,32 @@ export interface SignInOutcome {
 export const authProvider = (): AuthProviderName =>
   (import.meta.env.VITE_AUTH_PROVIDER as AuthProviderName) === 'seeded' ? 'seeded' : 'oidc';
 
+/**
+ * True only on a developer's own machine. The seeded demo accounts share one published password, so
+ * they must never let anybody in on a server that real people use - even if a build there was
+ * misconfigured with `VITE_AUTH_PROVIDER=seeded`.
+ */
+export const isLocalDevelopmentHost = (hostname: string = window.location.hostname): boolean => {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  return (
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host === '::1' ||
+    host.endsWith('.localhost')
+  );
+};
+
 export const signInWithConfiguredProvider = async (
   email: string,
   password: string,
 ): Promise<SignInOutcome> => {
   if (authProvider() === 'seeded') {
+    if (!isLocalDevelopmentHost()) {
+      return {
+        ok: false,
+        message: 'Demo accounts only work on a local development machine. Sign in with your own account.',
+      };
+    }
     const result = seededSignIn(email, password);
     return result.ok
       ? { ok: true, session: result.session }

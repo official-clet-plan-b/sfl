@@ -38,7 +38,7 @@ export const RequestDialog = ({ siteCode, onClose, onDone }: Closeable & { siteC
   const filledWorkers = workers.filter((w) => w.personReference.trim() && w.displayName.trim());
   const invalid = !v.permitTypeId || !v.title.trim() || !v.workDescription.trim() || !v.locationCode.trim() || !v.supervisorReference.trim() || !v.startsAt || !v.endsAt || filledWorkers.length < 1;
   return (
-    <FormDialog open title="Request a permit" description={`At ${siteCode}. The request starts as a draft. It can be submitted only with a current S165 risk assessment linked, workers named and, where the type needs them, isolations listed.`}
+    <FormDialog open title="Request a permit" description={`At ${siteCode}. The request starts as a draft. It can be submitted only with a current risk assessment linked, workers named and, where the type needs them, isolations listed.`}
       submitLabel="Save draft" submitting={submitting} submitDisabled={invalid} formError={error} maxWidth="lg" onClose={onClose}
       onSubmit={() => void run(() => permitApi.create(siteCode, {
         permitTypeId: v.permitTypeId, title: v.title.trim(), workDescription: v.workDescription.trim(), locationCode: v.locationCode.trim(), zoneId: v.zoneId.trim() || undefined,
@@ -53,16 +53,16 @@ export const RequestDialog = ({ siteCode, onClose, onDone }: Closeable & { siteC
           {type.requiresIsolation ? ' Isolations are required.' : ''}{type.requiredCompetencies.length ? ` Workers are checked for: ${type.requiredCompetencies.map(humanise).join(', ')}.` : ''}</p>}
         <TextInput label="Title" required value={v.title} onChange={set('title')} maxLength={200} className="sm:col-span-2" />
         <TextAreaInput label="The work" required value={v.workDescription} onChange={set('workDescription')} maxLength={4000} className="sm:col-span-2" />
-        <TextInput label="Location (S152 reference)" required value={v.locationCode} onChange={set('locationCode')} maxLength={120} helperText="Recorded here, not checked from this service." />
-        <TextInput label="Access-control zone id (S160a)" value={v.zoneId} onChange={set('zoneId')} maxLength={80} helperText="Checked: a zone that does not exist at this site is refused." />
+        <TextInput label="Location reference" required value={v.locationCode} onChange={set('locationCode')} maxLength={120} helperText="Recorded here, not checked from this service." />
+        <TextInput label="Access-control zone id" value={v.zoneId} onChange={set('zoneId')} maxLength={80} helperText="Checked: a zone that does not exist at this site is refused." />
         <DateTimeField label="Starts" required value={v.startsAt} onChange={set('startsAt')} />
         <DateTimeField label="Ends" required value={v.endsAt} onChange={set('endsAt')} />
-        <TextInput label="Risk assessment id (S165)" value={v.riskAssessmentId} onChange={set('riskAssessmentId')} maxLength={80} helperText="Checked at submission: it must be current." className="sm:col-span-2" />
+        <TextInput label="Risk assessment id" value={v.riskAssessmentId} onChange={set('riskAssessmentId')} maxLength={80} helperText="Checked at submission: it must be current." className="sm:col-span-2" />
         <TextInput label="Contractor" value={v.contractorReference} onChange={set('contractorReference')} maxLength={160} helperText="Recorded, not verified against the vendor master (S133)." />
         <TextInput label="Supervisor" required value={v.supervisorReference} onChange={set('supervisorReference')} maxLength={160} helperText="Told at once if the permit is suspended." />
         <TextInput label="Supervisor contact" value={v.supervisorContact} onChange={set('supervisorContact')} maxLength={200} />
         <SelectInput label="Originating work in" value={v.originSystem} onChange={(x) => set('originSystem')(x as OriginSystem)} options={options(originSystems)} />
-        <TextInput label="Originating work reference" value={v.originReference} onChange={set('originReference')} maxLength={160} helperText="A work order (S153) or project (S176). Recorded, not verified." />
+        <TextInput label="Originating work reference" value={v.originReference} onChange={set('originReference')} maxLength={160} helperText="A work order or construction project. Recorded, not verified." />
       </div>
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium">Workers</legend>
@@ -178,7 +178,7 @@ export const IncidentLinkDialog = ({ permitId, onClose, onDone }: Closeable & { 
   return (
     <FormDialog open title="Link an incident" description="Flags this permit for the incident investigation. An incident that names the permit's risk assessment is linked automatically; use this when it did not." submitLabel="Link incident"
       submitting={submitting} submitDisabled={!reference.trim()} formError={error} onClose={onClose} onSubmit={() => void run(() => permitApi.linkIncident(permitId, reference.trim(), detail.trim() || undefined), onDone)}>
-      <TextInput label="Incident reference (S163)" required value={reference} onChange={setReference} maxLength={80} />
+      <TextInput label="Incident reference" required value={reference} onChange={setReference} maxLength={80} />
       <TextAreaInput label="Why it relates" value={detail} onChange={setDetail} maxLength={1000} />
     </FormDialog>
   );
@@ -208,7 +208,7 @@ export const TypeDialog = ({ existing, onClose, onDone }: Closeable & { existing
         <TextInput label="Name" required value={v.name} onChange={(x) => setV({ ...v, name: x })} maxLength={120} />
         <SelectInput label="Risk level" required value={v.riskLevel} onChange={(x) => setV({ ...v, riskLevel: x as RiskLevel })} options={options(riskLevels)} />
         <NumberInput label="Valid for at most (hours)" required value={v.maxValidityHours} onChange={(x) => setV({ ...v, maxValidityHours: x })} />
-        <TextInput label="S165 activity type an assessment must cover" value={v.activityType} onChange={(x) => setV({ ...v, activityType: x })} maxLength={80} className="sm:col-span-2" />
+        <TextInput label="Activity type an assessment must cover" value={v.activityType} onChange={(x) => setV({ ...v, activityType: x })} maxLength={80} className="sm:col-span-2" />
         <TextInput label="Competences to check (comma separated)" value={v.competencies} onChange={(x) => setV({ ...v, competencies: x })} className="sm:col-span-2" />
         <TextAreaInput label="Description" value={v.description} onChange={(x) => setV({ ...v, description: x })} maxLength={1000} className="sm:col-span-2" />
         <Checkbox checked={v.riskAssessmentRequired} onChange={() => setV({ ...v, riskAssessmentRequired: !v.riskAssessmentRequired })} label="A current risk assessment is required" />

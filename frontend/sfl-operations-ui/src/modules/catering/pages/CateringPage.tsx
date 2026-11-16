@@ -159,15 +159,15 @@ const Exceptions = ({ siteCode, refresh, onChanged }: { siteCode: string; refres
   const columns = useMemo<TableColumn<CateringException>[]>(() => [
     { id: 'exception', header: 'Exception', width: 320, cell: ({ row }) => <CellStack primary={humanise(row.exceptionType)} secondary={`${row.reference} · ${row.description}`} /> },
     { id: 'owner', header: 'Owner', width: 150, hideBelowLg: true, cell: ({ row }) => row.ownerReference },
-    { id: 'incident', header: 'Incident (S163)', width: 200, hideBelowLg: true, cell: ({ row }) => (row.incidentState === 'NOT_REQUIRED' ? '-' : row.incidentState === 'LINKED' ? row.incidentReference : 'Pending - not confirmed by S163') },
+    { id: 'incident', header: 'Incident', width: 200, hideBelowLg: true, cell: ({ row }) => (row.incidentState === 'NOT_REQUIRED' ? '-' : row.incidentState === 'LINKED' ? row.incidentReference : 'Pending - not confirmed by Incident Reporting') },
     {
-      id: 'work', header: 'Work order (S153)', width: 200, hideBelowLg: true,
+      id: 'work', header: 'Work order', width: 200, hideBelowLg: true,
       cell: ({ row }) => {
         const order = orderOf.get(row.id);
         if (row.exceptionType === 'SUBSTITUTION') return '-';
         if (!order) return 'Not requested yet';
         return order.state === 'RAISED' ? order.workOrderNumber : (
-          <span className="inline-flex items-center gap-2">Pending - not confirmed by S153 {canManage && <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); void retryOrder(row.id); }}>Retry</Button>}</span>
+          <span className="inline-flex items-center gap-2">Pending - not confirmed by Maintenance {canManage && <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); void retryOrder(row.id); }}>Retry</Button>}</span>
         );
       },
     },
@@ -193,7 +193,7 @@ const Exceptions = ({ siteCode, refresh, onChanged }: { siteCode: string; refres
         </DataState>
       </Panel>
       {resolving && <ReasonDialog title="Resolve the exception" description="Say what was done." label="Resolution" submitLabel="Resolve" write={(text) => cateringApi.resolveException(resolving, text)} onClose={() => setResolving(undefined)} onDone={() => { setResolving(undefined); query.refetch(); onChanged(); }} />}
-      {linking && <ReasonDialog title="Link the incident" description="Enter the reference Incident Reporting (S163) gave this incident." label="Incident reference" submitLabel="Link incident" write={(text) => cateringApi.linkIncident(linking.id, text)} onClose={() => setLinking(undefined)} onDone={() => { setLinking(undefined); query.refetch(); onChanged(); }} />}
+      {linking && <ReasonDialog title="Link the incident" description="Enter the reference Incident Reporting gave this incident." label="Incident reference" submitLabel="Link incident" write={(text) => cateringApi.linkIncident(linking.id, text)} onClose={() => setLinking(undefined)} onDone={() => { setLinking(undefined); query.refetch(); onChanged(); }} />}
       {raising && <ExceptionFormDialog siteCode={siteCode} onClose={() => setRaising(false)} onDone={() => { setRaising(false); query.refetch(); onChanged(); }} />}
     </PageSection>
   );

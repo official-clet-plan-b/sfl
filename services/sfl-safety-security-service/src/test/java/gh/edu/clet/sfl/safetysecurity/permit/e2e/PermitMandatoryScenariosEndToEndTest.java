@@ -517,7 +517,7 @@ class PermitMandatoryScenariosEndToEndTest extends SafetySecurityPostgresSupport
 
         assertThat(file.permits()).isEqualTo(2);
         assertThat(file.incomplete()).isEqualTo(1);
-        assertThat(file.csv()).contains("# CLET S164 permit register - STATUTORY EVIDENCE").contains("# Reason: Statutory audit of hot work 2026")
+        assertThat(file.csv()).contains("# GSL S164 permit register - STATUTORY EVIDENCE").contains("# Reason: Statutory audit of hot work 2026")
                 .contains("1 with an incomplete lifecycle").contains("COMPLETE").contains("INCOMPLETE - permit is still SUBMITTED");
         assertThat(file.csv()).contains("'=cmd|' /C calc'!A0").doesNotContain(",=cmd");
         assertThat(file.csv()).contains(open.permit().reference()).contains(active.permit().reference());

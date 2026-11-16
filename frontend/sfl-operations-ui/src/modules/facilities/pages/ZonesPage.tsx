@@ -219,7 +219,7 @@ const ZonesPage = () => {
             How safety, life-safety and emergency systems address this estate
           </SectionDescription>
           <SectionActions className="items-end [&_button]:whitespace-nowrap">
-            <SiteSelect
+            <SiteSelect inline
               value={siteCode}
               onChange={(value) => {
                 setSiteCode(value);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Badge,
@@ -20,6 +20,8 @@ import { Checkbox, DateTimeField, TextInput } from 'modules/facilities/dialogs/d
 import { useNotifier } from 'shared/components/Notifier';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
+import { DonutChart } from 'shared/charts/Charts';
+import { chartColors } from 'shared/charts/palette';
 import { permits } from 'shared/layout/actorPermissions';
 import { fleetPaths } from 'shared/layout/navigation';
 import {
@@ -97,6 +99,25 @@ export const VipTripPortalPage = () => {
     }
   };
 
+  const requestMix = useMemo(() => {
+    const rows = requests.data?.content ?? [];
+    const order: [string, string, string][] = [
+      ['PLANNED', 'Awaiting assignment', chartColors.gold],
+      ['ASSIGNED', 'Vehicle and driver assigned', chartColors.teal],
+      ['IN_PROGRESS', 'On the road', chartColors.success],
+      ['ON_HOLD', 'On hold', chartColors.warning],
+      ['COMPLETED', 'Completed', chartColors.navy],
+      ['CANCELLED', 'Cancelled', chartColors.grey],
+    ];
+    const used = order.filter(([status]) => rows.some((row) => row.status === status));
+    return {
+      total: rows.length,
+      labels: used.map(([, label]) => label),
+      values: used.map(([status]) => rows.filter((row) => row.status === status).length),
+      colors: used.map(([, , colour]) => colour),
+    };
+  }, [requests.data]);
+
   const columns: TableColumn<TripResponse>[] = [
     { id: 'trip', header: 'Request', cell: ({ row }) => <span className="font-medium">{row.tripNumber}</span> },
     {
@@ -132,7 +153,7 @@ export const VipTripPortalPage = () => {
         <SectionHeader>
           <SectionTitle>VIP trip & driver booking</SectionTitle>
           <SectionActions className="items-end [&_button]:whitespace-nowrap">
-            <SiteSelect value={siteCode} onChange={setSiteCode} required />
+            <SiteSelect inline value={siteCode} onChange={setSiteCode} required />
             {canAssign && (
               <Button variant="outline" className="whitespace-nowrap" onClick={() => navigate(fleetPaths.trips)}>
                 Assign trips
@@ -147,9 +168,12 @@ export const VipTripPortalPage = () => {
         </p>
       </PageSection>
 
+      <PageSection>
+        <div className="grid items-stretch gap-[var(--clet-app-layout-body-gap)] xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <div className="min-w-0">
       {canRequest ? (
-        <PageSection>
-          <Card bordered className="p-5">
+        <>
+          <Card bordered className="h-full p-5">
             <h3 className="font-semibold">Request executive transport</h3>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <TextInput
@@ -200,17 +224,36 @@ export const VipTripPortalPage = () => {
               {submitting ? 'Submitting…' : 'Submit request'}
             </Button>
           </Card>
-        </PageSection>
+        </>
       ) : (
-        <PageSection>
+        <>
           <Notice variant="info" title="Requests are raised by the transport office">
             <p className="text-sm">
               Your role can follow these requests but not create them. Ask the fleet office to raise one,
               and it will appear below.
             </p>
           </Notice>
-        </PageSection>
+        </>
       )}
+
+          </div>
+          <Card bordered className="h-full p-5">
+            <p className="text-theme-sm font-semibold text-gray-800">Request status</p>
+            <p className="mb-4 text-theme-xs text-gray-500">Where each VIP request stands</p>
+            {requestMix.total === 0 ? (
+              <p className="py-10 text-center text-theme-sm opacity-70">No VIP requests yet.</p>
+            ) : (
+              <DonutChart
+                labels={requestMix.labels}
+                values={requestMix.values}
+                colors={requestMix.colors}
+                centreLabel={`${requestMix.total} requests`}
+                showPercentages={false}
+              />
+            )}
+          </Card>
+        </div>
+      </PageSection>
 
       <PageSection>
         <SectionHeader>

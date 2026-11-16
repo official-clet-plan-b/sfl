@@ -16,7 +16,7 @@ import DataState from 'shared/components/DataState';
 import Icon from 'shared/components/Icon';
 import KeyValueGrid from 'shared/components/KeyValueGrid';
 import { useNotifier } from 'shared/components/Notifier';
-import { formatDate, formatDateTime, formatNumber } from 'shared/components/format';
+import { formatDate, formatDateTime, formatNumber, isCurrentUser } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
 import { fleetPaths, fuelPaths } from 'shared/layout/navigation';
 import { canCreateLogbooks, canReviewLogbooks } from 'modules/fleet/api/access';
@@ -30,6 +30,9 @@ const CONFIRMATIONS: Record<LogbookTransition, string> = {
   reopen: 'Logbook reopened. It can be corrected and resubmitted.',
   cancel: 'Logbook cancelled.',
 };
+
+/** The reviewer's steps. Nobody takes them on a logbook they recorded themselves - the service refuses it too. */
+const REVIEW_STEPS: LogbookTransition[] = ['review', 'approve', 'return'];
 
 /** The order the buttons appear in - forward moves first, then the privileged exits. */
 const TRANSITION_ORDER: LogbookTransition[] = [
@@ -95,6 +98,10 @@ const DriverLogbookDetailPage = () => {
   };
 
   const submissionBlockers = record ? logbookSubmissionBlockers(record) : [];
+  /** Separation of duties: the person who recorded a logbook does not review it. */
+  const recordedByMe = record ? isCurrentUser(record.metadata.createdBy) : false;
+  const reviewBlocked = (transition: LogbookTransition) =>
+    recordedByMe && REVIEW_STEPS.includes(transition);
 
   return (
     <div>
@@ -156,6 +163,12 @@ const DriverLogbookDetailPage = () => {
             )}
 
             <SectionCard title="Actions">
+              {canReviewLogbooks() &&
+                REVIEW_STEPS.some((transition) => reviewBlocked(transition) && logbookTransitionAllowed(record, transition)) && (
+                  <p className="mb-3 text-theme-sm text-gray-600">
+                    You recorded this logbook, so another fleet manager reviews and approves it.
+                  </p>
+                )}
               <div className="flex flex-wrap items-center gap-2">
                 {TRANSITION_ORDER.filter(
                   (transition) =>
@@ -166,7 +179,8 @@ const DriverLogbookDetailPage = () => {
                       (FUEL_LOGBOOK_CREATE); reviewing, returning and approving belong to the
                       reviewer, and collapsing the two would let a driver approve their own journey.
                     */
-                    (transition === 'submit' ? canCreateLogbooks() : canReviewLogbooks()),
+                    (transition === 'submit' ? canCreateLogbooks() : canReviewLogbooks()) &&
+                    !reviewBlocked(transition),
                 ).map((transition) => {
                   const blockedSubmit = transition === 'submit' && submissionBlockers.length > 0;
                   return transition === 'review' ? (
@@ -331,7 +345,9 @@ const DriverLogbookDetailPage = () => {
                 <SectionCard title="Where this can go next">
                   <ul className="space-y-2.5">
                     {TRANSITION_ORDER.map((transition) => {
-                      const allowed = logbookTransitionAllowed(record, transition);
+                      const reviewedByOthers =
+                        reviewBlocked(transition) && logbookTransitionAllowed(record, transition);
+                      const allowed = logbookTransitionAllowed(record, transition) && !reviewedByOthers;
                       const rule = LOGBOOK_RULES[transition];
                       return (
                         <li key={transition} className="flex items-start gap-2.5">
@@ -358,8 +374,10 @@ const DriverLogbookDetailPage = () => {
                               )}
                             </p>
                             <p className="text-theme-xs text-gray-600">
-                              {allowed
-                                ? `Needs ${rule.permission}.`
+                              {reviewedByOthers
+                                ? 'Another fleet manager does this, as you recorded the logbook.'
+                                : allowed
+                                ? 'Available now.'
                                 : `From ${rule.from.map((state) => humanise(state).toLowerCase()).join(', ')}.`}
                             </p>
                           </div>

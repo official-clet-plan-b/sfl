@@ -108,7 +108,7 @@ export const FindingFormDialog = ({ controlId, controlRef, onClose, onDone }: Cl
           helperText={critical ? 'Required for a critical finding.' : 'Left blank, it is set from the severity.'} />
         <div className="self-end pb-2">
           <Checkbox checked={values.requiresIncident || critical} disabled={critical} onChange={set('requiresIncident')} label="Also a safety incident"
-            hint={critical ? 'Always on for a critical finding.' : 'Asks Incident Reporting (S163) to open one.'} />
+            hint={critical ? 'Always on for a critical finding.' : 'Asks Incident Reporting to open one.'} />
         </div>
         <TextAreaInput label="What was found" value={values.description} onChange={set('description')} maxLength={4000} className="sm:col-span-2" />
       </div>

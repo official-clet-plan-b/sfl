@@ -222,7 +222,7 @@ public class PermitQueryService {
                     complete ? "COMPLETE" : "INCOMPLETE - permit is still " + p.status())));
         }
         StringBuilder out = new StringBuilder();
-        out.append("# CLET S164 permit register - STATUTORY EVIDENCE, CONFIDENTIAL\n");
+        out.append("# GSL S164 permit register - STATUTORY EVIDENCE, CONFIDENTIAL\n");
         out.append("# Exported by ").append(PermitCsv.oneLine(caller.id())).append(" at ").append(now).append(" for ")
                 .append(s.siteCode() == null ? "all permitted sites" : PermitCsv.oneLine(s.siteCode())).append('\n');
         out.append("# Reason: ").append(PermitCsv.oneLine(why)).append('\n');

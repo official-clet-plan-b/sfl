@@ -63,9 +63,14 @@ class FuelMandatoryScenariosEndToEndTest extends FleetPostgresSupport {
     @Autowired FleetIntegrationApplicationService integration;
     @Autowired JdbcTemplate jdbc;
 
-    /** A single isolated tenant: unique site, a FLEET_MANAGER actor, one vehicle (odometer 1000), one driver and an active policy. */
+    /** A second fleet manager: logbooks are reviewed by someone other than the person who wrote them. */
+    private static ActorContext reviewer(Fixture f) {
+        return new ActorContext(new SiteScopedPrincipal("fuel.reviewer","Fuel Reviewer",Set.of(SflRole.FLEET_MANAGER),Set.of(f.site()),false),"fuel-e2e");
+    }
+
     private record Fixture(String site, ActorContext manager, Vehicle vehicle, DriverProfileReference driver) {}
 
+    /** A single isolated tenant: unique site, a FLEET_MANAGER actor, one vehicle (odometer 1000), one driver and an active policy. */
     private Fixture newFixture() {
         String site = "FUEL" + System.nanoTime();
         ActorContext manager = new ActorContext(new SiteScopedPrincipal("fuel.manager","Fuel Manager",Set.of(SflRole.FLEET_MANAGER),Set.of(site),false),"fuel-e2e");
@@ -189,13 +194,13 @@ class FuelMandatoryScenariosEndToEndTest extends FleetPostgresSupport {
         Instant now = Instant.now();
         var log = fuel.createLogbook(new FuelApplicationService.CreateLogbook(f.site(),f.driver().id(),f.vehicle().id(),null,LocalDate.now(),now,now.plusSeconds(3600),"HQ","Court",null,DriverLogbook.UseClassification.OFFICIAL,"Official delivery",null,1100,1150L,true,UUID.randomUUID(),f.manager(),SourceChannel.WEB));
         log = fuel.transitionLogbook(log.id(),"submit",null,f.manager(),SourceChannel.WEB);
-        log = fuel.transitionLogbook(log.id(),"review",null,f.manager(),SourceChannel.WEB);
-        log = fuel.transitionLogbook(log.id(),"return","fix",f.manager(),SourceChannel.WEB);
+        log = fuel.transitionLogbook(log.id(),"review",null,reviewer(f),SourceChannel.WEB);
+        log = fuel.transitionLogbook(log.id(),"return","fix",reviewer(f),SourceChannel.WEB);
         assertThat(log.status()).isEqualTo(DriverLogbook.Status.RETURNED);
         log = fuel.transitionLogbook(log.id(),"submit",null,f.manager(),SourceChannel.WEB);
         assertThat(log.status()).isEqualTo(DriverLogbook.Status.RESUBMITTED);
-        log = fuel.transitionLogbook(log.id(),"review",null,f.manager(),SourceChannel.WEB);
-        log = fuel.transitionLogbook(log.id(),"approve","ok",f.manager(),SourceChannel.WEB);
+        log = fuel.transitionLogbook(log.id(),"review",null,reviewer(f),SourceChannel.WEB);
+        log = fuel.transitionLogbook(log.id(),"approve","ok",reviewer(f),SourceChannel.WEB);
         assertThat(log.status()).isEqualTo(DriverLogbook.Status.APPROVED);
     }
 
@@ -205,8 +210,8 @@ class FuelMandatoryScenariosEndToEndTest extends FleetPostgresSupport {
         Instant now = Instant.now();
         var log = fuel.createLogbook(new FuelApplicationService.CreateLogbook(f.site(),f.driver().id(),f.vehicle().id(),null,LocalDate.now(),now,now.plusSeconds(3600),"HQ","Court",null,DriverLogbook.UseClassification.OFFICIAL,"Official delivery",null,1100,1150L,true,UUID.randomUUID(),f.manager(),SourceChannel.WEB));
         log = fuel.transitionLogbook(log.id(),"submit",null,f.manager(),SourceChannel.WEB);
-        log = fuel.transitionLogbook(log.id(),"review",null,f.manager(),SourceChannel.WEB);
-        var approved = fuel.transitionLogbook(log.id(),"approve","verified",f.manager(),SourceChannel.WEB);
+        log = fuel.transitionLogbook(log.id(),"review",null,reviewer(f),SourceChannel.WEB);
+        var approved = fuel.transitionLogbook(log.id(),"approve","verified",reviewer(f),SourceChannel.WEB);
         assertThat(approved.status()).isEqualTo(DriverLogbook.Status.APPROVED);
         assertThatThrownBy(() -> fuel.transitionLogbook(approved.id(),"submit",null,f.manager(),SourceChannel.WEB)).isInstanceOf(IllegalStateException.class);
         var reopened = fuel.transitionLogbook(approved.id(),"reopen","audit",f.manager(),SourceChannel.WEB);
@@ -272,10 +277,30 @@ class FuelMandatoryScenariosEndToEndTest extends FleetPostgresSupport {
         // endpoint. A narrowing the collection obeys and the record does not is decorative: the row
         // still crosses the boundary, one at a time instead of in a page. An empty list is not
         // evidence of this rule; a refusal by id is.
-        var someoneElses = fuel.createLogbook(new FuelApplicationService.CreateLogbook(f.site(),f.driver().id(),f.vehicle().id(),null,LocalDate.now(),now,now.plusSeconds(3600),"HQ","Court",null,DriverLogbook.UseClassification.OFFICIAL,"Official delivery",null,1200,1250L,true,UUID.randomUUID(),f.manager(),SourceChannel.WEB));
+        var someoneElses = fuel.createLogbook(new FuelApplicationService.CreateLogbook(f.site(),driverB.id(),f.vehicle().id(),null,LocalDate.now(),now,now.plusSeconds(3600),"HQ","Court",null,DriverLogbook.UseClassification.OFFICIAL,"Official delivery",null,1200,1250L,true,UUID.randomUUID(),f.manager(),SourceChannel.WEB));
         assertThatThrownBy(() -> fuel.logbook(someoneElses.id(),driverA))
                 .isInstanceOf(FleetAuthorizationException.class);
         assertThatThrownBy(() -> fuel.transitionLogbook(someoneElses.id(),"submit",null,driverA,SourceChannel.WEB))
+                .isInstanceOf(FleetAuthorizationException.class);
+    }
+
+    // 10b
+    @Test void a_signed_in_driver_records_their_own_logbook() {
+        // The real shape of a sign-in: the identity provider's subject is an opaque id and the login
+        // name is a username - neither is the staff number. Ownership follows the driver profile the
+        // sign-in is bound to, so the driver can record, read and submit their own journey.
+        Fixture f = newFixture();
+        Instant now = Instant.now();
+        String subject = UUID.randomUUID().toString();
+        var own = driverService.register(new RegisterDriverCommand("GSL/HR/"+f.site(),"Abena Boateng","LIC3-"+f.site(),LicenceClass.B,LocalDate.now().plusYears(2),LocalDate.now().plusYears(1),f.site(),"Transport",subject,f.manager(),SourceChannel.WEB,"driver3-"+f.site()));
+        ActorContext driver = new ActorContext(new SiteScopedPrincipal(subject,"Abena Boateng",Set.of(SflRole.FLEET_DRIVER),Set.of(f.site()),false,"abena.boateng"),"driver-own");
+
+        var logbook = fuel.createLogbook(new FuelApplicationService.CreateLogbook(f.site(),own.id(),f.vehicle().id(),null,LocalDate.now(),now,now.plusSeconds(3600),"GSL campus, Makola","Ministry of Justice",null,DriverLogbook.UseClassification.OFFICIAL,"Deliver result files",null,1300,1340L,true,null,driver,SourceChannel.WEB));
+        assertThat(fuel.logbook(logbook.id(),driver).driverId()).isEqualTo(own.id());
+        assertThat(fuel.transitionLogbook(logbook.id(),"submit",null,driver,SourceChannel.WEB).status()).isEqualTo(DriverLogbook.Status.SUBMITTED);
+
+        // ...and still cannot open one for a colleague.
+        assertThatThrownBy(() -> fuel.createLogbook(new FuelApplicationService.CreateLogbook(f.site(),f.driver().id(),f.vehicle().id(),null,LocalDate.now(),now,now.plusSeconds(3600),"HQ","Court",null,DriverLogbook.UseClassification.OFFICIAL,"Official delivery",null,1400,1450L,true,null,driver,SourceChannel.WEB)))
                 .isInstanceOf(FleetAuthorizationException.class);
     }
 
@@ -373,5 +398,40 @@ class FuelMandatoryScenariosEndToEndTest extends FleetPostgresSupport {
                 "SELECT count(*) FROM fleet_logistics.fleet_notification_intents WHERE recipient_type='ROLE' AND recipient='FLEET_MANAGER' AND subject_reference=?",
                 Long.class,anomaly.anomalyNumber());
         assertThat(routed).isGreaterThanOrEqualTo(1L);
+    }
+
+    @Test void a_logbook_is_never_approved_by_the_person_who_wrote_it() {
+        Fixture f = newFixture();
+        Instant now = Instant.now();
+        var log = fuel.createLogbook(new FuelApplicationService.CreateLogbook(f.site(),f.driver().id(),f.vehicle().id(),null,LocalDate.now(),now,now.plusSeconds(3600),"HQ","Court",null,DriverLogbook.UseClassification.OFFICIAL,"Official delivery",null,1100,1150L,true,UUID.randomUUID(),f.manager(),SourceChannel.WEB));
+        var submitted = fuel.transitionLogbook(log.id(),"submit",null,f.manager(),SourceChannel.WEB);
+        assertThatThrownBy(() -> fuel.transitionLogbook(submitted.id(),"review",null,f.manager(),SourceChannel.WEB))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("another fleet manager");
+        var reviewing = fuel.transitionLogbook(submitted.id(),"review",null,reviewer(f),SourceChannel.WEB);
+        assertThat(fuel.transitionLogbook(reviewing.id(),"approve","ok",reviewer(f),SourceChannel.WEB).status())
+                .isEqualTo(DriverLogbook.Status.APPROVED);
+    }
+
+    @Test void checking_an_older_purchase_again_is_not_an_odometer_regression() {
+        Fixture f = newFixture();
+        Instant now = Instant.now();
+        var older = captureValid(f,"PROVIDER-OLD",1100,now.minusSeconds(7200));
+        assertThat(fuel.reconcile(older.id(),f.manager(),SourceChannel.WEB).status()).isEqualTo(FuelTransaction.Status.RECONCILED);
+        var newer = captureValid(f,"PROVIDER-NEW",1300,now.minusSeconds(3600));
+        fuel.reconcile(newer.id(),f.manager(),SourceChannel.WEB);
+        assertThat(vehicles.findById(f.vehicle().id()).orElseThrow().odometer().value()).isEqualTo(1300);
+        // The vehicle has driven on to 1300 km; the 1100 km purchase is history, not a reading going backwards.
+        fuel.reconcile(older.id(),f.manager(),SourceChannel.WEB);
+        assertThat(anomalies(f)).extracting(FuelAnomalyCase::type).doesNotContain(FuelAnomalyCase.Type.ODOMETER_REGRESSION);
+    }
+
+    @Test void a_card_is_issued_only_in_the_providers_masked_form() {
+        Fixture f = newFixture();
+        assertThatThrownBy(() -> cards.issue(new FuelCardService.IssueCard(f.site(),"4111 1111 1111 1111","CLET FUEL CARDS",
+                f.vehicle().id(),f.driver().id(),LocalDate.now(),null,null,null,null,null,f.manager(),SourceChannel.WEB)))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("never a full card number");
+        assertThatThrownBy(() -> cards.issue(new FuelCardService.IssueCard(f.site(),"CARD-A","CLET FUEL CARDS",
+                f.vehicle().id(),f.driver().id(),LocalDate.now(),null,null,null,null,null,f.manager(),SourceChannel.WEB)))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("****1234");
     }
 }

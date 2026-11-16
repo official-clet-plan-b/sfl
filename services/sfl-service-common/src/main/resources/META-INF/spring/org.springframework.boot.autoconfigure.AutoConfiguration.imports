@@ -1,2 +1,3 @@
 gh.edu.clet.sfl.common.ui.SflDashboardAutoConfiguration
 gh.edu.clet.sfl.common.web.ratelimit.RateLimitAutoConfiguration
+gh.edu.clet.sfl.common.features.SflFeatureFlagsAutoConfiguration

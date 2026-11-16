@@ -198,7 +198,7 @@ public class CctvController {
     // ---- Disclosures (S161-05) ----
 
     @PostMapping("/disclosures")
-    @Operation(summary = "Request disclosure of an evidence item outside CLET")
+    @Operation(summary = "Request disclosure of an evidence item outside GSL")
     public ResponseEntity<ApiResponse<Disclosure>> requestDisclosure(@Valid @RequestBody RequestDisclosureRequest
             request, HttpServletRequest http) {
         Disclosure disclosure = disclosures.request(new DisclosureService.RequestDisclosure(request.evidenceItemId(),

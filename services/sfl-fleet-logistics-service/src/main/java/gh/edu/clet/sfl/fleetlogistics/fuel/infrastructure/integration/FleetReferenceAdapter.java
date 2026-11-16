@@ -5,6 +5,8 @@ import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.DriverProfileReposi
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.TripRepository;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.VehicleRepository;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.exception.RecordNotFoundException;
+import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.DriverEligibilityStatus;
+import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.DriverLifecycleStatus;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.OdometerSource;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.SourceChannel;
 import gh.edu.clet.sfl.fleetlogistics.fuel.application.port.FuelFleetReferencePort;
@@ -48,7 +50,11 @@ public class FleetReferenceAdapter implements FuelFleetReferencePort {
                 v.odometer().value(),
                 v.lifecycleStatus().name(),
                 v.availabilityStatus().name(),
-                d.eligibilityStatus().name(),
+                // A driver who is not active cannot drive for CLET, whatever the stored status
+                // says.
+                d.lifecycleStatus() == DriverLifecycleStatus.ACTIVE
+                        ? d.eligibilityStatus().name()
+                        : DriverEligibilityStatus.INELIGIBLE.name(),
                 match,
                 d.staffReference());
     }

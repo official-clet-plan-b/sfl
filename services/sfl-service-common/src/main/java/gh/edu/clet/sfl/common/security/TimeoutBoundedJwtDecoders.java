@@ -3,6 +3,7 @@ package gh.edu.clet.sfl.common.security;
 import java.time.Duration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.SupplierJwtDecoder;
 import org.springframework.web.client.RestTemplate;
@@ -37,6 +38,21 @@ public final class TimeoutBoundedJwtDecoders {
     }
 
     public static JwtDecoder fromIssuerLocation(String issuerUri, Duration connectTimeout, Duration readTimeout) {
+        return fromIssuerLocation(issuerUri, null, connectTimeout, readTimeout);
+    }
+
+    /**
+     * As {@link #fromIssuerLocation(String, Duration, Duration)}, but when {@code jwkSetUri} is set the
+     * signing keys are fetched from there instead of through OIDC discovery at the issuer, while tokens
+     * must still carry {@code issuerUri} as their {@code iss}. This is for an identity provider the
+     * browser reaches at one address (the issuer, e.g. {@code http://localhost:8080/realms/sfl}) and the
+     * service reaches at another (e.g. {@code http://idp:8080/...} inside a container network):
+     * discovery at the internal address reports the public issuer, which Spring rejects as a mismatch,
+     * so every sign-in failed with a 500.
+     */
+    public static JwtDecoder fromIssuerLocation(String issuerUri, String jwkSetUri, Duration connectTimeout,
+            Duration readTimeout) {
+        boolean explicitKeys = jwkSetUri != null && !jwkSetUri.isBlank();
         // NimbusJwtDecoder.withIssuerLocation(...).build() performs OIDC discovery immediately, during
         // build() - not on first decode - so building it directly as the bean would make every service
         // fail to start whenever the identity provider is briefly unreachable at boot. SupplierJwtDecoder
@@ -49,6 +65,11 @@ public final class TimeoutBoundedJwtDecoders {
             requestFactory.setConnectTimeout(connectTimeout);
             requestFactory.setReadTimeout(readTimeout);
             RestTemplate restTemplate = new RestTemplate(requestFactory);
+            if (explicitKeys) {
+                NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).restOperations(restTemplate).build();
+                decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuerUri));
+                return decoder;
+            }
             return NimbusJwtDecoder.withIssuerLocation(issuerUri).restOperations(restTemplate).build();
         });
     }

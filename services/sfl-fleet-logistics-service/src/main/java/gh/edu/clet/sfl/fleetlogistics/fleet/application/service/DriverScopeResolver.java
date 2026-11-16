@@ -4,6 +4,7 @@ import gh.edu.clet.sfl.common.security.ActorContext;
 import gh.edu.clet.sfl.common.security.SflPermission;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.DriverProfileRepository;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.DriverProfileReference;
+import java.util.Locale;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -75,8 +76,15 @@ public class DriverScopeResolver {
             return new DriverScope.Everything();
         }
 
+        // Linked either to the sign-in's stable subject or to the username the person signs in with -
+        // the one a fleet administrator actually knows and types when registering a driver.
         Optional<DriverProfileReference> profile =
                 driverProfiles.findActiveByPrincipalSubject(actor.actorId());
+        String loginName = actor.principal().loginName();
+        if (profile.isEmpty() && loginName != null) {
+            profile = driverProfiles.findActiveByPrincipalSubject(loginName)
+                    .or(() -> driverProfiles.findActiveByPrincipalSubject(loginName.toLowerCase(Locale.ROOT)));
+        }
         if (profile.isEmpty()) {
             return new DriverScope.Nothing(
                     "Your sign-in is not linked to a driver profile, so no driver records are shown. "

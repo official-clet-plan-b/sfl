@@ -769,7 +769,10 @@ public class FuelApplicationService {
                 rules,
                 failures,
                 "DRIVER_ELIGIBLE",
-                "ELIGIBLE".equals(snapshot.driverEligibility()),
+                // CONDITIONAL is a driver who may still be assigned (a warning, such as a licence
+                // expiring soon) - the same line trip assignment draws, so fuel does not disagree.
+                "ELIGIBLE".equals(snapshot.driverEligibility())
+                        || "CONDITIONAL".equals(snapshot.driverEligibility()),
                 FuelAnomalyCase.Type.DRIVER_INELIGIBLE);
         check(
                 rules,
@@ -784,24 +787,50 @@ public class FuelApplicationService {
                 "TRIP_MATCH",
                 snapshot.tripMatches(),
                 FuelAnomalyCase.Type.OUTSIDE_TRIP);
+        /*
+         * The odometer baseline. For a new purchase it is the vehicle's accepted reading. For one that
+         * is history - being checked again, or with later purchases already recorded - the vehicle has
+         * since driven on, so comparing against today's reading would always "go backwards". History is
+         * compared with the purchase before it instead, and the jump check (which measures distance
+         * since the last accepted reading) only applies to a new purchase.
+         */
+        var previous =
+                repository.findPreviousTransaction(
+                        before.siteCode().value(), before.vehicleId(), before.occurredAt());
+        boolean historical =
+                before.status() == FuelTransaction.Status.RECONCILED
+                        || before.status() == FuelTransaction.Status.EXCEPTION
+                        || repository.hasLaterTransaction(
+                                before.siteCode().value(),
+                                before.vehicleId(),
+                                before.occurredAt(),
+                                before.id());
+        long odometerBaseline =
+                historical
+                        ? previous.map(FuelTransaction::odometerReading)
+                                .orElse(
+                                        Math.min(
+                                                snapshot.acceptedOdometer(),
+                                                before.odometerReading()))
+                        : snapshot.acceptedOdometer();
         check(
                 rules,
                 failures,
                 "ODOMETER_NON_REGRESSION",
-                before.odometerReading() >= snapshot.acceptedOdometer(),
+                before.odometerReading() >= odometerBaseline,
                 FuelAnomalyCase.Type.ODOMETER_REGRESSION);
-        check(
-                rules,
-                failures,
-                "ODOMETER_JUMP",
-                before.odometerReading() - snapshot.acceptedOdometer()
-                        <= policy.odometerJumpTolerance(),
-                FuelAnomalyCase.Type.ODOMETER_JUMP,
-                Map.of(
-                        "threshold",
-                        policy.odometerJumpTolerance(),
-                        "observed",
-                        before.odometerReading() - snapshot.acceptedOdometer()));
+        if (!historical)
+            check(
+                    rules,
+                    failures,
+                    "ODOMETER_JUMP",
+                    before.odometerReading() - odometerBaseline <= policy.odometerJumpTolerance(),
+                    FuelAnomalyCase.Type.ODOMETER_JUMP,
+                    Map.of(
+                            "threshold",
+                            policy.odometerJumpTolerance(),
+                            "observed",
+                            before.odometerReading() - odometerBaseline));
         boolean withinGrace =
                 before.occurredAt()
                         .plusSeconds(policy.receiptGraceHours() * 3600L)
@@ -822,9 +851,6 @@ public class FuelApplicationService {
         checkPumpImage(rules, failures, before, policy, withinGrace);
         checkPostedPrice(rules, failures, before, policy);
         checkEvidenceNotReused(rules, failures, before);
-        var previous =
-                repository.findPreviousTransaction(
-                        before.siteCode().value(), before.vehicleId(), before.occurredAt());
         BigDecimal consumption = null;
         if (previous.isPresent()) {
             long km = before.odometerReading() - previous.get().odometerReading();
@@ -960,8 +986,9 @@ public class FuelApplicationService {
         var refs =
                 fleet.resolve(
                         c.vehicleId(), c.driverId(), c.tripId(), SiteCode.of(c.siteCode()).value());
-        access.requireOwnRecord(
-                c.actor(), refs.driverStaffReference(), c.siteCode(), "DriverLogbook", null);
+        // A driver records their own journeys: matched on the driver profile their sign-in is bound
+        // to, never on the staff number, which is not what an identity provider issues.
+        requireOwnFuelRecord(c.actor(), c.driverId(), c.siteCode(), "DriverLogbook", null);
         Instant now = clock.instant();
         var l =
                 new DriverLogbook(
@@ -1015,12 +1042,14 @@ public class FuelApplicationService {
                 id.toString());
         var refs =
                 fleet.resolve(c.vehicleId(), c.driverId(), c.tripId(), before.siteCode().value());
-        access.requireOwnRecord(
+        requireOwnFuelRecord(
                 c.actor(),
-                refs.driverStaffReference(),
+                before.driverId(),
                 before.siteCode().value(),
                 "DriverLogbook",
                 id.toString());
+        requireOwnFuelRecord(
+                c.actor(), c.driverId(), before.siteCode().value(), "DriverLogbook", id.toString());
         var after =
                 before.amend(
                         c.driverId(),
@@ -1070,12 +1099,14 @@ public class FuelApplicationService {
                 };
         access.require(
                 actor, permission, before.siteCode().value(), "DriverLogbook", id.toString());
-        access.requireOwnRecord(
+        requireOwnFuelRecord(
                 actor,
-                before.metadata().createdBy(),
+                before.driverId(),
                 before.siteCode().value(),
                 "DriverLogbook",
                 id.toString());
+        if (action.equals("review") || action.equals("approve") || action.equals("return"))
+            requireIndependentReviewer(before, actor);
         var meta =
                 before.metadata()
                         .modifiedBy(
@@ -1117,6 +1148,21 @@ public class FuelApplicationService {
                     Map.of("logbookId", id, "status", after.status()));
         notifyLogbook(action, after);
         return after;
+    }
+
+    /**
+     * Separation of duties: a logbook is reviewed by someone other than the person who wrote it or
+     * the driver it belongs to. A fleet manager who also drives cannot sign off their own mileage.
+     */
+    private void requireIndependentReviewer(DriverLogbook logbook, ActorContext actor) {
+        boolean wroteIt = actor.actorId().equals(logbook.metadata().createdBy());
+        boolean drivesIt =
+                driverScopes.resolve(actor, true) instanceof DriverScope.Own own
+                        && own.driverId().equals(logbook.driverId());
+        if (wroteIt || drivesIt)
+            throw new IllegalArgumentException(
+                    "You cannot review or approve a logbook you recorded or that is for your own"
+                            + " journeys. Ask another fleet manager to review it.");
     }
 
     private void notifyLogbook(String action, DriverLogbook l) {
@@ -1376,12 +1422,8 @@ public class FuelApplicationService {
                 l.siteCode().value(),
                 "DriverLogbook",
                 id.toString());
-        access.requireOwnRecord(
-                actor,
-                l.metadata().createdBy(),
-                l.siteCode().value(),
-                "DriverLogbook",
-                id.toString());
+        requireOwnFuelRecord(
+                actor, l.driverId(), l.siteCode().value(), "DriverLogbook", id.toString());
         return l;
     }
 

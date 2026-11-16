@@ -1,4 +1,7 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
+import { useFeatureFlagsVersion } from './featureFlags';
+import { isPlatformAdministrator } from './programmes';
+import { adminPaths } from './navigation';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import {
   AppBody,
@@ -8,6 +11,7 @@ import {
   AppHeaderTitle,
   AppLayout,
   AppSidebar,
+  EmptyState,
   ProfilePopover,
   Sidebar,
   SidebarBrand,
@@ -133,7 +137,11 @@ const isCurrent = (item: NavItem, pathname: string): boolean =>
 const AppShell = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const sections = useMemo(() => entitledSections(), []);
+  // Re-derived when an administrator switches a module on or off, so the rail follows at once.
+  // entitledSections() reads the flags directly; subscribing makes this component re-render (and
+  // so recompute it) whenever an administrator changes one.
+  useFeatureFlagsVersion();
+  const sections = entitledSections();
   /** Null when nobody has signed in - the header-based development actor is then in force. */
   const session = readSession();
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -187,6 +195,7 @@ const AppShell = () => {
   }, [navigate, query, sections]);
 
   const primaryRole = roles[0] ? words(roles[0]) : 'operator';
+  const headerSites = session ? session.siteScopes : sites;
   const handleSignOut = () => {
     signOut();
     window.location.assign(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/login`);
@@ -199,13 +208,17 @@ const AppShell = () => {
             in the body text colour, so it is set explicitly here. */}
         <AppHeaderTitle style={{ color: 'var(--clet-text)' }}>{portalLabel()}</AppHeaderTitle>
         <AppHeaderActions>
-          <span
-            className="hidden items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-theme-xs font-medium text-gray-800 md:inline-flex"
-            title="Site scope sent on every request (X-SFL-Sites)"
-          >
-            <Icon name="map-pin" size={14} />
-            {sites.length === 1 ? sites[0] : `${sites.length} sites`}
-          </span>
+          {/* The sites the account really holds - never a fallback, which used to show CLET-HQ to an
+              account the services then refused for having no site at all. */}
+          {headerSites.length > 0 && (
+            <span
+              className="hidden items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-theme-xs font-medium text-gray-800 md:inline-flex"
+              title="The sites you work at"
+            >
+              <Icon name="map-pin" size={14} />
+              {headerSites.includes('*') ? 'All sites' : headerSites.length === 1 ? headerSites[0] : `${headerSites.length} sites`}
+            </span>
+          )}
           <AppHeaderSearch
             collapsible
             placeholder="Search pages"
@@ -281,6 +294,15 @@ const AppShell = () => {
                     System preferences
                   </button>
                 </SidebarLink>
+                {isPlatformAdministrator && (
+                  <SidebarLink
+                    asChild
+                    active={pathname === adminPaths.modules}
+                    icon={<Icon name="toggle" size={18} />}
+                  >
+                    <Link to={adminPaths.modules}>Modules</Link>
+                  </SidebarLink>
+                )}
                 {session && (
                   <SidebarLink asChild icon={<Icon name="log-out" size={18} />}>
                     <button type="button" onClick={handleSignOut}>Logout</button>
@@ -344,7 +366,18 @@ const AppShell = () => {
               <p className="mt-1 text-theme-sm text-warning-700">{permissionsUnavailable}</p>
             </div>
           )}
-          <Outlet />
+          {/*
+            A signed-in account with no site sees no work at all - every SFL record belongs to a site.
+            One plain message, rather than each panel on the page failing with its own error code.
+          */}
+          {session && session.siteScopes.length === 0 ? (
+            <EmptyState
+              title="Your account is not assigned to a site yet"
+              description="SFL shows the work at the sites you are assigned to. Ask your system administrator to add your site to your account, then sign in again."
+            />
+          ) : (
+            <Outlet />
+          )}
         </div>
       </AppBody>
 

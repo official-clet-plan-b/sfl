@@ -70,7 +70,7 @@ const GHANA_FUEL_CARD_PROVIDERS: SelectOption[] = [
   { value: 'ENGEN GHANA', label: 'Engen Ghana' },
   { value: 'ALLIED OIL GHANA', label: 'Allied Oil Ghana' },
   { value: 'FRIMPS OIL', label: 'Frimps Oil' },
-  { value: 'CLET FUEL CARDS', label: 'CLET Fuel Cards / internal demo' },
+  { value: 'CLET FUEL CARDS', label: 'GSL Fuel Cards / internal demo' },
 ];
 
 const demoMaskedReference = (): string => `****${String(Date.now()).slice(-4)}`;
@@ -182,7 +182,7 @@ const FuelCardsPage = () => {
         <SectionHeader>
           <SectionTitle>Fuel cards</SectionTitle>
           <SectionActions className="items-end [&_button]:whitespace-nowrap">
-            <SiteSelect value={siteCode} onChange={setSiteCode} required />
+            <SiteSelect inline value={siteCode} onChange={setSiteCode} required />
             <Button variant="outline" onClick={query.refetch}>
               <RefreshCw size={14} strokeWidth={1.5} aria-hidden />
               Refresh

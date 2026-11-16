@@ -48,14 +48,14 @@ export interface ActorOverride {
   /** Comma-separated site codes for `X-SFL-Sites`. */
   sites: string;
   /**
-   * Programme codes, mirroring `VITE_SFL_PROGRAMMES`.
+   * Programme codes to preview (dev only; there is no build-time equivalent).
    *
    * Empty means "derive from the roles", which is the real behaviour. Setting it is how to look at
    * one programme's screens without inventing a role list to justify it.
    */
   programmes: string;
   /**
-   * System codes, mirroring `VITE_SFL_SYSTEMS`.
+   * System codes to preview (dev only). Systems switched off by the deployment's feature flags stay hidden.
    *
    * The finer grain. Empty derives from the roles, which is what a real sign-in does - the presets
    * leave it blank for that reason and narrow by role instead.

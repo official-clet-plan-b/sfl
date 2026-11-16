@@ -385,7 +385,7 @@ export const DateField = ({
     helperText={helperText}
     className={className}
   >
-    <div role="group" aria-label={label}>
+    <div role="group" aria-label={label} className="grid">
       <DateSelector
         value={parseDate(value)}
         onChange={(date) => {

@@ -14,7 +14,7 @@ public enum FleetErrorCode {
 
     // --- SRS-SFL-S166-01 -------------------------------------------------------------------
     FLEET_DUPLICATE_IDENTIFIER("An active record with this identifier already exists for this site.", true),
-    FLEET_MISSING_SITE_SCOPE("Select a valid CLET site before saving this record.", true),
+    FLEET_MISSING_SITE_SCOPE("Select a valid GSL site before saving this record.", true),
     FLEET_UNAUTHORIZED_SCOPE("You are not authorised to access this site or record.", true),
 
     // --- SRS-SFL-S166-02 -------------------------------------------------------------------

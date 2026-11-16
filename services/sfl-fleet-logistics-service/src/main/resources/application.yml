@@ -102,6 +102,13 @@ management:
         enabled: true
 
 sfl:
+  # Feature flags: which systems this deployment switches on. Blank allow-list = everything on.
+  # e.g. SFL_FEATURES_ENABLED_SYSTEMS=S166,S167,S168,S168a  or  SFL_FEATURES_DISABLED_SYSTEMS=S171
+  features:
+    enabled-systems: ${SFL_FEATURES_ENABLED_SYSTEMS:}
+    disabled-systems: ${SFL_FEATURES_DISABLED_SYSTEMS:}
+    # Administrators' on/off choices from the dashboard; they override the defaults above.
+    table: fleet_logistics.sfl_feature_flags
   cors:
     # Origins allowed to call /api/** and /actuator/**. 5005 is the SFL Operations UI dev server.
     #
@@ -127,6 +134,9 @@ sfl:
     # takes an explicit SFL_SECURITY_ENABLED=false plus a warning on every startup.
     enabled: ${SFL_SECURITY_ENABLED:true}
     jwks:
+      # Optional. Where to fetch signing keys when the service reaches the identity provider at a
+      # different address from the issuer in the token (e.g. inside a container network).
+      uri: ${SFL_IAM_JWKS_URI:}
       # Bounds how long a request thread can block fetching/validating against the identity
       # provider's JWKS - see FleetSecurityConfiguration.jwtDecoder and TimeoutBoundedJwtDecoders.
       connect-timeout: ${SFL_JWKS_CONNECT_TIMEOUT:PT3S}

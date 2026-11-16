@@ -18,6 +18,8 @@ import {
 import { Checkbox } from 'modules/facilities/dialogs/dialogKit';
 import SiteSelect, { defaultSite } from 'shared/components/SiteSelect';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
+import { DonutChart } from 'shared/charts/Charts';
+import { chartColors } from 'shared/charts/palette';
 import { trackingApi, type TrackedVehicle, type TrackingStatus } from '../api/phase2Api';
 import { formatPosition, reportAge, summariseTracking } from '../api/tracking';
 
@@ -96,7 +98,7 @@ export const TelematicsDashboardPage = () => {
         <SectionHeader>
           <SectionTitle>GPS & telematics</SectionTitle>
           <SectionActions className="items-end [&_button]:whitespace-nowrap">
-            <SiteSelect value={siteCode} onChange={setSiteCode} required />
+            <SiteSelect inline value={siteCode} onChange={setSiteCode} required />
             <Button variant="outline" className="whitespace-nowrap" onClick={() => refetch()}>
               Refresh
             </Button>
@@ -111,7 +113,7 @@ export const TelematicsDashboardPage = () => {
       </PageSection>
 
       <PageSection>
-        <MetricCards>
+        <MetricCards className="sm:grid-cols-3!">
           <MetricCard variant="soft" label="Tracked" value={summary.tracked} description="Reported recently" loading={tracking.initialising} />
           <MetricCard variant="soft" label="Stale" value={summary.stale} description="Last position may be wrong" loading={tracking.initialising} />
           <MetricCard variant="soft" label="Untracked" value={summary.untracked} description="Never reported" loading={tracking.initialising} />
@@ -133,6 +135,23 @@ export const TelematicsDashboardPage = () => {
             label="Only vehicles that cannot be located right now"
           />
         </div>
+        <div className="grid items-start gap-[var(--clet-app-layout-body-gap)] xl:grid-cols-[minmax(0,1fr)_minmax(0,3fr)]">
+          <Card bordered className="p-5">
+            <p className="text-theme-sm font-semibold text-gray-800">Tracking coverage</p>
+            <p className="mb-4 text-theme-xs text-gray-500">Can each vehicle be seen right now?</p>
+            {vehicles.length === 0 ? (
+              <p className="py-10 text-center text-theme-sm opacity-70">No active vehicles in scope.</p>
+            ) : (
+              <DonutChart
+                labels={['Tracked', 'Stale', 'Untracked']}
+                values={[summary.tracked, summary.stale, summary.untracked]}
+                colors={[chartColors.success, chartColors.warning, chartColors.grey]}
+                centreLabel={`${vehicles.length} vehicles`}
+                showPercentages={false}
+              />
+            )}
+          </Card>
+          <div className="min-w-0">
         {tracking.error ? (
           <EmptyState title="Telematics is unavailable" description={tracking.error.message} />
         ) : (
@@ -152,6 +171,8 @@ export const TelematicsDashboardPage = () => {
             </Card>
           </Table>
         )}
+          </div>
+        </div>
       </PageSection>
     </>
   );

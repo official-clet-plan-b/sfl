@@ -77,6 +77,8 @@ const WorkflowDetailPage = lazy(() => import('modules/fleet/pages/WorkflowDetail
 const CompliancePage = lazy(() => import('modules/fleet/pages/CompliancePage'));
 const EvidenceAuditPage = lazy(() => import('modules/fleet/pages/EvidenceAuditPage'));
 const IntegrationHealthPage = lazy(() => import('modules/fleet/pages/IntegrationHealthPage'));
+const LiveFleetMapPage = lazy(() => import('modules/fleet/pages/LiveFleetMapPage'));
+const ModulesPage = lazy(() => import('shared/pages/ModulesPage'));
 const TelematicsDashboardPage = lazy(() => import('modules/phase2/pages/Phase2OperationsPages').then((module) => ({ default: module.TelematicsDashboardPage })));
 const VipTripPortalPage = lazy(() => import('modules/phase2/pages/Phase2OperationsPages').then((module) => ({ default: module.VipTripPortalPage })));
 const AssetVisibilityPage = lazy(() => import('modules/phase2/pages/Phase2OperationsPages').then((module) => ({ default: module.AssetVisibilityPage })));
@@ -247,6 +249,8 @@ const App = () => {
               per record underneath. A system guard here would have to pick one system arbitrarily
               and would refuse the other half of the page.
             */}
+            {/* Platform administration: offered to SFL_ADMIN / DTI_ADMIN; the services enforce it. */}
+            <Route path="admin/modules" element={<ModulesPage />} />
             <Route path="me">
               <Route path="driving" element={<DriverDayPage />} />
               <Route path="requests" element={<MyRequestsPage />} />
@@ -405,6 +409,7 @@ const App = () => {
             */}
             <Route path="fleetvehicle">
               <Route path="telematics" element={<SystemRoutes system="S167" />}><Route index element={<TelematicsDashboardPage />} /></Route>
+              <Route path="live-map" element={<SystemRoutes system="S167" />}><Route index element={<LiveFleetMapPage />} /></Route>
               <Route path="vip-transport" element={<SystemRoutes system="S168a" />}><Route index element={<VipTripPortalPage />} /></Route>
               <Route path="asset-visibility" element={<SystemRoutes system="AVAMP" />}><Route index element={<AssetVisibilityPage />} /></Route>
               <Route path="fleet" element={<SystemRoutes system="S166" />}>

@@ -117,7 +117,7 @@ const ReadinessChecklistsPage = () => {
           <SectionTitle>Readiness checklists</SectionTitle>
           <SectionDescription>What an assessment asks, and what a failure costs</SectionDescription>
           <SectionActions className="items-end [&_button]:whitespace-nowrap">
-            <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
+            <SiteSelect inline value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
             <ControlButton state={createChecklistControl()} variant="primary" onClick={() => setAdding(true)}>
               <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
               Add a checklist

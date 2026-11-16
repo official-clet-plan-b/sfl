@@ -155,7 +155,7 @@ const ServiceDialog = ({ serviceId, onClose, onChanged }: { serviceId: string; o
                         <ul className="space-y-1">
                           {d.exceptions.map((e) => (
                             <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                              <span>{e.reference} · {humanise(e.exceptionType)} · {e.description}{e.incidentState === 'PENDING_MANUAL' ? ' · incident pending (S163 has not confirmed it)' : ''}</span><CateringBadge value={e.status} />
+                              <span>{e.reference} · {humanise(e.exceptionType)} · {e.description}{e.incidentState === 'PENDING_MANUAL' ? ' · incident pending (Incident Reporting has not confirmed it)' : ''}</span><CateringBadge value={e.status} />
                             </li>
                           ))}
                         </ul>

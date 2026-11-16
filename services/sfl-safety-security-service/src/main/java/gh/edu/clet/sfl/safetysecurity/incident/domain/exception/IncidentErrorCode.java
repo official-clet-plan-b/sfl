@@ -7,7 +7,7 @@ package gh.edu.clet.sfl.safetysecurity.incident.domain.exception;
 public enum IncidentErrorCode {
 
     // Operational records
-    INCIDENT_MISSING_SITE_SCOPE(400, "Select a valid CLET site before saving this incident."),
+    INCIDENT_MISSING_SITE_SCOPE(400, "Select a valid GSL site before saving this incident."),
     INCIDENT_UNAUTHORIZED_SCOPE(403, "You are not authorised to access this site or record."),
 
     // Workflow

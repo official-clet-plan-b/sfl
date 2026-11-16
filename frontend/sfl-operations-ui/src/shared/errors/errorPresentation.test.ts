@@ -18,7 +18,7 @@ describe('the headline is language, never a code', () => {
     ['FLEET_VALIDATION_FAILED', 'Check what was entered'],
     ['FACILITIES_VALIDATION_FAILED', 'Check what was entered'],
     ['VALIDATION_FAILED', 'Check what was entered'],
-    ['UNAUTHORIZED_SCOPE', 'You do not have access to this'],
+    ['UNAUTHORIZED_SCOPE', 'Not available for your account'],
     ['FLEET_RECORD_NOT_FOUND', 'That record no longer exists'],
     ['FLEET_RECORD_VERSION_CONFLICT', 'Somebody else changed this first'],
     ['DUPLICATE_IDENTIFIER', 'That already exists'],
@@ -45,15 +45,20 @@ describe('the headline is language, never a code', () => {
   });
 });
 
-describe('the technical half survives, as a footnote', () => {
-  it('carries the code and the correlation id together, which is what support asks for', () => {
-    expect(errorDetail(error('FLEET_UNEXPECTED_STATUS', 'x', 'abc-123'))).toBe(
-      'FLEET_UNEXPECTED_STATUS · correlation abc-123',
-    );
+describe('nothing technical reaches the screen', () => {
+  it('shows neither the code nor the correlation id - support reads those in the console', () => {
+    expect(errorDetail(error('FLEET_UNEXPECTED_STATUS', 'x', 'abc-123'))).toBeUndefined();
+    expect(errorDetail(error('VALIDATION_FAILED'))).toBeUndefined();
   });
 
-  it('carries the code alone when there is no correlation id', () => {
-    expect(errorDetail(error('VALIDATION_FAILED'))).toBe('VALIDATION_FAILED');
+  it('replaces an access refusal with a sentence saying who to ask', () => {
+    const refused = FleetApiError.fromEnvelope(
+      403,
+      { code: 'FLEET_UNAUTHORIZED_SCOPE', message: 'You are not authorised to access this site or record.', correlationId: 'abc-123', timestamp: '2026-11-16T15:00:00Z' },
+      null,
+    );
+    expect(refused.message).not.toMatch(/UNAUTHORIZED|correlation/i);
+    expect(refused.message).toMatch(/system administrator/i);
   });
 });
 
@@ -73,7 +78,7 @@ describe('an unmapped service failure does not describe itself in URLs', () => {
 
   it('tells the reader what to do instead', () => {
     expect(unmapped(400).message).toMatch(/check the details you entered/i);
-    expect(unmapped(400).message).toMatch(/correlation id/i);
+    expect(unmapped(400).message).not.toMatch(/correlation/i);
   });
 
   it('separates "your request was refused" from "the service broke"', () => {

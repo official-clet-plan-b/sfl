@@ -46,8 +46,8 @@ const ExceptionPanel = ({ exception, onClose, onChanged }: { exception: WasteExc
               <KeyValueGrid columns={2} items={[
                 { label: 'Owner', value: exception.ownerReference ?? 'Not assigned' },
                 { label: 'Due', value: formatDate(exception.dueOn) },
-                { label: 'Work order (S153)', value: link(exception.workOrderState, exception.workOrderNumber, 'S153') },
-                { label: 'Incident (S163)', value: link(exception.incidentState, exception.incidentReference, 'S163') },
+                { label: 'Work order', value: link(exception.workOrderState, exception.workOrderNumber, 'S153') },
+                { label: 'Incident', value: link(exception.incidentState, exception.incidentReference, 'S163') },
                 ...(exception.resolution ? [{ label: 'Resolution', value: exception.resolution, span: 2 as const }] : []),
               ]} />
             </ModalBody>
@@ -64,7 +64,7 @@ const ExceptionPanel = ({ exception, onClose, onChanged }: { exception: WasteExc
         </ModalPortal>
       </Modal>
       {pending === 'assign' && <ReasonDialog title="Assign an owner" description="Who is accountable for correcting this." label="Owner" submitLabel="Assign" write={(text) => wasteApi.assignException(exception.id, text)} onClose={() => setPending(undefined)} onDone={done} />}
-      {pending === 'incident' && <ReasonDialog title="Link the incident" description="Enter the reference Incident Reporting (S163) gave this incident." label="Incident reference" submitLabel="Link incident" write={(text) => wasteApi.linkIncident(exception.id, text)} onClose={() => setPending(undefined)} onDone={done} />}
+      {pending === 'incident' && <ReasonDialog title="Link the incident" description="Enter the reference Incident Reporting gave this incident." label="Incident reference" submitLabel="Link incident" write={(text) => wasteApi.linkIncident(exception.id, text)} onClose={() => setPending(undefined)} onDone={done} />}
       {pending === 'resolve' && <ReasonDialog title="Resolve the exception" description="Say what was done to correct it." label="Resolution" submitLabel="Resolve" write={(text) => wasteApi.resolveException(exception, text)} onClose={() => setPending(undefined)} onDone={done} />}
     </>
   );

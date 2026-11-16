@@ -7,7 +7,7 @@ package gh.edu.clet.sfl.safetysecurity.visitor.domain.exception;
 public enum VisitorErrorCode {
 
     // Operational records
-    VISITOR_MISSING_SITE_SCOPE(400, "Select a valid CLET site before saving this visit."),
+    VISITOR_MISSING_SITE_SCOPE(400, "Select a valid GSL site before saving this visit."),
     VISITOR_UNAUTHORIZED_SCOPE(403, "You are not authorised to access this site or record."),
 
     // Workflow

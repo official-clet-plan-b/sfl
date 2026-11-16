@@ -116,7 +116,7 @@ const MaintenanceVendorsPage = () => {
             Contractors, their contracts and their contracted response times
           </SectionDescription>
           <SectionActions className="items-end [&_button]:whitespace-nowrap">
-            <SiteSelect value={siteCode} onChange={setSiteCode} />
+            <SiteSelect inline value={siteCode} onChange={setSiteCode} />
             {canManageVendors() && (
               <Button variant="primary" onClick={() => setRegistering(true)}>
                 <Plus size={14} strokeWidth={1.5} aria-hidden="true" />

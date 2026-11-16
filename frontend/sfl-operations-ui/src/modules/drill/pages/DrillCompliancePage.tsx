@@ -69,7 +69,7 @@ const DrillCompliancePage = () => {
               loading={query.initialising}
               onRowClick={canConfigure ? (row) => setEditing({ row }) : undefined}
               emptyTitle="No frequency requirements set"
-              emptyDescription="The statutory and insurance intervals are CLET's to set. Until they are, no site can show a compliance gap."
+              emptyDescription="The statutory and insurance intervals are GSL's to set. Until they are, no site can show a compliance gap."
             />
           </Panel>
         </PageSection>

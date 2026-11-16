@@ -51,12 +51,12 @@ export const drillStatusLabel: Record<DrillStatus, string> = {
 };
 
 export const drillModuleLabel: Record<DrillModule, string> = {
-  S160_VISITOR_MANAGEMENT: 'S160 Visitor management',
-  S160A_ACCESS_CONTROL: 'S160a Access control',
-  S162A_LIFE_SAFETY: 'S162a Fire & life safety',
-  S166_FLEET: 'S166 Fleet',
-  S171_DISPATCH: 'S171 Dispatch',
-  S174_MASS_NOTIFICATION: 'S174 Mass notification',
+  S160_VISITOR_MANAGEMENT: 'Visitor management',
+  S160A_ACCESS_CONTROL: 'Access control',
+  S162A_LIFE_SAFETY: 'Fire & life safety',
+  S166_FLEET: 'Fleet',
+  S171_DISPATCH: 'Courier & dispatch',
+  S174_MASS_NOTIFICATION: 'Mass notification',
   OTHER: 'Other',
 };
 

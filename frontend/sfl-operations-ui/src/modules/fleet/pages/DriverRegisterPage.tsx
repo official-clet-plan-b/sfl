@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router';
-import { Button, Input, PageSection } from '@rfdtech/components';
+import { Badge, Button, Input, PageSection } from '@rfdtech/components';
 import { DriverResponse } from 'modules/fleet/api/dto';
 import {
   DRIVER_LIFECYCLE_STATUSES,
@@ -171,7 +171,12 @@ const DriverRegisterPage = () => {
           const [reason] = describeDriverEligibility(row);
           return (
             <div className="min-w-0">
-              <StatusBadge value={row.eligibilityStatus} />
+              {/* An archived driver's licence may still be valid, but they cannot be assigned. */}
+              {row.lifecycleStatus === 'ARCHIVED' ? (
+                <Badge variant="default">Not assignable</Badge>
+              ) : (
+                <StatusBadge value={row.eligibilityStatus} />
+              )}
               {reason && <p className="mt-1 text-theme-xs opacity-70">{reason}</p>}
             </div>
           );

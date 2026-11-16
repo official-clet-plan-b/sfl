@@ -149,4 +149,18 @@ class FacilitiesJwtSecurityTest {
                 .claim("site_scopes", List.of("MAIN"))
                 .build();
     }
+
+    @Test
+    @DisplayName("the bundled dashboard loads without a token - it is what signs the user in")
+    void the_dashboard_is_open() throws Exception {
+        for (String path : new String[] {"/home/", "/home/index.html", "/home/assets/app.js", "/home/fleetvehicle/live-map"}) {
+            mockMvc.perform(get(path))
+                    .andExpect(result -> {
+                        int status = result.getResponse().getStatus();
+                        if (status == 401 || status == 403) {
+                            throw new AssertionError(path + " must not require a token, got " + status);
+                        }
+                    });
+        }
+    }
 }

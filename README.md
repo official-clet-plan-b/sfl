@@ -1,6 +1,6 @@
-# CLET Cluster 9 - Safety, Facilities & Logistics
+# GSL Cluster 9 - Safety, Facilities & Logistics
 
-The SFL Directorate platform for the Centre for Language and Educational Technology (CLET).
+The Safety, Facilities & Logistics (SFL) platform for GSL, a directorate under CLET.
 Phase 1 covers thirteen Fast-Track systems across four programmes:
 
 | Programme  | What it covers                                   |
@@ -100,6 +100,23 @@ Useful switches:
 
 For front-end work with hot reload, `.\scripts\dev\run-fleet-dev.ps1` runs the service on 8093 and
 Vite on 5005.
+
+## Feature flags
+
+Each system can be switched on or off per deployment, at runtime - no rebuild of the images or the
+dashboard. Set these on the backend services (the same values on all three is fine; each service only
+reads the codes it hosts):
+
+| Variable | Meaning |
+| --- | --- |
+| `SFL_FEATURES_ENABLED_SYSTEMS` | Allow-list, e.g. `S166,S167,S168,S168a`. Blank = every system on. |
+| `SFL_FEATURES_DISABLED_SYSTEMS` | Deny-list applied after the allow-list, e.g. `S171`. |
+
+A switched-off system's API answers `404 SFL_SYSTEM_DISABLED`, and the dashboard hides its menu
+entries and pages. The dashboard learns what is on from `GET /api/v1/{fleet|facilities|emergency}/features`
+when it loads. A system that another switched-on system depends on keeps its API reachable (fuel reads
+the vehicle register; every facilities module reads the estate) but its own screens stay hidden. The
+system lists live in `FleetLogisticsFeatures`, `FacilitiesFeatures` and `SafetySecurityFeatures`.
 
 ## Build and test
 

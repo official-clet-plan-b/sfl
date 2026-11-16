@@ -89,7 +89,7 @@ public record FuelCard(
         return new FuelCard(
                 id,
                 siteCode,
-                maskedReference,
+                requireMaskedForm(maskedReference),
                 provider,
                 vehicleId,
                 driverId,
@@ -228,5 +228,28 @@ public record FuelCard(
         if (value != null && value.signum() <= 0) {
             throw new IllegalArgumentException(field + " must be greater than zero when set");
         }
+    }
+
+    /** The provider's masked form: asterisks then the last four digits, such as ****1234. */
+    private static final java.util.regex.Pattern MASKED_FORM =
+            java.util.regex.Pattern.compile("^\\*{2,}\\d{4}$");
+
+    /**
+     * A new card must arrive already masked. A full card number is refused outright (it must never
+     * be stored), and anything else is refused because a transaction's masked reference could never
+     * match it, so the card-known check would fail every purchase made with it. Checked when a card
+     * is issued, not on read, so rows recorded before this rule still load.
+     */
+    static String requireMaskedForm(String maskedReference) {
+        String value = requireText(maskedReference, "maskedReference");
+        if (value.replaceAll("\\s+", "").matches(".*\\d{12,}.*")) {
+            throw new IllegalArgumentException(
+                    "Enter only the masked card reference from the provider, never a full card number");
+        }
+        if (!MASKED_FORM.matcher(value).matches()) {
+            throw new IllegalArgumentException(
+                    "The card reference must be the provider's masked form, such as ****1234");
+        }
+        return value;
     }
 }

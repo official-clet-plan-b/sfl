@@ -130,7 +130,7 @@ const PreventiveSchedulesPage = () => {
           <SectionTitle>Preventive schedules</SectionTitle>
           <SectionDescription>Planned servicing, and what it has raised</SectionDescription>
           <SectionActions className="items-end [&_button]:whitespace-nowrap">
-            <SiteSelect value={siteCode} onChange={setSiteCode} />
+            <SiteSelect inline value={siteCode} onChange={setSiteCode} />
             {canManageSchedules() && (
               <>
                 <Button variant="outline" onClick={generate}>

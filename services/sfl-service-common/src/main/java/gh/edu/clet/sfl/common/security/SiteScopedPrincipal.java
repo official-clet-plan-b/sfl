@@ -9,9 +9,22 @@ public record SiteScopedPrincipal(
         String displayName,
         Set<SflRole> roles,
         Set<String> siteScopes,
-        boolean serviceAccount) {
+        boolean serviceAccount,
+        String loginName) {
 
+    /** A principal without a separate login name - header actors and service accounts. */
+    public SiteScopedPrincipal(String subjectId, String displayName, Set<SflRole> roles, Set<String> siteScopes,
+            boolean serviceAccount) {
+        this(subjectId, displayName, roles, siteScopes, serviceAccount, null);
+    }
+
+    /**
+     * {@code loginName} is the name the person signs in with ({@code preferred_username}), when the
+     * identity provider gives one. The subject is the stable key; the login name is what an
+     * administrator knows and types, so records such as a driver's sign-in link may be keyed on it.
+     */
     public SiteScopedPrincipal {
+        loginName = loginName == null || loginName.isBlank() ? null : loginName.strip();
         subjectId = normalizeSubject(subjectId);
         displayName = displayName == null || displayName.isBlank() ? subjectId : displayName.strip();
         roles = roles == null ? Set.of() : Set.copyOf(roles);

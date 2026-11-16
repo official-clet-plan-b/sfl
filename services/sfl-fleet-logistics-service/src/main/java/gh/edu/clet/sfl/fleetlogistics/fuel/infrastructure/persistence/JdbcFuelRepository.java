@@ -698,6 +698,19 @@ public class JdbcFuelRepository implements FuelRepository {
                 ts(before));
     }
 
+    @Override
+    public boolean hasLaterTransaction(String site, UUID vehicle, Instant after, UUID excludingId) {
+        Boolean exists =
+                jdbc.queryForObject(
+                        "SELECT EXISTS (SELECT 1 FROM fleet_logistics.fuel_transactions WHERE site_code=? AND vehicle_id=? AND occurred_at>? AND id<>? AND lifecycle_status='ACTIVE')",
+                        Boolean.class,
+                        site,
+                        vehicle,
+                        ts(after),
+                        excludingId);
+        return Boolean.TRUE.equals(exists);
+    }
+
     /* ------------------------------------------------------------------------------ logbooks */
 
     @Override
@@ -946,7 +959,7 @@ public class JdbcFuelRepository implements FuelRepository {
                         con ->
                                 prepareAndBind(
                                         con,
-                                        "SELECT COUNT(*) FROM fleet_logistics.fuel_anomaly_cases WHERE site_code = ANY (?) AND (vehicle_id=? OR driver_id=?) AND created_at>=?",
+                                        "SELECT COUNT(*) FROM fleet_logistics.fuel_anomaly_cases WHERE site_code = ANY (?) AND (vehicle_id=? OR driver_id=?) AND created_at>=? AND status<>'CANCELLED'",
                                         ps -> {
                                             ps.setArray(
                                                     1,

@@ -54,6 +54,7 @@ export const RegisterDriverDialog = ({
       medicalClearanceExpiresOn: '',
       siteCode: defaultSiteCode,
       responsibleUnit: '',
+      signInUsername: '',
     },
     schema: {
       staffReference: compose(required('Staff reference'), maxLength('Staff reference', 80)),
@@ -63,11 +64,11 @@ export const RegisterDriverDialog = ({
       licenceExpiresOn: required('Licence expiry'),
       siteCode: compose(required('Site code'), maxLength('Site code', 40)),
       responsibleUnit: compose(required('Responsible unit'), maxLength('Responsible unit', 160)),
+      signInUsername: maxLength('Sign-in username', 160),
     },
     onSubmit: async (values) => {
       const staffReference = values.staffReference.trim();
-      const principalSubject =
-        staffReference.toLowerCase() === 'kwame.driver' ? 'kwame.driver' : null;
+      const principalSubject = values.signInUsername.trim().toLowerCase() || null;
       await driversApi.register({
         staffReference,
         displayName: values.displayName.trim(),
@@ -160,6 +161,17 @@ export const RegisterDriverDialog = ({
           onChange={(value) => form.setValue('responsibleUnit', value)}
           {...form.fieldProps('responsibleUnit')}
         />
+        <TextInput
+          label="Sign-in username"
+          className="sm:col-span-2"
+          value={form.values.signInUsername}
+          onChange={(value) => form.setValue('signInUsername', value)}
+          placeholder="e.g. abena.boateng"
+          {...form.fieldProps(
+            'signInUsername',
+            'The username this staff member signs in to SFL with. Their assigned trips then appear in their My driving day. You can link it later.',
+          )}
+        />
       </div>
     </FleetFormDialog>
   );
@@ -177,15 +189,14 @@ export const BindDriverPrincipalDialog = ({
 }: BaseProps & { driver: DriverResponse }) => {
   const form = useFleetForm({
     initialValues: {
-      principalSubject:
-        driver.staffReference.toLowerCase() === 'kwame.driver' ? 'kwame.driver' : '',
+      principalSubject: '',
     },
     schema: {
-      principalSubject: maxLength('Driver login username', 160),
+      principalSubject: maxLength('Sign-in username', 160),
     },
     onSubmit: async (values) => {
       await driversApi.bindPrincipal(driver.id, {
-        principalSubject: values.principalSubject.trim() || null,
+        principalSubject: values.principalSubject.trim().toLowerCase() || null,
         expectedVersion: driver.version,
       });
       onSaved();
@@ -206,13 +217,13 @@ export const BindDriverPrincipalDialog = ({
       onSubmit={form.submit}
     >
       <TextInput
-        label="Driver login username"
+        label="Sign-in username"
         value={form.values.principalSubject}
         onChange={(value) => form.setValue('principalSubject', value)}
-        placeholder="kwame.driver"
+        placeholder="e.g. abena.boateng"
         {...form.fieldProps(
           'principalSubject',
-          'For the seeded Driver portal, enter kwame.driver. Leave blank only to unlink this profile.',
+          'The username this driver signs in to SFL with. Leave blank to unlink the sign-in.',
         )}
       />
     </FleetFormDialog>

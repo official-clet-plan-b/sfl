@@ -1,4 +1,7 @@
 import { useMemo, useState } from 'react';
+import { permits } from 'shared/layout/actorPermissions';
+import LiveFleetPanel from '../components/LiveFleetPanel';
+import { isSystemEnabled, useFeatureFlagsVersion } from 'shared/layout/featureFlags';
 import { useNavigate } from 'react-router';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -46,11 +49,16 @@ import { useNotifier } from 'shared/components/Notifier';
 import { defaultSite, sflSites } from 'shared/components/SiteSelect';
 import { formatDateTime } from 'shared/components/format';
 import { useApiQuery } from 'shared/hooks/useApiQuery';
+import { DonutChart } from 'shared/charts/Charts';
+import { chartColors } from 'shared/charts/palette';
+import { parseVipPurpose } from 'modules/phase2/api/vipRequest';
 import { fleetPaths } from 'shared/layout/navigation';
 
 dayjs.extend(relativeTime);
 
 const ACTIVITY_DAYS = 14;
+/** How far ahead the status and VIP donuts look, so bookings already made are counted. */
+const UPCOMING_DAYS = 7;
 
 /** Buckets records into one entry per day so the chart window is fixed even where data is sparse. */
 const bucketByDay = (
@@ -203,6 +211,10 @@ const FleetDashboardPage = () => {
     either way. It opens on the actor's own site, the same default every register uses.
   */
   const [siteCode, setSiteCode] = useState(defaultSite);
+  // The live map belongs to S167 (GPS & telematics); it shows when that module is on and the actor
+  // can read vehicles.
+  useFeatureFlagsVersion();
+  const showLiveFleet = isSystemEnabled('S167') && permits('FLEET_VEHICLE_READ');
   const [planOpen, setPlanOpen] = useState(false);
   const operatingMode = '';
   const [drilldown, setDrilldown] = useState<DrilldownIndicator | null>(null);
@@ -217,6 +229,8 @@ const FleetDashboardPage = () => {
     [],
   );
   const windowEnd = useMemo(() => dayjs().endOf('day').toISOString(), []);
+  /** Bookings already made for the coming week - VIP requests are almost always in the future. */
+  const upcomingEnd = useMemo(() => dayjs().add(UPCOMING_DAYS, 'day').endOf('day').toISOString(), []);
 
   const snapshot = useApiQuery(
     (signal) =>
@@ -243,6 +257,21 @@ const FleetDashboardPage = () => {
         signal,
       ),
     [siteCode, operatingMode, windowStart, windowEnd],
+  );
+
+  const upcomingTrips = useApiQuery(
+    (signal) =>
+      tripsApi.search(
+        {
+          siteCode: siteCode || undefined,
+          operatingMode: operatingMode || undefined,
+          from: windowEnd,
+          to: upcomingEnd,
+          size: 200,
+        },
+        signal,
+      ),
+    [siteCode, operatingMode, windowEnd, upcomingEnd],
   );
 
   const recentWorkflow = useApiQuery(
@@ -361,6 +390,63 @@ const FleetDashboardPage = () => {
       },
     ];
   }, [indicators, snapshot.data]);
+
+  /*
+    The three mixes a fleet manager reads at a glance: where this fortnight's trips stand, whether
+    the drivers can be assigned, and how much of the work is VIP transport. Each is computed from data
+    the dashboard already fetched - no extra requests.
+  */
+  const donutTrips = useMemo(() => {
+    const byId = new Map<string, TripResponse>();
+    [...(recentTrips.data?.content ?? []), ...(upcomingTrips.data?.content ?? [])].forEach((trip) =>
+      byId.set(trip.id, trip),
+    );
+    return [...byId.values()];
+  }, [recentTrips.data, upcomingTrips.data]);
+
+  const tripMix = useMemo(() => {
+    const trips = donutTrips;
+    const order: [string, string, string][] = [
+      ['PLANNED', 'Planned', chartColors.navyMid],
+      ['ASSIGNED', 'Assigned', chartColors.teal],
+      ['IN_PROGRESS', 'On the road', chartColors.success],
+      ['ON_HOLD', 'On hold', chartColors.warning],
+      ['COMPLETED', 'Completed', chartColors.navy],
+      ['CANCELLED', 'Cancelled', chartColors.grey],
+    ];
+    const used = order.filter(([status]) => trips.some((trip) => trip.status === status));
+    return {
+      total: trips.length,
+      labels: used.map(([, label]) => label),
+      values: used.map(([status]) => trips.filter((trip) => trip.status === status).length),
+      colors: used.map(([, , colour]) => colour),
+    };
+  }, [donutTrips]);
+
+  const driverMix = useMemo(() => {
+    const drivers = [...(driverIndex.data?.values() ?? [])].filter(
+      (driver) => driver.lifecycleStatus !== 'ARCHIVED',
+    );
+    const order: [string, string, string][] = [
+      ['ELIGIBLE', 'Eligible', chartColors.success],
+      ['CONDITIONAL', 'Conditional', chartColors.warning],
+      ['INELIGIBLE', 'Not eligible', chartColors.error],
+      ['SUSPENDED', 'Suspended', chartColors.grey],
+    ];
+    const used = order.filter(([status]) => drivers.some((d) => d.eligibilityStatus === status));
+    return {
+      total: drivers.length,
+      labels: used.map(([, label]) => label),
+      values: used.map(([status]) => drivers.filter((d) => d.eligibilityStatus === status).length),
+      colors: used.map(([, , colour]) => colour),
+    };
+  }, [driverIndex.data]);
+
+  const serviceMix = useMemo(() => {
+    const trips = donutTrips.filter((trip) => trip.status !== 'CANCELLED');
+    const vip = trips.filter((trip) => parseVipPurpose(trip.purpose) !== null).length;
+    return { total: trips.length, vip, routine: trips.length - vip };
+  }, [donutTrips]);
 
   const selectAvailability = (key: string) => {
     if (key === 'blocked') {
@@ -550,6 +636,7 @@ const FleetDashboardPage = () => {
   const refreshAll = () => {
     snapshot.refetch();
     recentTrips.refetch();
+    upcomingTrips.refetch();
     recentWorkflow.refetch();
     activeTrips.refetch();
     vehicleIndex.refetch();
@@ -651,6 +738,8 @@ const FleetDashboardPage = () => {
           </Card>
         </PageSection>
 
+        {showLiveFleet && <LiveFleetPanel siteCode={siteCode || undefined} />}
+
         <PageSection>
           <div className="grid gap-[var(--clet-app-layout-body-gap)] xl:grid-cols-3">
             <Panel
@@ -680,6 +769,38 @@ const FleetDashboardPage = () => {
               }`}
             >
               <AvailabilityBar slices={availability} onSelect={selectAvailability} />
+            </Panel>
+          </div>
+        </PageSection>
+
+        <PageSection>
+          <div className="grid gap-[var(--clet-app-layout-body-gap)] md:grid-cols-2 xl:grid-cols-3">
+            <Panel section={false} title="Trips by status" description={`Last ${ACTIVITY_DAYS} days and next ${UPCOMING_DAYS}`}>
+              <DataState loading={recentTrips.initialising || upcomingTrips.initialising} error={recentTrips.error ?? upcomingTrips.error} onRetry={() => { recentTrips.refetch(); upcomingTrips.refetch(); }} minHeight={240}>
+                {tripMix.total === 0 ? (
+                  <p className="py-10 text-center text-theme-sm opacity-70">No trips in this period.</p>
+                ) : (
+                  <DonutChart labels={tripMix.labels} values={tripMix.values} colors={tripMix.colors} centreLabel={`${tripMix.total} trips`} showPercentages={false} />
+                )}
+              </DataState>
+            </Panel>
+            <Panel section={false} title="Driver standing" description="Who can be assigned today">
+              <DataState loading={driverIndex.initialising} error={driverIndex.error} onRetry={driverIndex.refetch} minHeight={240}>
+                {driverMix.total === 0 ? (
+                  <p className="py-10 text-center text-theme-sm opacity-70">No drivers registered.</p>
+                ) : (
+                  <DonutChart labels={driverMix.labels} values={driverMix.values} colors={driverMix.colors} centreLabel={`${driverMix.total} drivers`} showPercentages={false} />
+                )}
+              </DataState>
+            </Panel>
+            <Panel section={false} title="VIP and routine trips" description={`Share of the work, last ${ACTIVITY_DAYS} days and next ${UPCOMING_DAYS}`}>
+              <DataState loading={recentTrips.initialising || upcomingTrips.initialising} error={recentTrips.error ?? upcomingTrips.error} onRetry={() => { recentTrips.refetch(); upcomingTrips.refetch(); }} minHeight={240}>
+                {serviceMix.total === 0 ? (
+                  <p className="py-10 text-center text-theme-sm opacity-70">No trips in this period.</p>
+                ) : (
+                  <DonutChart labels={['Routine', 'VIP transport']} values={[serviceMix.routine, serviceMix.vip]} colors={[chartColors.navy, chartColors.gold]} centreLabel={`${serviceMix.total} trips`} />
+                )}
+              </DataState>
             </Panel>
           </div>
         </PageSection>

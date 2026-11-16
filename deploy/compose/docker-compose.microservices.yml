@@ -92,7 +92,11 @@ services:
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
     volumes:
-      - ../idp:/opt/keycloak/data/import:ro
+      - ../idp/sfl-realm.json:/opt/keycloak/data/import/sfl-realm.json:ro
+      # The seeded demo accounts share one published password, so they are opt-in and for a local
+      # machine only: set SFL_KEYCLOAK_DEMO_USERS=../idp/demo/sfl-users-0.json on a laptop. Left
+      # unset, the realm is imported with no users and real people are added by an administrator.
+      - ${SFL_KEYCLOAK_DEMO_USERS:-../idp/no-demo-users.json}:/opt/keycloak/data/import/sfl-users-0.json:ro
     depends_on:
       idp-postgres:
         condition: service_healthy
@@ -160,12 +164,15 @@ services:
       SFL_FACILITIES_DB_URL: jdbc:postgresql://facilities-postgres:5432/sfl_facilities_service
       SFL_FACILITIES_DB_USERNAME: ${SFL_FACILITIES_POSTGRES_USER:-sfl}
       SFL_FACILITIES_DB_PASSWORD: ${SFL_FACILITIES_POSTGRES_PASSWORD:-change-me}
-      SFL_IAM_ISSUER: ${SFL_IAM_ISSUER:-http://idp:8080/realms/sfl}
+      SFL_IAM_ISSUER: ${SFL_IAM_ISSUER:-http://localhost:8080/realms/sfl}
+      SFL_IAM_JWKS_URI: ${SFL_IAM_JWKS_URI:-http://idp:8080/realms/sfl/protocol/openid-connect/certs}
       SFL_SECURITY_ROLES_CLAIM: ${SFL_SECURITY_ROLES_CLAIM:-realm_access.roles}
       SFL_RABBITMQ_HOST: rabbitmq
       SFL_RABBITMQ_USERNAME: ${SFL_RABBITMQ_USER:-sfl}
       SFL_RABBITMQ_PASSWORD: ${SFL_RABBITMQ_PASSWORD:-change-me}
       SFL_FACILITIES_EVENT_TRANSPORT: rabbitmq
+      SFL_FEATURES_ENABLED_SYSTEMS: ${SFL_FEATURES_ENABLED_SYSTEMS:-}
+      SFL_FEATURES_DISABLED_SYSTEMS: ${SFL_FEATURES_DISABLED_SYSTEMS:-}
       SFL_RABBITMQ_HEALTH_ENABLED: "true"
     ports:
       - "8091:8080"
@@ -197,12 +204,15 @@ services:
       SFL_SAFETY_SECURITY_DB_URL: jdbc:postgresql://safety-security-postgres:5432/sfl_safety_security_service
       SFL_SAFETY_SECURITY_DB_USERNAME: ${SFL_SAFETY_SECURITY_POSTGRES_USER:-sfl}
       SFL_SAFETY_SECURITY_DB_PASSWORD: ${SFL_SAFETY_SECURITY_POSTGRES_PASSWORD:-change-me}
-      SFL_IAM_ISSUER: ${SFL_IAM_ISSUER:-http://idp:8080/realms/sfl}
+      SFL_IAM_ISSUER: ${SFL_IAM_ISSUER:-http://localhost:8080/realms/sfl}
+      SFL_IAM_JWKS_URI: ${SFL_IAM_JWKS_URI:-http://idp:8080/realms/sfl/protocol/openid-connect/certs}
       SFL_SECURITY_ROLES_CLAIM: ${SFL_SECURITY_ROLES_CLAIM:-realm_access.roles}
       SFL_RABBITMQ_HOST: rabbitmq
       SFL_RABBITMQ_USERNAME: ${SFL_RABBITMQ_USER:-sfl}
       SFL_RABBITMQ_PASSWORD: ${SFL_RABBITMQ_PASSWORD:-change-me}
       SFL_EMERGENCY_EVENT_TRANSPORT: rabbitmq
+      SFL_FEATURES_ENABLED_SYSTEMS: ${SFL_FEATURES_ENABLED_SYSTEMS:-}
+      SFL_FEATURES_DISABLED_SYSTEMS: ${SFL_FEATURES_DISABLED_SYSTEMS:-}
       SFL_RABBITMQ_HEALTH_ENABLED: "true"
     ports:
       - "8092:8080"
@@ -229,17 +239,23 @@ services:
     build:
       context: ../..
       dockerfile: services/sfl-fleet-logistics-service/Dockerfile
+      args:
+        VITE_SFL_IAM_ISSUER: ${VITE_SFL_IAM_ISSUER:-http://localhost:8080/realms/sfl}
+        VITE_SFL_IAM_CLIENT_ID: ${VITE_SFL_IAM_CLIENT_ID:-sfl-operations-ui}
     environment:
       SFL_PORT: 8080
       SFL_FLEET_LOGISTICS_DB_URL: jdbc:postgresql://fleet-vehicle-postgres:5432/sfl__fleet_vehicle_service
       SFL_FLEET_LOGISTICS_DB_USERNAME: ${SFL_FLEET_LOGISTICS_POSTGRES_USER:-sfl}
       SFL_FLEET_LOGISTICS_DB_PASSWORD: ${SFL_FLEET_LOGISTICS_POSTGRES_PASSWORD:-change-me}
-      SFL_IAM_ISSUER: ${SFL_IAM_ISSUER:-http://idp:8080/realms/sfl}
+      SFL_IAM_ISSUER: ${SFL_IAM_ISSUER:-http://localhost:8080/realms/sfl}
+      SFL_IAM_JWKS_URI: ${SFL_IAM_JWKS_URI:-http://idp:8080/realms/sfl/protocol/openid-connect/certs}
       SFL_SECURITY_ROLES_CLAIM: ${SFL_SECURITY_ROLES_CLAIM:-realm_access.roles}
       SFL_RABBITMQ_HOST: rabbitmq
       SFL_RABBITMQ_USERNAME: ${SFL_RABBITMQ_USER:-sfl}
       SFL_RABBITMQ_PASSWORD: ${SFL_RABBITMQ_PASSWORD:-change-me}
       SFL_FLEET_EVENT_TRANSPORT: rabbitmq
+      SFL_FEATURES_ENABLED_SYSTEMS: ${SFL_FEATURES_ENABLED_SYSTEMS:-}
+      SFL_FEATURES_DISABLED_SYSTEMS: ${SFL_FEATURES_DISABLED_SYSTEMS:-}
       SFL_RABBITMQ_HEALTH_ENABLED: "true"
     ports:
       - "8093:8080"

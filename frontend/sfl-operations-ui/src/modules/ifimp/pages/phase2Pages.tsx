@@ -195,11 +195,11 @@ export const BuildingSystemsPage = page({
   system: 'S156',
   title: 'Building systems & IoT',
   subtitle: 'Device health, telemetry, alerting rules and quarantined readings',
-  dependencyNote: 'The BACnet/MQTT bridge is simulated. Critical events are recorded for SSEMP, but no SSEMP consumer is currently connected.',
+  dependencyNote: 'The BACnet/MQTT bridge is simulated. Critical events are recorded for Safety & Security, but no Safety & Security consumer is currently connected.',
   views: [
     { label: 'Health', path: '/api/v1/facilities/building-systems/health', description: 'Site-to-device operating health and active alert position.' },
     { label: 'Devices', path: '/api/v1/facilities/building-systems/devices', description: 'Registered BMS devices and their lifecycle state.', actions: deviceActions, create: { label: 'Register device', path: '/api/v1/facilities/building-systems/devices', fields: [
-      { key: 'siteCode', label: 'Site code', required: true }, { key: 'deviceCode', label: 'Device code', required: true }, { key: 'avampAssetId', label: 'AVAMP asset ID', required: true }, { key: 'name', label: 'Name', required: true },
+      { key: 'siteCode', label: 'Site code', required: true }, { key: 'deviceCode', label: 'Device code', required: true }, { key: 'avampAssetId', label: 'Asset ID', required: true }, { key: 'name', label: 'Name', required: true },
       { key: 'systemType', label: 'System type', type: 'select', required: true, options: ['HVAC', 'ELECTRICAL', 'WATER', 'FIRE', 'LIFT', 'GENERATOR', 'OTHER'] }, { key: 'kind', label: 'Device kind', type: 'select', required: true, options: ['SENSOR', 'ACTUATOR', 'CONTROLLER', 'GATEWAY', 'METER'] }, { key: 'buildingCode', label: 'Building code', required: true }, { key: 'expectedIntervalSeconds', label: 'Expected interval (seconds)', type: 'number', required: true, initial: '300' },
     ], toBody: (v) => ({ ...v, expectedIntervalSeconds: Number(v.expectedIntervalSeconds) }) } },
     { label: 'Alerts', path: '/api/v1/facilities/building-systems/alerts', description: 'Active and cleared threshold alerts.' },
@@ -242,7 +242,7 @@ export const SpacePlanningPage = page({
   views: [
     { label: 'Dashboard', path: '/api/v1/facilities/space-planning/dashboard', description: 'Planning pipeline, compliance and utilisation exceptions.' },
     { label: 'Scenarios', path: '/api/v1/facilities/space-planning/scenarios', description: 'Draft, committed and applied allocation scenarios.', actions: scenarioActions, create: { label: 'Create scenario', path: '/api/v1/facilities/space-planning/scenarios', fields: [{ key: 'siteCode', label: 'Site code', required: true }, { key: 'name', label: 'Scenario name', required: true }, { key: 'description', label: 'Description', type: 'textarea' }] } },
-    { label: 'Allocations', path: '/api/v1/facilities/space-planning/allocations', description: 'Current S152 room allocation register.' },
+    { label: 'Allocations', path: '/api/v1/facilities/space-planning/allocations', description: 'Current room allocation register.' },
     { label: 'Standards', path: '/api/v1/facilities/space-planning/standards', description: 'Occupancy standards and their versions.', create: { label: 'Define standard', path: '/api/v1/facilities/space-planning/standards', fields: [{ key: 'siteCode', label: 'Site code', required: true }, { key: 'spaceType', label: 'Space type', type: 'select', required: true, options: ['OFFICE', 'MEETING_ROOM', 'LECTURE_HALL', 'EXAMINATION_HALL', 'LABORATORY', 'LIBRARY', 'STORE', 'PLANT_ROOM'] }, { key: 'maxCapacityPercent', label: 'Maximum capacity (%)', type: 'number' }, { key: 'minAreaPerPersonSqm', label: 'Minimum area/person (m²)', type: 'number' }, { key: 'note', label: 'Note', type: 'textarea' }], toBody: (v) => ({ ...v, maxCapacityPercent: v.maxCapacityPercent ? Number(v.maxCapacityPercent) : null, minAreaPerPersonSqm: v.minAreaPerPersonSqm ? Number(v.minAreaPerPersonSqm) : null }) } },
     { label: 'Utilisation', path: '/api/v1/facilities/space-planning/utilisation/signals', description: 'Active under-use and over-use planning signals.' },
     { label: 'Change requests', path: '/api/v1/facilities/space-planning/requests', description: 'Requested moves and physical works through decision.', actions: requestActions, create: { label: 'Submit change request', path: '/api/v1/facilities/space-planning/requests', fields: [{ key: 'siteCode', label: 'Site code', required: true }, { key: 'requestingUnit', label: 'Requesting unit', required: true }, { key: 'justification', label: 'Justification', type: 'textarea', required: true }, { key: 'targetAreaDescription', label: 'Target area' }, { key: 'requiredHeadcount', label: 'Required headcount', type: 'number' }, { key: 'urgency', label: 'Urgency', type: 'select', options: ['LOW', 'NORMAL', 'HIGH', 'URGENT'], initial: 'NORMAL' }], toBody: (v) => ({ ...v, requiredHeadcount: v.requiredHeadcount ? Number(v.requiredHeadcount) : null }) } },
@@ -269,7 +269,7 @@ export const EventLogisticsPage = page({
   system: 'S173',
   title: 'Event logistics',
   subtitle: 'Set-up readiness, resource coordination and post-event reconciliation',
-  dependencyNote: 'Catering is represented as manual coordination until S172 exists. Higher-risk confirmation remains fail-closed until S165 publishes a current assessment.',
+  dependencyNote: 'Catering is represented as manual coordination until Catering & cafeteria is switched on. Higher-risk confirmation remains fail-closed until Risk assessment publishes a current assessment.',
   views: [
     { label: 'Set-up tasks', path: '/api/v1/facilities/event-logistics/setup-tasks', description: 'Upcoming events ordered by readiness risk.', actions: setupActions },
     { label: 'Templates', path: '/api/v1/facilities/event-logistics/templates', description: 'Learned automatically from post-event reconciliation gaps. Reconcile a completed event; persistent lessons can then be applied to a live event.' },
@@ -282,11 +282,11 @@ export const ConstructionPage = page({
   system: 'S176',
   title: 'Construction projects',
   subtitle: 'Capital works from registration and approval through handover and closure',
-  dependencyNote: 'Permit-required work remains fail-closed until S164 Permit-to-Work is available. Access suspension is published but has no S160a consumer.',
+  dependencyNote: 'Permit-required work remains fail-closed until Permit to work is available. Access suspension is published but has no S160a consumer.',
   views: [
     { label: 'Dashboard', path: '/api/v1/facilities/construction/dashboard', description: 'Project pipeline, milestones, variations and contractor exceptions.' },
     { label: 'Projects', path: '/api/v1/facilities/construction/projects', description: 'Construction projects at every lifecycle stage.', actions: projectActions, create: { label: 'Register project', path: '/api/v1/facilities/construction/projects', fields: [{ key: 'siteCode', label: 'Site code', required: true }, { key: 'title', label: 'Project title', required: true }, { key: 'scope', label: 'Scope', type: 'textarea', required: true }, { key: 'workTypes', label: 'Work type', required: true, initial: 'REFURBISHMENT' }, { key: 'budgetBaseline', label: 'Budget baseline', type: 'number', required: true }, { key: 'currency', label: 'Currency', required: true, initial: 'GHS' }, { key: 'fundingSourceReference', label: 'Funding source reference', required: true }, { key: 'milestoneName', label: 'First milestone', required: true, initial: 'Practical completion' }, { key: 'milestoneDate', label: 'Milestone target', type: 'date', required: true }], toBody: (v) => ({ siteCode: v.siteCode, title: v.title, scope: v.scope, workTypes: [v.workTypes], budgetBaseline: Number(v.budgetBaseline), currency: v.currency, fundingSourceReference: v.fundingSourceReference, milestones: [{ code: 'M1', name: v.milestoneName, targetDate: v.milestoneDate }], contractors: [] }) } },
     { label: 'Contractors', path: '/api/v1/facilities/construction/contractors', description: 'Contractor insurance, competency and access standing.', actions: contractorActions, create: { label: 'Register contractor', path: '/api/v1/facilities/construction/contractors', fields: [{ key: 'siteCode', label: 'Site code', required: true }, { key: 'contractorCode', label: 'Contractor code', required: true }, { key: 'name', label: 'Name', required: true }, { key: 'vendorReference', label: 'Vendor reference' }, { key: 'insuranceProvider', label: 'Insurance provider' }, { key: 'insurancePolicyReference', label: 'Policy reference' }, { key: 'insuranceExpiresOn', label: 'Insurance expiry', type: 'date', required: true }] } },
-    { label: 'Integration status', path: '/api/v1/facilities/construction/dashboard/integrations', description: 'Evidence-backed status of S176 dependencies.' },
+    { label: 'Integration status', path: '/api/v1/facilities/construction/dashboard/integrations', description: 'Evidence-backed status of construction project dependencies.' },
   ],
 });

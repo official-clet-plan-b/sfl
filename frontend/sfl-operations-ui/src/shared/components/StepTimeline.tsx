@@ -1,5 +1,5 @@
 import { Timeline, TimelineData, TimelineFooter, TimelineItem, TimelineTitle } from '@rfdtech/components';
-import { formatDateTime } from 'shared/components/format';
+import { formatDateTime, personName } from 'shared/components/format';
 import { humanise } from 'modules/fleet/api/enums';
 
 export interface Step { id: string; title: string; detail?: string | null; footer: string; tone?: 'primary' | 'success' | 'error' }
@@ -25,7 +25,9 @@ export const historySteps = (history: Array<{ id: string; subjectType: string; f
     id: entry.id,
     title: `${humanise(entry.subjectType)} · ${entry.fromStatus ? `${humanise(entry.fromStatus)} → ` : ''}${humanise(entry.toStatus)}`,
     detail: entry.reason,
-    footer: `${formatDateTime(entry.occurredAt)} · by ${entry.actor}`,
+    footer: personName(entry.actor)
+      ? `${formatDateTime(entry.occurredAt)} · by ${personName(entry.actor)}`
+      : formatDateTime(entry.occurredAt),
     tone: ['MISSED', 'REJECTED'].includes(entry.toStatus) ? 'error' : ['CLOSED', 'ACCEPTED', 'RESOLVED'].includes(entry.toStatus) ? 'success' : 'primary',
   }));
 

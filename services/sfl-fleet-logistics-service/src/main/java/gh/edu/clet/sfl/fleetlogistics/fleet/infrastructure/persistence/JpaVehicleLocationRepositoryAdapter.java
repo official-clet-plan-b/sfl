@@ -69,4 +69,17 @@ class JpaVehicleLocationRepositoryAdapter implements VehicleLocationRepository {
                 .map(VehicleLocationSnapshotEntity::toDomain)
                 .toList();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<VehicleLocationSnapshot> findSinceByVehicles(java.util.Collection<UUID> vehicleIds,
+            java.time.Instant since, int maxRows) {
+        if (vehicleIds == null || vehicleIds.isEmpty()) {
+            return List.of();
+        }
+        return locations.findSinceForVehicles(vehicleIds, since, PageRequest.of(0, Math.max(1, Math.min(maxRows, 10_000))))
+                .stream()
+                .map(VehicleLocationSnapshotEntity::toDomain)
+                .toList();
+    }
 }

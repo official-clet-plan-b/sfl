@@ -14,7 +14,7 @@ public enum FacilitiesErrorCode {
 
     // SRS-SFL-S152-01 - operational records
     DUPLICATE_IDENTIFIER("An active record with this identifier already exists for this site."),
-    MISSING_SITE_SCOPE("Select a valid CLET site before saving this record."),
+    MISSING_SITE_SCOPE("Select a valid GSL site before saving this record."),
     UNAUTHORIZED_SCOPE("You are not authorised to access this site or record."),
 
     // SRS-SFL-S152-02 - workflow
