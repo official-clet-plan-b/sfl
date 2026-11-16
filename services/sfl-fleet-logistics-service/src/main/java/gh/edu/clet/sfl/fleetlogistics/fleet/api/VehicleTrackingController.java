@@ -3,6 +3,7 @@ package gh.edu.clet.sfl.fleetlogistics.fleet.api;
 import gh.edu.clet.sfl.common.api.ApiResponse;
 import gh.edu.clet.sfl.common.security.ActorContext;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.VehicleRepository;
+import gh.edu.clet.sfl.fleetlogistics.fleet.application.query.FleetLiveMapQueryService;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.query.VehicleTrackingQueryService;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.VehicleLifecycleStatus;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,11 +27,57 @@ import org.springframework.web.bind.annotation.RestController;
 class VehicleTrackingController {
 
     private final VehicleTrackingQueryService tracking;
+    private final FleetLiveMapQueryService liveMap;
     private final FleetActorResolver actorResolver;
 
-    VehicleTrackingController(VehicleTrackingQueryService tracking, FleetActorResolver actorResolver) {
+    VehicleTrackingController(VehicleTrackingQueryService tracking, FleetLiveMapQueryService liveMap,
+            FleetActorResolver actorResolver) {
         this.tracking = tracking;
+        this.liveMap = liveMap;
         this.actorResolver = actorResolver;
+    }
+
+    @io.swagger.v3.oas.annotations.Operation(summary = "The live fleet map: every active vehicle with its position, movement, recent trail and current trip")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "A named site is outside the actor's scope")
+    @GetMapping("/live")
+    ApiResponse<LiveMapResponse> live(@RequestParam(required = false) String siteCode,
+            @RequestParam(defaultValue = "60") int trailMinutes, HttpServletRequest httpRequest) {
+        ActorContext actor = actorResolver.resolve(httpRequest);
+        return ApiResponse.ok(LiveMapResponse.from(
+                liveMap.live(siteCode, java.time.Duration.ofMinutes(Math.max(1, Math.min(trailMinutes, 360))), actor)));
+    }
+
+    record LiveMapResponse(List<LiveVehicleResponse> vehicles, long totalVehicles, long staleAfterSeconds,
+            long trailMinutes, Instant generatedAt) {
+
+        static LiveMapResponse from(FleetLiveMapQueryService.LiveMap map) {
+            return new LiveMapResponse(map.vehicles().stream().map(LiveVehicleResponse::from).toList(),
+                    map.totalVehicles(), map.staleAfter().toSeconds(), map.trailWindow().toMinutes(),
+                    map.generatedAt());
+        }
+    }
+
+    record TrailPointResponse(BigDecimal latitude, BigDecimal longitude, Instant recordedAt) {
+    }
+
+    record LiveVehicleResponse(UUID vehicleId, String registrationNumber, String make, String model,
+            String siteCode, String trackingStatus, String movement, Double speedKph, Double headingDegrees,
+            BigDecimal latitude, BigDecimal longitude, Instant recordedAt, String sourceSystem,
+            List<TrailPointResponse> trail, FleetLiveMapQueryService.ActiveTrip trip) {
+
+        static LiveVehicleResponse from(FleetLiveMapQueryService.LiveVehicle row) {
+            var vehicle = row.vehicle();
+            var report = row.latest();
+            return new LiveVehicleResponse(vehicle.id(), vehicle.registrationNumber().value(),
+                    vehicle.specification().make(), vehicle.specification().model(), vehicle.siteCode().value(),
+                    row.status().name(), row.motion().movement().name(), row.motion().speedKph(),
+                    row.motion().headingDegrees(),
+                    report == null ? null : report.latitude(), report == null ? null : report.longitude(),
+                    report == null ? null : report.recordedAt(), report == null ? null : report.sourceSystem(),
+                    row.trail().stream().map(point -> new TrailPointResponse(point.latitude(), point.longitude(),
+                            point.recordedAt())).toList(),
+                    row.trip());
+        }
     }
 
     @io.swagger.v3.oas.annotations.Operation(summary = "Lists active vehicles with their latest position and whether it is current, stale or absent")

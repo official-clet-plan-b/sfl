@@ -34,6 +34,11 @@ interface SiteSelectProps {
   /** Adds an "all sites" choice - use for a filter, never for a request field. */
   allowEmpty?: boolean;
   emptyLabel?: string;
+  /**
+   * For a page header beside buttons: no label above the box ("Site: CLET-HQ" says it inside), so
+   * the box lines up with the buttons next to it instead of sitting a label's height lower.
+   */
+  inline?: boolean;
 }
 
 /**
@@ -61,6 +66,7 @@ const SiteSelect = ({
   disabled,
   className,
   allowEmpty,
+  inline,
 }: SiteSelectProps) => {
   const sites = actorSites();
   const failure = actorSiteFailure();
@@ -75,6 +81,23 @@ const SiteSelect = ({
     }
     onBlur?.();
   };
+
+  if (inline) {
+    return (
+      <div className={cn('min-w-40 shrink-0', className)} title={invalid ? hint : undefined}>
+        <Dropdown
+          aria-label={required ? `${label} (required)` : label}
+          value={value || null}
+          onValueChange={(next) => onChange(next ?? '')}
+          options={sites.map((site) => ({ value: site, label: `Site: ${site}` }))}
+          placeholder={allowEmpty ? emptyLabel : 'Select site…'}
+          clearable={allowEmpty}
+          disabled={disabled}
+          invalid={invalid}
+        />
+      </div>
+    );
+  }
 
   return (
     <Field invalid={invalid} className={cn('min-w-0', className)} onBlur={leave}>

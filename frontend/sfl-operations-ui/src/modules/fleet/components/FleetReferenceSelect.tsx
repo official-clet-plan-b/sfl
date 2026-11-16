@@ -84,14 +84,18 @@ export const DriverSelect = ({
 
   const options = useMemo<SelectOption[]>(
     () =>
-      (drivers.data?.content ?? []).map((driver) => ({
-        value: driver.id,
-        // Eligibility is shown but never used to filter: an ineligible driver is exactly the case
-        // reconciliation's DRIVER_ELIGIBLE rule exists to catch, and hiding them here would hide
-        // the transaction that needs recording.
-        label: `${driver.displayName} · ${driver.staffReference} (${driver.eligibilityStatus.toLowerCase()})`,
-      })),
-    [drivers.data],
+      (drivers.data?.content ?? [])
+        // An archived driver has left the service, so they are not offered for new work. One already
+        // chosen on the record being edited stays, so the form never silently drops it.
+        .filter((driver) => driver.lifecycleStatus !== 'ARCHIVED' || driver.id === rest.value)
+        .map((driver) => ({
+          value: driver.id,
+          // Eligibility is shown but never used to filter: an ineligible driver is exactly the case
+          // reconciliation's DRIVER_ELIGIBLE rule exists to catch, and hiding them here would hide
+          // the transaction that needs recording.
+          label: `${driver.displayName} · ${driver.staffReference} (${driver.eligibilityStatus.toLowerCase()})`,
+        })),
+    [drivers.data, rest.value],
   );
 
   return (

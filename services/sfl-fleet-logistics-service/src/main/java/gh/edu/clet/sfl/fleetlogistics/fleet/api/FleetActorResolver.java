@@ -84,7 +84,8 @@ public class FleetActorResolver {
         boolean serviceAccount = jwt.getClaimAsString("client_id") != null
                 && jwt.getClaimAsString("preferred_username") == null;
         return new ActorContext(
-                new SiteScopedPrincipal(jwt.getSubject(), displayName, roles, sites, serviceAccount),
+                new SiteScopedPrincipal(jwt.getSubject(), displayName, roles, sites, serviceAccount,
+                        jwt.getClaimAsString("preferred_username")),
                 correlationId);
     }
 

@@ -38,4 +38,18 @@ public interface VehicleLocationRepository {
     }
 
     List<VehicleLocationSnapshot> findRecentInScope(SiteScopeFilter scope, int limit);
+
+    /**
+     * Reports for these vehicles recorded at or after {@code since}, newest first, at most
+     * {@code maxRows} in total - the movement trails on the live fleet map.
+     */
+    default List<VehicleLocationSnapshot> findSinceByVehicles(java.util.Collection<UUID> vehicleIds,
+            java.time.Instant since, int maxRows) {
+        return vehicleIds.stream()
+                .flatMap(vehicleId -> findByVehicle(vehicleId, maxRows).stream())
+                .filter(snapshot -> !snapshot.recordedAt().isBefore(since))
+                .sorted(java.util.Comparator.comparing(VehicleLocationSnapshot::recordedAt).reversed())
+                .limit(maxRows)
+                .toList();
+    }
 }

@@ -83,7 +83,7 @@ export const validateVipRequest = (draft: VipRequestDraft, now: Date = new Date(
 export const toTripRequest = (draft: VipRequestDraft, siteCode: string): CreateTripRequest => ({
   siteCode,
   purpose: vipPurpose(draft.principal, draft.chaseCar),
-  origin: 'CLET campus',
+  origin: 'GSL campus',
   destination: draft.destination.trim(),
   operatingMode: 'ROUTINE',
   plannedStart: new Date(draft.start).toISOString(),

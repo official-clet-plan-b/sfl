@@ -36,10 +36,10 @@ export const RegisterDialog = ({ siteCode, canSeeMoney, onClose, onDone }: Close
       }), onDone)}>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <TextInput label="Title" required value={v.title} onChange={set('title')} maxLength={240} className="sm:col-span-2" />
-        <TextInput label="Property" required value={v.propertyReference} onChange={set('propertyReference')} maxLength={240} helperText="The S152 building or space this is for." />
+        <TextInput label="Property" required value={v.propertyReference} onChange={set('propertyReference')} maxLength={240} helperText="The building or space this is for." />
         <TextInput label="Internal owner" value={v.ownerReference} onChange={set('ownerReference')} maxLength={160} helperText="Told when a date approaches." />
         <SelectInput label="Kind" required value={v.kind} onChange={(x) => set('kind')(x as AgreementKind)} options={options(kinds)} />
-        <SelectInput label="CLET is the" required value={v.direction} onChange={(x) => set('direction')(x as Direction)} options={directions.map((d) => ({ value: d, label: d === 'INBOUND' ? 'Tenant (pays rent)' : 'Landlord (receives rent)' }))} />
+        <SelectInput label="GSL is the" required value={v.direction} onChange={(x) => set('direction')(x as Direction)} options={directions.map((d) => ({ value: d, label: d === 'INBOUND' ? 'Tenant (pays rent)' : 'Landlord (receives rent)' }))} />
         <TextInput label="Counterparty reference" value={v.counterpartyReference} onChange={set('counterpartyReference')} maxLength={160} helperText="Recorded, not verified: no counterparty system is connected." />
         <TextInput label="Contract reference (S136)" value={v.contractReference} onChange={set('contractReference')} maxLength={160} />
         <DateField label="Starts" required value={v.startDate} onChange={set('startDate')} />

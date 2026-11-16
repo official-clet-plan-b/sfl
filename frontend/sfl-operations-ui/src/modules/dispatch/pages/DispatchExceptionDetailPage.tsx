@@ -507,7 +507,7 @@ const DispatchExceptionDetailPage = () => {
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {allowed
-                                ? `Needs ${rule.permission}.`
+                                ? 'Available now.'
                                 : rule.from.length === 0
                                   ? "Available from any state."
                                   : `From ${rule.from

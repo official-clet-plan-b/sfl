@@ -51,7 +51,7 @@ public final class RegisterExport {
         boolean truncated = items.size() > MAX_ROWS;
         List<T> kept = truncated ? items.subList(0, MAX_ROWS) : items;
         StringBuilder out = new StringBuilder();
-        out.append("# CLET ").append(system).append(' ').append(register).append(" - CONFIDENTIAL, for the stated purpose only\n");
+        out.append("# GSL ").append(system).append(' ').append(register).append(" - CONFIDENTIAL, for the stated purpose only\n");
         out.append("# Exported by ").append(oneLine(actor)).append(" at ").append(at).append(" for site ").append(oneLine(site)).append('\n');
         out.append("# Reason: ").append(oneLine(reason)).append('\n');
         if (truncated) {

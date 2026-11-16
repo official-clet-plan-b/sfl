@@ -146,7 +146,7 @@ const DriverLogbooksPage = () => {
         <SectionHeader>
           <SectionTitle>Driver logbooks</SectionTitle>
           <SectionActions className="items-end [&_button]:whitespace-nowrap">
-            <SiteSelect value={siteCode} onChange={setSiteCode} required />
+            <SiteSelect inline value={siteCode} onChange={setSiteCode} required />
             {/*
               A driver holds this - the logbook is their own journey record. A reporting viewer
               reads the register and creates nothing in it.

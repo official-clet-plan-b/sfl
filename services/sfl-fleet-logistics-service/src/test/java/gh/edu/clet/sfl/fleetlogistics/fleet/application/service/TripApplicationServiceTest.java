@@ -8,6 +8,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import gh.edu.clet.sfl.common.security.ActorContext;
+import gh.edu.clet.sfl.common.security.SflRole;
+import gh.edu.clet.sfl.common.security.SiteScopedPrincipal;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.AcknowledgeTripCommand;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.AssignTripCommand;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.command.CancelTripCommand;
@@ -54,6 +56,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -611,6 +614,67 @@ class TripApplicationServiceTest {
 
         assertThat(reassigned.acknowledgement().state()).isEqualTo(TripAcknowledgementState.PENDING);
         assertThat(reassigned.acknowledgement().answeredBy()).isNull();
+    }
+
+    /**
+     * With the identity provider, a sign-in's subject is an opaque id, not the staff reference. The
+     * driver must still be able to record the pre-trip check on their own trip - without it they can
+     * never start one - and still be refused on somebody else's.
+     */
+    @Test
+    @DisplayName("a driver signed in through the identity provider records the pre-trip check on their own trip")
+    void an_identity_provider_driver_inspects_their_own_trip() {
+        String subject = "0f0f9a86-02f2-4600-8cb5-1ff54569dadf";
+        DriverProfileReference oidcDriver = drivers.save(DriverProfileReference.register(
+                UUID.fromString("77777777-7777-7777-7777-777777777777"), "CLET/HR/00789", "Kwame Mensah",
+                new LicenceDetails("GHA-DL-7788990", LicenceClass.D, TODAY.plusYears(1)), TODAY.plusYears(1),
+                ACCRA, "Transportation & Logistics Unit", subject, metadata()));
+        Trip trip = service.create(createCommand(vehicle.id(), oidcDriver.id(), "idem-oidc"));
+        ActorContext signedIn = FleetTestDoubles.driver(subject, "ACCRA");
+
+        VehicleInspection inspection = service.recordInspection(new RecordInspectionCommand(trip.id(), null,
+                InspectionType.PRE_TRIP, 42_050L, null, List.of(), "Pre-trip check", signedIn,
+                SourceChannel.MOBILE, "idem-insp-oidc"));
+        assertThat(inspection.tripId()).isEqualTo(trip.id());
+
+        Trip started = service.start(new StartTripCommand(trip.id(), 42_100L, null, signedIn, SourceChannel.MOBILE));
+        assertThat(started.status()).isEqualTo(TripStatus.IN_PROGRESS);
+    }
+
+    /**
+     * The realistic path: fleet administration registers a driver with the username they sign in
+     * with, because that is what an administrator knows - never the identity provider's opaque id.
+     */
+    @Test
+    @DisplayName("a driver linked by sign-in username confirms, inspects and starts their own trip")
+    void a_driver_linked_by_username_runs_their_trip() {
+        DriverProfileReference linked = drivers.save(DriverProfileReference.register(
+                UUID.fromString("88888888-8888-8888-8888-888888888888"), "CLET/HR/00901", "Abena Boateng",
+                new LicenceDetails("GHA-DL-5566778", LicenceClass.D, TODAY.plusYears(1)), TODAY.plusYears(1),
+                ACCRA, "Transportation & Logistics Unit", "abena.boateng", metadata()));
+        Trip trip = service.create(createCommand(vehicle.id(), linked.id(), "idem-username"));
+        ActorContext signedIn = new ActorContext(new SiteScopedPrincipal("6c1e9a20-77d1-4c0e-9d4b-2f5a8c3e1b90",
+                "Abena Boateng", Set.of(SflRole.FLEET_DRIVER), Set.of("ACCRA"), false, "Abena.Boateng"), "corr");
+
+        service.acknowledge(new AcknowledgeTripCommand(trip.id(), TripAcknowledgementState.CONFIRMED, null, null,
+                signedIn, SourceChannel.MOBILE));
+        service.recordInspection(new RecordInspectionCommand(trip.id(), null, InspectionType.PRE_TRIP, 42_050L,
+                null, List.of(), "Pre-trip check", signedIn, SourceChannel.MOBILE, "idem-insp-username"));
+        Trip started = service.start(new StartTripCommand(trip.id(), 42_100L, null, signedIn, SourceChannel.MOBILE));
+
+        assertThat(started.status()).isEqualTo(TripStatus.IN_PROGRESS);
+    }
+
+    @Test
+    @DisplayName("a driver cannot record the pre-trip check on another driver's trip")
+    void a_driver_cannot_inspect_another_drivers_trip() {
+        DriverProfileReference other = drivers.save(anotherEligibleDriver());
+        Trip trip = service.create(createCommand(vehicle.id(), other.id(), "idem-other-insp"));
+
+        assertThatThrownBy(() -> service.recordInspection(new RecordInspectionCommand(trip.id(), null,
+                InspectionType.PRE_TRIP, 42_050L, null, List.of(), "Not my trip", boundDriverActor(),
+                SourceChannel.MOBILE, "idem-insp-not-mine")))
+                .isInstanceOf(FleetAuthorizationException.class);
     }
 
     /** The driver fixture is bound to its own staff reference, which is what a header actor presents. */

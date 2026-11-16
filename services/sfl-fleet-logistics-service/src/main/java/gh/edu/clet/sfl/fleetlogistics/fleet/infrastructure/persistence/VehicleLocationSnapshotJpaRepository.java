@@ -33,4 +33,13 @@ interface VehicleLocationSnapshotJpaRepository extends JpaRepository<VehicleLoca
             """)
     List<VehicleLocationSnapshotEntity> findRecentInScope(@Param("allSites") boolean allSites,
             @Param("siteScopes") List<String> siteScopes, Pageable pageable);
+
+    @Query("""
+            select location from VehicleLocationSnapshotEntity location
+             where location.vehicleId in :vehicleIds and location.recordedAt >= :since
+             order by location.recordedAt desc, location.id desc
+            """)
+    List<VehicleLocationSnapshotEntity> findSinceForVehicles(
+            @Param("vehicleIds") java.util.Collection<UUID> vehicleIds,
+            @Param("since") java.time.Instant since, Pageable pageable);
 }

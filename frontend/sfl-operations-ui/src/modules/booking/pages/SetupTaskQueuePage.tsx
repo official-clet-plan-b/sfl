@@ -128,7 +128,7 @@ const SetupTaskQueuePage = () => {
             What has to happen to a room before its next booking, most urgent first
           </SectionDescription>
           <SectionActions className="items-end [&_button]:whitespace-nowrap">
-            <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
+            <SiteSelect inline value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
           </SectionActions>
         </SectionHeader>
       </PageSection>

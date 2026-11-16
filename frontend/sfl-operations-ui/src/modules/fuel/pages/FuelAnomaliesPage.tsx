@@ -192,7 +192,7 @@ const FuelAnomaliesPage = () => {
         <SectionHeader>
           <SectionTitle>Fuel anomaly cases</SectionTitle>
           <SectionActions className="items-end [&_button]:whitespace-nowrap">
-            <SiteSelect value={siteCode} onChange={setSiteCode} required />
+            <SiteSelect inline value={siteCode} onChange={setSiteCode} required />
             <Button
               variant="outline"
               onClick={() => {

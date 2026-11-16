@@ -79,6 +79,10 @@ const reportOnce = (reason: string, detail?: unknown) => {
 
 /** The one-request-per-second floor the public instance's usage policy requires. */
 let nextAllowedAt = 0;
+/** One-shot geocodes run one after another, so they never trip the throttle against each other. */
+let queue: Promise<unknown> = Promise.resolve();
+/** Addresses already resolved in this session - a trip page re-opened does not ask again. */
+const geocoded = new Map<string, PlaceSuggestion | null>();
 
 interface NominatimResult {
   place_id?: number;
@@ -181,6 +185,30 @@ export const geocodeAddress = async (address: string): Promise<PlaceSuggestion |
   if (query.length === 0) {
     return null;
   }
-  const { suggestions } = await lookup(query, 1);
-  return suggestions[0] ?? null;
+  const key = query.toLowerCase();
+  if (geocoded.has(key)) {
+    return geocoded.get(key) ?? null;
+  }
+  /*
+    Waits for its turn rather than being refused. A route map geocodes both ends of a trip at once,
+    and the throttle used to drop the second request outright - so the route was never drawn. The
+    wait keeps the one-request-per-second floor; only the typing suggestions are dropped when early,
+    because a newer keystroke will ask again anyway.
+  */
+  const turn: Promise<PlaceLookup> = queue.then(async () => {
+    const wait = nextAllowedAt - Date.now();
+    if (wait > 0) {
+      await new Promise((resolve) => setTimeout(resolve, wait));
+    }
+    return lookup(query, 1);
+  });
+  queue = turn.catch(() => undefined);
+  const { suggestions, unavailable } = await turn;
+  const found = suggestions[0] ?? null;
+  // Only a definite answer is remembered; a failed request may succeed next time.
+  if (!unavailable) {
+    geocoded.set(key, found);
+  }
+  return found;
 };
+

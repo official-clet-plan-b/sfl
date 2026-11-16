@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { InlineLoading } from 'shared/components/Spinner';
 import { Banner, Button, MetricCards } from '@rfdtech/components';
 import { useNotifier } from 'shared/components/Notifier';
 import { formatDateTime } from 'shared/components/format';
@@ -68,7 +69,7 @@ const RollCallPanel = ({ drillId, canCheckIn, onOutstanding }: RollCallPanelProp
         <StatMetric label="On site at start" value={view?.baseline.length ?? 0} icon="users" loading={query.initialising} />
         <StatMetric label="Checked in" value={view ? view.baseline.length - view.outstanding.length : 0} icon="check-circle" tone="good" caption={view ? participation(view.baseline.length - view.outstanding.length, view.baseline.length) : undefined} loading={query.initialising} />
         <StatMetric label="Outstanding" value={view?.outstanding.length ?? 0} icon="alert-triangle" tone={view?.outstanding.length ? 'caution' : 'good'} loading={query.initialising} />
-        <StatMetric label="Notification delivered" value={notification ? `${notification.deliveredCount}/${notification.targetCount}` : '-'} icon="megaphone" caption={notification ? `${notification.acknowledgedCount} acknowledged · ${notification.activationNumber}` : 'S174 status unavailable'} loading={query.initialising} />
+        <StatMetric label="Notification delivered" value={notification ? `${notification.deliveredCount}/${notification.targetCount}` : '-'} icon="megaphone" caption={notification ? `${notification.acknowledgedCount} acknowledged · ${notification.activationNumber}` : 'Notification status unavailable'} loading={query.initialising} />
       </MetricCards>
 
       {canCheckIn && (
@@ -94,7 +95,7 @@ const RollCallPanel = ({ drillId, canCheckIn, onOutstanding }: RollCallPanelProp
               ))}
             </ul>
           ) : (
-            <p className="text-theme-sm text-gray-600">{view ? 'Everyone in the baseline is accounted for.' : 'Loading…'}</p>
+            view ? <p className="text-theme-sm text-gray-600">Everyone in the baseline is accounted for.</p> : <InlineLoading label="Loading the roll call…" />
           )}
         </div>
         <div>

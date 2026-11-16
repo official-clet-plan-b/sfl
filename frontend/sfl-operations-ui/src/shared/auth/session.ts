@@ -99,9 +99,13 @@ const parseScopes = (value: string[] | string | undefined): string[] => {
   return [];
 };
 
+/** Roles Keycloak gives every account for its own purposes - never an SFL role, never shown. */
+const isIdentityProviderRole = (role: string): boolean =>
+  role === 'offline_access' || role === 'uma_authorization' || role.startsWith('default-roles-');
+
 const parseRoles = (claims: OidcClaims): string[] => {
   if (claims.realm_access?.roles) {
-    return claims.realm_access.roles;
+    return claims.realm_access.roles.filter((role) => !isIdentityProviderRole(role));
   }
   if (claims.roles) {
     return claims.roles;

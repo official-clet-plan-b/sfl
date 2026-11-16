@@ -283,7 +283,7 @@ const CourierItemDetailPage = () => {
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {allowed
-                                ? `Needs ${rule.permission}.`
+                                ? 'Available now.'
                                 : `From ${rule.from.map((s) => humanise(s).toLowerCase()).join(', ')}.`}
                             </p>
                           </div>

@@ -420,7 +420,7 @@ public class FacilitiesMasterDataService {
      * Normalises an identifier, refusing a blank one.
      *
      * <p>A blank site code is {@code MISSING_SITE_SCOPE} rather than a validation failure, because
-     * that is the SRS's own name for it: "Select a valid CLET site before saving this record."
+     * that is the SRS's own name for it: "Select a valid GSL site before saving this record."
      */
     static String normalize(String value) {
         if (value == null || value.isBlank()) {

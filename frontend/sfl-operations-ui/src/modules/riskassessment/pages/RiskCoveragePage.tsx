@@ -17,7 +17,7 @@ import Panel from 'modules/emergency/components/Panel';
 import Icon from 'shared/components/Icon';
 
 /** Where each observed activity came from, in the source system's own terms. */
-const sourceName: Record<string, string> = { S176: 'Construction projects (S176)', S163: 'Incidents (S163)' };
+const sourceName: Record<string, string> = { S176: 'Construction projects', S163: 'Incidents' };
 
 const Line = ({ line, onAssess }: { line: CoverageLine; onAssess?: () => void }) => {
   const navigate = useNavigate();

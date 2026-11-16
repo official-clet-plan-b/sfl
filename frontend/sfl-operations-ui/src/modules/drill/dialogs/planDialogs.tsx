@@ -39,7 +39,7 @@ interface PlanDialogProps {
 
 /**
  * SRS-SFL-S175-01 and -05: the drill plan - site, type, scenario, expected participants - and what the day
- * needs: the assembly point, the S174 drill template and who it goes to, and for each participating module
+ * needs: the assembly point, the Drill notification template and who it goes to, and for each participating module
  * what it is expected to do and how success is measured.
  *
  * A plan can be saved incomplete; it is scheduling that requires it ready, so the readiness list here is
@@ -107,17 +107,17 @@ export const PlanDialog = ({ siteCode: initialSite, existing, onClose, onSaved }
         <EnumField label="Drill type" value={plan.drillType} options={drillTypes} renderOptionLabel={(t) => drillTypeLabel[t]} required onChange={(value) => value && set('drillType', value as DrillType)} />
         <TextField label="Title" className="sm:col-span-2" value={plan.title} maxLength={200} required onChange={(value) => set('title', value)} />
         <TextAreaField label="Scenario" className="sm:col-span-2" value={plan.scenario ?? ''} maxLength={4000} onChange={(value) => set('scenario', value)} helperText="What participants are told is happening." />
-        <TextField label="Expected participants" className="sm:col-span-2" value={plan.expectedParticipants ?? ''} maxLength={1000} onChange={(value) => set('expectedParticipants', value)} helperText="In words. The roll-call baseline is taken from live S160/S160a occupancy when the drill starts." />
+        <TextField label="Expected participants" className="sm:col-span-2" value={plan.expectedParticipants ?? ''} maxLength={1000} onChange={(value) => set('expectedParticipants', value)} helperText="In words. The roll-call baseline is taken from live visitor and access-control occupancy when the drill starts." />
         <DateTimeField label="Scheduled for" value={toLocalInputValue(plan.scheduledFor)} onChange={(value) => set('scheduledFor', value ? fromLocalInputValue(value) : undefined)} />
-        <TextField label="Assembly point (S162a zone)" value={plan.assemblyZone ?? ''} maxLength={80} onChange={(value) => set('assemblyZone', value)} helperText="Where the roll-call is taken, e.g. BLOCK-A." />
+        <TextField label="Assembly point (fire & life safety zone)" value={plan.assemblyZone ?? ''} maxLength={80} onChange={(value) => set('assemblyZone', value)} helperText="Where the roll-call is taken, e.g. BLOCK-A." />
         <SelectField
-          label="S174 drill template"
+          label="Drill notification template"
           className="sm:col-span-2"
           value={plan.notificationTemplateId ?? ''}
           allowEmpty
           emptyLabel={templates.data?.length ? 'Choose a drill template' : 'No drill templates at this site'}
           options={(templates.data ?? []).map((t) => ({ value: t.templateId, label: `${t.templateCode} · ${t.title}` }))}
-          helperText="Only S174 templates carrying the drill marker are offered - a drill can never go out on a real alert template."
+          helperText="Only notification templates carrying the drill marker are offered - a drill can never go out on a real alert template."
           onChange={(value) => set('notificationTemplateId', value || undefined)}
         />
         <div className="sm:col-span-2">
@@ -127,7 +127,7 @@ export const PlanDialog = ({ siteCode: initialSite, existing, onClose, onSaved }
             options={records.audiences.map((a) => ({ value: a.id, label: a.name, hint: `${a.recipientCount} recipients` }))}
             values={plan.audienceGroupIds}
             onChange={(values) => set('audienceGroupIds', values)}
-            emptyMessage="No S174 audience groups at this site."
+            emptyMessage="No notification audience groups at this site."
           />
         </div>
         <div className="sm:col-span-2">
@@ -137,7 +137,7 @@ export const PlanDialog = ({ siteCode: initialSite, existing, onClose, onSaved }
             options={records.zones.map((z) => ({ value: z.id, label: z.name }))}
             values={plan.recipientZoneIds}
             onChange={(values) => set('recipientZoneIds', values)}
-            emptyMessage="No S174 recipient zones at this site."
+            emptyMessage="No notification recipient zones at this site."
           />
         </div>
       </div>
@@ -205,7 +205,7 @@ export const ScheduleDialog = ({ detail, onClose, onDone }: { detail: DrillDetai
     <ActionDialog
       open
       title={detail.drill.status === 'POSTPONED' ? `Reschedule ${detail.drill.reference}` : `Schedule ${detail.drill.reference}`}
-      description="Puts the drill on the calendar. S174 confirms the template is a drill template before it is accepted."
+      description="Puts the drill on the calendar. Mass notification confirms the template is a drill template before it is accepted."
       submitLabel="Schedule"
       submitting={submitting}
       submitDisabled={problems.length > 0}

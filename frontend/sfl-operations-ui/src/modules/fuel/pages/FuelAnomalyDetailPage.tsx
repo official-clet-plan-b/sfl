@@ -372,7 +372,7 @@ const FuelAnomalyDetailPage = () => {
                             </p>
                             <p className="text-theme-xs text-gray-600">
                               {allowed
-                                ? `Needs ${rule.permission}.`
+                                ? 'Available now.'
                                 : rule.from.length === 0
                                   ? 'Available from any state.'
                                   : `From ${rule.from

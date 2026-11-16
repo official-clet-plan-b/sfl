@@ -1,4 +1,4 @@
-import { type LucideIcon, Activity, ArrowLeft, Bell, Book, Building2, Calendar, Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsLeft, ChevronsRight, CircleAlert, CircleCheck, Clipboard, ClipboardList, Clock, Cloud, Coins, Download, Ellipsis, Eye, EyeOff, FileText, Flag, Fuel, Gauge, Inbox, Info, Layers, LayoutDashboard, Link, ListFilter, Lock, LogOut, MapPin, Megaphone, Menu, Package, Pencil, Play, Plus, RefreshCw, Route, Scale, Search, Settings, ShieldAlert, ShieldCheck, Siren, Square, Target, TriangleAlert, Truck, Upload, User, UserPlus, UserRound, Users, Workflow, Wrench, X, Zap } from 'lucide-react';
+import { type LucideIcon, Activity, ArrowLeft, Bell, Book, Building2, Calendar, Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsLeft, ChevronsRight, CircleAlert, CircleCheck, Clipboard, ClipboardList, Clock, Cloud, Coins, Download, Ellipsis, Eye, EyeOff, FileText, Flag, Fuel, Gauge, Inbox, Info, Layers, LayoutDashboard, Link, ListFilter, Map as MapIcon, ToggleRight, Lock, LogOut, MapPin, Megaphone, Menu, Package, Pencil, Play, Plus, RefreshCw, Route, Scale, Search, Settings, ShieldAlert, ShieldCheck, Siren, Square, Target, TriangleAlert, Truck, Upload, User, UserPlus, UserRound, Users, Workflow, Wrench, X, Zap } from 'lucide-react';
 import type { SVGProps } from 'react';
 
 /**
@@ -47,6 +47,8 @@ export type IconName =
   | 'more'
   | 'filter'
   | 'map-pin'
+  | 'map'
+  | 'toggle'
   | 'wrench'
   | 'activity'
   | 'gauge'
@@ -114,6 +116,8 @@ const glyphs: Record<IconName, LucideIcon> = {
   'more': Ellipsis,
   'filter': ListFilter,
   'map-pin': MapPin,
+  'map': MapIcon,
+  'toggle': ToggleRight,
   'wrench': Wrench,
   'activity': Activity,
   'gauge': Gauge,

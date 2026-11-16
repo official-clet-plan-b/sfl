@@ -63,9 +63,9 @@ export const StartDrillDialog = ({ detail, onClose, onDone }: DrillDialogProps) 
       onSubmit={() => void run(() => drillApi.start(drill.id, drill.metadata.version), 'Drill started', drill.reference, onDone)}
     >
       <ConsequencePanel title="Starting this drill will">
-        <ConsequenceLine label="Baseline" value="Take who is on site now from S160 visitors and S160a access occupancy" />
-        <ConsequenceLine label="Roll-call" value={`Open an S162a muster at ${drill.plan.assemblyZone}`} />
-        <ConsequenceLine label="Notification" value="Send the S174 drill template to the chosen audiences, marked as a drill" />
+        <ConsequenceLine label="Baseline" value="Take who is on site now from visitor records and access-control occupancy" />
+        <ConsequenceLine label="Roll-call" value={`Open a fire & life safety muster at ${drill.plan.assemblyZone}`} />
+        <ConsequenceLine label="Notification" value="Send the drill notification template to the chosen audiences, marked as a drill" />
       </ConsequencePanel>
       <div className="mt-4">
         <Banner variant="info" heading="Recipients will receive a real message" subtext="It goes down the real notification path, so it tests that path. Every message opens with the drill marker." />
@@ -81,7 +81,7 @@ export const CloseRollCallDialog = ({ detail, outstanding, onClose, onDone }: Dr
     <ActionDialog
       open
       title={`Close roll-call for ${drill.reference}`}
-      description="Closes the S162a muster and the S174 drill notification, and completes the drill."
+      description="Closes the muster and the drill notification, and completes the drill."
       submitLabel="Close roll-call"
       submitting={submitting}
       onClose={onClose}
@@ -273,7 +273,7 @@ export const OpenActionDialog = ({ detail, finding, onClose, onDone }: DrillDial
     <ActionDialog
       open
       title={`Corrective action for finding #${finding.sequenceNo}`}
-      description="S163's corrective-action pattern: an owner and a due date, tracked to verified closure."
+      description="The incident corrective-action pattern: an owner and a due date, tracked to verified closure."
       submitLabel="Raise action"
       submitting={submitting}
       submitDisabled={!description.trim() || !ownerId.trim() || !dueDate}
@@ -335,7 +335,7 @@ export const RequirementDialog = ({ siteCode: initialSite, drillType: initialTyp
     <ActionDialog
       open
       title={revising ? 'Revise required frequency' : 'Set a required frequency'}
-      description="CLET's statutory or insurance figure for this site and drill type. A revision keeps the original effective date."
+      description="GSL's statutory or insurance figure for this site and drill type. A revision keeps the original effective date."
       submitLabel="Save"
       submitting={submitting}
       submitDisabled={!siteCode || !drillType || Boolean(problem)}

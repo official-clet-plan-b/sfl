@@ -268,6 +268,16 @@ public final class FuelTestDoubles {
                     .max(Comparator.comparing(FuelTransaction::occurredAt));
         }
 
+        @Override
+        public boolean hasLaterTransaction(String siteCode, UUID vehicleId, Instant after, UUID excludingId) {
+            return transactions.values().stream()
+                    .filter(t -> t.siteCode().value().equals(siteCode))
+                    .filter(t -> t.vehicleId().equals(vehicleId))
+                    .filter(t -> t.lifecycle() == FuelTransaction.Lifecycle.ACTIVE)
+                    .filter(t -> !t.id().equals(excludingId))
+                    .anyMatch(t -> t.occurredAt().isAfter(after));
+        }
+
         // ---- logbooks --------------------------------------------------------------------------
 
         @Override
@@ -355,6 +365,7 @@ public final class FuelTestDoubles {
                     .filter(a -> (vehicleId != null && vehicleId.equals(a.vehicleId()))
                             || (driverId != null && driverId.equals(a.driverId())))
                     .filter(a -> a.metadata().createdAt() != null && a.metadata().createdAt().isAfter(since))
+                    .filter(a -> a.status() != FuelAnomalyCase.Status.CANCELLED)
                     .count();
         }
 

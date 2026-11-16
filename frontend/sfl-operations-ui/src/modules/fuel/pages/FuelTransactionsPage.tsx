@@ -199,7 +199,7 @@ const FuelTransactionsPage = () => {
         <SectionHeader>
           <SectionTitle>Fuel transactions</SectionTitle>
           <SectionActions className="items-end [&_button]:whitespace-nowrap">
-            <SiteSelect value={siteCode} onChange={setSiteCode} required />
+            <SiteSelect inline value={siteCode} onChange={setSiteCode} required />
             {/*
               Both controls are gated, and on different permissions, because they are different
               questions. A reporting viewer holds FUEL_TRANSACTION_READ and may open this register;

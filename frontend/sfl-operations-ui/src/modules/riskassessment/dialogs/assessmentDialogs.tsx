@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { InlineLoading } from 'shared/components/Spinner';
 import { sflActor } from 'shared/api/config';
 import { useNotifier } from 'shared/components/Notifier';
 import SiteSelect from 'shared/components/SiteSelect';
@@ -126,10 +127,10 @@ export const CreateAssessmentDialog = ({ siteCode: initialSite, activityType: pr
         {activityChoice === NEW_ACTIVITY ? (
           <TextField label="New activity type" value={newActivity} maxLength={80} required onChange={setNewActivity} helperText="e.g. Roof access. Stored as ROOF_ACCESS." />
         ) : (
-          <TextField label="S152 location code" value={locationCode} maxLength={80} onChange={setLocationCode} helperText="Optional room, space or zone code." />
+          <TextField label="Location code" value={locationCode} maxLength={80} onChange={setLocationCode} helperText="Optional room, space or zone code." />
         )}
         {activityChoice === NEW_ACTIVITY && (
-          <TextField label="S152 location code" value={locationCode} maxLength={80} onChange={setLocationCode} helperText="Optional room, space or zone code." />
+          <TextField label="Location code" value={locationCode} maxLength={80} onChange={setLocationCode} helperText="Optional room, space or zone code." />
         )}
         <TextField
           label="Title"
@@ -286,7 +287,7 @@ export const PublishDialog = ({ assessmentId, draft, currentVersion, onClose, on
             <div>
               <dt className="text-gray-600">Due for review</dt>
               <dd className="mt-1 font-medium text-gray-900">
-                {interval ? `${dueDateAfter(interval.intervalDays)} (every ${interval.intervalDays} days at this level)` : 'Loading the review cycle…'}
+                {interval ? `${dueDateAfter(interval.intervalDays)} (every ${interval.intervalDays} days at this level)` : <InlineLoading label="Loading the review cycle…" />}
               </dd>
             </div>
           </dl>

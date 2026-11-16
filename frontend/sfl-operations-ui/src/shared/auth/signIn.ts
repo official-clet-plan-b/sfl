@@ -69,7 +69,7 @@ export const signIn = (email: string, password: string): SignInResult => {
     return {
       ok: false,
       reason: 'unknown-account',
-      message: `No account for ${email.trim()}. Pick one from the list below.`,
+      message: 'Invalid username/email or password.',
     };
   }
 
@@ -78,8 +78,8 @@ export const signIn = (email: string, password: string): SignInResult => {
 
     A driver signing in on the facilities service used to succeed and land on an empty dashboard,
     which reads as a broken deployment rather than as an account in the wrong place. Saying so here
-    costs nothing: this account list is public on the page below, so nothing is disclosed by naming
-    the mismatch, and the alternative is an operator filing a bug against the wrong system.
+    costs nothing: this sign-in only runs on a developer's own machine, so nothing is disclosed by
+    naming the mismatch, and the alternative is a developer filing a bug against the wrong system.
   */
   if (accountIsForeignToPlatform(account)) {
     return {
@@ -93,7 +93,7 @@ export const signIn = (email: string, password: string): SignInResult => {
     return {
       ok: false,
       reason: 'wrong-password',
-      message: 'That password is not right for this account.',
+      message: 'Invalid username/email or password.',
     };
   }
 

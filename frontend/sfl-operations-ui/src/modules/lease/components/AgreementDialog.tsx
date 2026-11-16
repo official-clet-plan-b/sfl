@@ -70,7 +70,7 @@ const AgreementDialog = ({ agreementId, onClose, onChanged }: { agreementId: str
                 {a && d && (
                   <>
                     <Section title="Summary" actions={<div className="flex flex-wrap items-center gap-2"><LeaseBadge value={a.status} /><LeaseBadge value={a.counterpartyState} label={a.counterpartyState === 'UNRESOLVED' ? 'Counterparty unresolved' : 'Counterparty verified'} /></div>}>
-                      {d.pastEndDate && <Banner variant="warning" heading="Past its end date" subtext="The daily control marks it expired, tells the director and legal, and asks S153 for a review of anything that depends on it." />}
+                      {d.pastEndDate && <Banner variant="warning" heading="Past its end date" subtext="The daily control marks it expired, tells the director and legal, and asks Maintenance for a review of anything that depends on it." />}
                       {(a.status === 'DRAFT' || a.status === 'IN_REVIEW') && d.blockers.length > 0 && (
                         <Banner variant="warning" heading="Incomplete - cannot be approved yet" subtext={d.blockers.join(' ')} />
                       )}
@@ -78,7 +78,7 @@ const AgreementDialog = ({ agreementId, onClose, onChanged }: { agreementId: str
                       {!d.financialView && <p className="text-theme-xs text-gray-600">Rent and deposit are not shown to your role.</p>}
                       <KeyValueGrid columns={3} items={[
                         { label: 'Property', value: a.propertyReference },
-                        { label: 'CLET is the', value: a.direction === 'INBOUND' ? 'Tenant' : 'Landlord' },
+                        { label: 'GSL is the', value: a.direction === 'INBOUND' ? 'Tenant' : 'Landlord' },
                         { label: 'Owner', value: a.ownerReference ?? 'Not assigned' },
                         { label: 'Term', value: `${formatDate(a.startDate)} to ${formatDate(a.endDate)}` },
                         { label: 'Notice period', value: a.noticeDays == null ? 'Missing' : `${a.noticeDays} days` },
@@ -172,14 +172,14 @@ const AgreementDialog = ({ agreementId, onClose, onChanged }: { agreementId: str
                     </Section>
 
                     <Section title={`Corrective work (${d.workOrders.length})`} actions={canManage && !ended ? <Button size="sm" variant="outline" onClick={() => setPending({ kind: 'work' })}>Raise work order</Button> : undefined}>
-                      {d.workOrders.length === 0 && <p className="text-theme-sm text-gray-600">None. A work order is raised in S153 automatically when an agreement lapses, or by hand here.</p>}
+                      {d.workOrders.length === 0 && <p className="text-theme-sm text-gray-600">None. A work order is raised in Maintenance automatically when an agreement lapses, or by hand here.</p>}
                       <ul className="space-y-2">
                         {d.workOrders.map((w) => (
                           <li key={w.id} className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border px-4 py-3">
                             <div className="min-w-0">
-                              <p className="text-sm font-medium">{w.state === 'RAISED' ? `S153 ${w.workOrderNumber}` : 'Not yet raised in S153'} · {humanise(w.trigger)}</p>
+                              <p className="text-sm font-medium">{w.state === 'RAISED' ? `Work order ${w.workOrderNumber}` : 'Not yet raised in Maintenance'} · {humanise(w.trigger)}</p>
                               <p className="text-theme-xs text-gray-600">{w.description}</p>
-                              {w.state === 'PENDING_MANUAL' && <p className="text-theme-xs text-[var(--clet-error-text)]">S153 has not confirmed it. It is retried each day, or retry it now.</p>}
+                              {w.state === 'PENDING_MANUAL' && <p className="text-theme-xs text-[var(--clet-error-text)]">Maintenance has not confirmed it. It is retried each day, or retry it now.</p>}
                             </div>
                             <div className="flex items-center gap-2">
                               <LeaseBadge value={w.state} label={w.state === 'RAISED' ? 'Raised' : 'Pending'} />
@@ -212,7 +212,7 @@ const AgreementDialog = ({ agreementId, onClose, onChanged }: { agreementId: str
       {a && pending?.kind === 'obligation' && <ObligationDialog agreement={a} onClose={close} onDone={done} />}
       {a && pending?.kind === 'owner' && <ReasonDialog title="Change the owner" description="An administrative change: it moves nobody's money or time, and writes a new version." label="New owner" submitLabel="Change owner" write={(owner) => leaseApi.reassign(a, owner)} onClose={close} onDone={done} />}
       {a && pending?.kind === 'return' && <ReasonDialog title="Return to draft" description="Sends it back to be completed. The reason is kept." label="What is missing" submitLabel="Return to draft" write={(reason) => leaseApi.returnToDraft(a, reason)} onClose={close} onDone={done} />}
-      {a && pending?.kind === 'work' && <ReasonDialog title="Raise a work order" description="Asks S153 for corrective work on this agreement's property. If S153 does not answer it stays pending and can be retried." label="What needs doing" submitLabel="Raise work order" write={(text) => leaseApi.raiseWorkOrder(a.id, text)} onClose={close} onDone={done} />}
+      {a && pending?.kind === 'work' && <ReasonDialog title="Raise a work order" description="Asks Maintenance for corrective work on this agreement's property. If Maintenance does not answer it stays pending and can be retried." label="What needs doing" submitLabel="Raise work order" write={(text) => leaseApi.raiseWorkOrder(a.id, text)} onClose={close} onDone={done} />}
       {pending?.kind === 'decide' && (
         <ReasonDialog title={pending.approve ? 'Approve the amendment' : 'Reject the amendment'} description={pending.approve ? 'Writes a new version and keeps the prior one. You cannot approve an amendment you proposed.' : 'Nothing changes. The reason is kept.'}
           label={pending.approve ? 'Why it is approved' : 'Why it is rejected'} submitLabel={pending.approve ? 'Approve' : 'Reject'} destructive={!pending.approve} minimum={pending.approve ? 0 : 1}

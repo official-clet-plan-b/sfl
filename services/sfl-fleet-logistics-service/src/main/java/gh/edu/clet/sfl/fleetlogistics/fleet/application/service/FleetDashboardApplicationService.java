@@ -23,6 +23,7 @@ import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.OperatingMode;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.SiteCode;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.SourceChannel;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.Trip;
+import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.TripStatus;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.Vehicle;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.VehicleAvailabilityStatus;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.VehicleServiceStatus;
@@ -139,7 +140,7 @@ public class FleetDashboardApplicationService {
 
         OperationsDashboardSnapshot snapshot = new OperationsDashboardSnapshot(UUID.randomUUID(), now,
                 scopeKey(scope, filter), filter.siteCode(), stale, warnings,
-                new DashboardIndicators(scopedVehicles.stream().filter(vehicle -> vehicle.availabilityStatus().isFree()).count(),
+                new DashboardIndicators(scopedVehicles.stream().filter(vehicle -> freeNow(vehicle, scopedTrips, now)).count(),
                         expiredCompliance, serviceDue, assignmentConflicts, readinessBlockers,
                         scopedWorkflow.stream().filter(item -> item.status().isLive()).count(),
                         scopedWorkflow.stream().filter(item -> item.status() == FleetWorkflowStatus.ESCALATED).count(),
@@ -234,24 +235,53 @@ public class FleetDashboardApplicationService {
      * never disagree the way a tile counted by vehicle-or-driver duplicates but a drilldown grouped by
      * vehicle alone once did: a count could be non-zero from a driver double-booking two different
      * vehicles, with nothing for the drilldown to show.
+     *
+     * <p>Only trips that hold the same vehicle or the same driver over overlapping planned periods. Sharing a
+     * vehicle or driver is normal - Monday's trip and Friday's trip can use the same car - so only an
+     * overlap in time is a conflict.
      */
     private static List<ConflictingTrip> conflictingTrips(List<Trip> trips) {
-        List<Trip> assigned = trips.stream().filter(Trip::holdsAssignment).toList();
-        Set<UUID> conflictingVehicles = duplicated(assigned.stream().map(Trip::vehicleId).toList());
-        Set<UUID> conflictingDrivers = duplicated(assigned.stream().map(Trip::driverId).toList());
+        List<Trip> assigned = trips.stream().filter(Trip::holdsAssignment)
+                .filter(trip -> trip.plannedPeriod() != null).toList();
+        Set<UUID> vehicleClash = new java.util.HashSet<>();
+        Set<UUID> driverClash = new java.util.HashSet<>();
+        for (int i = 0; i < assigned.size(); i++) {
+            for (int j = i + 1; j < assigned.size(); j++) {
+                Trip a = assigned.get(i);
+                Trip b = assigned.get(j);
+                if (!a.plannedPeriod().overlaps(b.plannedPeriod())) {
+                    continue;
+                }
+                if (a.vehicleId() != null && a.vehicleId().equals(b.vehicleId())) {
+                    vehicleClash.add(a.id());
+                    vehicleClash.add(b.id());
+                }
+                if (a.driverId() != null && a.driverId().equals(b.driverId())) {
+                    driverClash.add(a.id());
+                    driverClash.add(b.id());
+                }
+            }
+        }
         return assigned.stream()
-                .filter(trip -> conflictingVehicles.contains(trip.vehicleId())
-                        || conflictingDrivers.contains(trip.driverId()))
-                .map(trip -> new ConflictingTrip(trip, conflictingVehicles.contains(trip.vehicleId()),
-                        conflictingDrivers.contains(trip.driverId())))
+                .filter(trip -> vehicleClash.contains(trip.id()) || driverClash.contains(trip.id()))
+                .map(trip -> new ConflictingTrip(trip, vehicleClash.contains(trip.id()),
+                        driverClash.contains(trip.id())))
                 .toList();
     }
 
-    private static Set<UUID> duplicated(List<UUID> ids) {
-        return ids.stream().filter(java.util.Objects::nonNull)
-                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
-                .entrySet().stream().filter(entry -> entry.getValue() > 1).map(Map.Entry::getKey)
-                .collect(Collectors.toSet());
+    /**
+     * Whether the vehicle is free right now. A booking for later in the week does not take a vehicle off
+     * the road today: it is busy only while a trip is under way or its planned period covers now.
+     */
+    private static boolean freeNow(Vehicle vehicle, List<Trip> trips, Instant now) {
+        if (vehicle.availabilityStatus() == VehicleAvailabilityStatus.UNAVAILABLE
+                || vehicle.serviceStatus().blocksAssignment()) {
+            return false;
+        }
+        return trips.stream()
+                .filter(trip -> vehicle.id().equals(trip.vehicleId()) && trip.holdsAssignment())
+                .noneMatch(trip -> trip.status() == TripStatus.IN_PROGRESS
+                        || (trip.plannedPeriod() != null && trip.plannedPeriod().contains(now)));
     }
 
     private record ConflictingTrip(Trip trip, boolean vehicleConflict, boolean driverConflict) {

@@ -307,7 +307,7 @@ public class TripApplicationService {
 
         VehicleLocationSnapshot snapshot = new VehicleLocationSnapshot(UUID.randomUUID(), existing.vehicleId(),
                 existing.siteCode(), command.latitude(), command.longitude(), null, clock.instant(),
-                "DRIVER_MOBILE", UUID.randomUUID(), command.actor().correlationId());
+                VehicleLocationSnapshot.DRIVER_MOBILE, null, command.actor().correlationId());
         return locations.save(snapshot);
     }
 
@@ -374,6 +374,12 @@ public class TripApplicationService {
      * staff reference against the token subject - the comparison that could never be true once
      * authentication was switched on. See {@link DriverScopeResolver}.
      */
+    /** Whether the actor's sign-in is bound to the driver profile assigned to this trip. */
+    private boolean isBoundDriver(Trip trip, ActorContext actor) {
+        return driverScopes.resolve(actor, true) instanceof DriverScope.Own own
+                && own.driverId() != null && own.driverId().equals(trip.driverId());
+    }
+
     private void requireOwnAssignment(Trip trip, ActorContext actor) {
         requireOwnAssignment(trip, actor, SflPermission.FLEET_TRIP_ACKNOWLEDGE,
                 "Only the driver assigned to this trip can confirm or defer it");
@@ -546,7 +552,11 @@ public class TripApplicationService {
         // A driver may only inspect the vehicle on their own trip. The owner reference used to be
         // passed as null, which `requireRecordScope` returns on immediately - so the rule this comment
         // describes has never once been enforced, at the only call site the policy has.
-        if (trip != null && trip.driverId() != null) {
+        // The driver is recognised by their sign-in's binding to the driver profile - the same test start
+        // and acknowledgement use. Comparing the profile's staff reference to the sign-in subject alone
+        // only ever matched under the development header sign-in; with the identity provider the subject
+        // is an opaque id, so a driver could not record their own pre-trip check and so never start a trip.
+        if (trip != null && trip.driverId() != null && !isBoundDriver(trip, command.actor())) {
             accessPolicy.requireRecordScope(command.actor(), driverOwnerReference(trip.driverId()),
                     SflPermission.FLEET_TRIP_MANAGE, RESOURCE_TYPE, trip.id().toString());
         }

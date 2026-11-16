@@ -166,7 +166,7 @@ class VehicleControllerTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.error.code").value("FLEET_MISSING_SITE_SCOPE"))
                 .andExpect(jsonPath("$.error.message")
-                        .value("Select a valid CLET site before saving this record."));
+                        .value("Select a valid GSL site before saving this record."));
     }
 
     @Test

@@ -63,12 +63,16 @@ interface DriverProfileJpaRepository extends JpaRepository<DriverProfileEntity, 
      * column beside it. Every column used this way is {@code NOT NULL}, so an absent filter still
      * matches every row, exactly as the previous form did.
      */
+    // An eligibility view answers "who can I assign?", and an archived driver cannot be assigned
+    // whatever their licence says - so they appear under All, never under Eligible.
     @Query("""
             select d from DriverProfileEntity d
             where (:allSites = true or d.siteCode in :siteScopes)
               and (:siteCode is null or d.siteCode = :siteCode)
               and (:lifecycleStatus is null or d.lifecycleStatus = :lifecycleStatus)
               and (:eligibilityStatus is null or d.eligibilityStatus = :eligibilityStatus)
+              and (:eligibilityStatus is null
+                   or d.lifecycleStatus <> gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.DriverLifecycleStatus.ARCHIVED)
               and upper(d.responsibleUnit) = upper(coalesce(:responsibleUnit, d.responsibleUnit))
               and d.licenceExpiresOn <= coalesce(:licenceExpiringBefore, d.licenceExpiresOn)
               and (upper(d.displayName) like upper(concat('%', coalesce(:search, d.displayName), '%'))

@@ -19,7 +19,7 @@ class FleetErrorCodeTest {
             Map.entry(FleetErrorCode.FLEET_DUPLICATE_IDENTIFIER,
                     "An active record with this identifier already exists for this site."),
             Map.entry(FleetErrorCode.FLEET_MISSING_SITE_SCOPE,
-                    "Select a valid CLET site before saving this record."),
+                    "Select a valid GSL site before saving this record."),
             Map.entry(FleetErrorCode.FLEET_UNAUTHORIZED_SCOPE,
                     "You are not authorised to access this site or record."),
             // SRS-SFL-S166-02

@@ -13,7 +13,6 @@ interface ImportMetaEnv {
   readonly VITE_SFL_DISPLAY_NAME?: string;
   readonly VITE_SFL_ROLES?: string;
   readonly VITE_SFL_SITES?: string;
-  readonly VITE_SFL_PROGRAMMES?: string;
   readonly VITE_FLEET_DEV_FALLBACK?: string;
 }
 

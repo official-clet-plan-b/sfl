@@ -54,22 +54,17 @@ const base = { sites: 'CLET-HQ', programmes: '', systems: '' };
 const PRESETS: Preset[] = [
   {
     label: 'Fleet manager',
-    detail: 'All three FTLMP systems. No emergency section.',
+    detail: 'All three fleet modules. No emergency section.',
     actor: { ...base, user: 'fleet.manager', displayName: 'Fleet Manager', roles: 'FLEET_MANAGER' },
   },
   {
-    label: 'Driver',
-    detail: 'S166 and S168 only. Courier and dispatch disappears - a driver does not run the mailroom.',
-    actor: { ...base, user: 'kwame.driver', displayName: 'Kwame Driver', roles: 'FLEET_DRIVER' },
-  },
-  {
     label: 'Mailroom officer',
-    detail: 'S171 only. Same programme as the driver, the opposite half of it.',
+    detail: 'Courier & dispatch only. Same programme as the driver, the opposite half of it.',
     actor: { ...base, user: 'ama.mailroom', displayName: 'Ama Mailroom', roles: 'MAILROOM_OFFICER' },
   },
   {
     label: 'Emergency coordinator',
-    detail: 'S174 only. Every FTLMP section disappears.',
+    detail: 'Mass notification only. Every fleet section disappears.',
     actor: {
       ...base,
       user: 'emergency.coordinator',
@@ -79,7 +74,7 @@ const PRESETS: Preset[] = [
   },
   {
     label: 'Security officer',
-    detail: 'S174 and S171 - it escalates dispatch exceptions, which the sidebar used to hide.',
+    detail: 'Mass notification and courier & dispatch - it escalates dispatch exceptions, which the sidebar used to hide.',
     actor: {
       ...base,
       user: 'security.officer',
@@ -89,7 +84,7 @@ const PRESETS: Preset[] = [
   },
   {
     label: 'Facilities manager',
-    detail: 'IFIMP. Lands on the facilities dashboard; the operator view, not a personal one.',
+    detail: 'Facilities. Lands on the facilities dashboard; the operator view, not a personal one.',
     actor: {
       ...base,
       user: 'facilities.manager',
@@ -122,7 +117,7 @@ const PRESETS: Preset[] = [
   },
   {
     label: 'Vendor technician',
-    detail: 'Same queue, contractor scope. Two vendors see two disjoint queues - S153 narrows per person.',
+    detail: 'Same queue, contractor scope. Two vendors see two disjoint queues - Maintenance narrows per person.',
     actor: {
       ...base,
       user: 'kofi.vendor',

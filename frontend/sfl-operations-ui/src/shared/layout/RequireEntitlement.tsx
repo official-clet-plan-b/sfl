@@ -14,6 +14,7 @@ import {
 } from './programmes';
 import { capabilityRefusedFor, landingPath } from './navigation';
 import { servesPlatform, servingPlatformName } from 'shared/platform';
+import { isSystemEnabled, useFeatureFlagsVersion } from './featureFlags';
 
 /**
  * Refuses a route the actor is not entitled to, at whichever grain fails.
@@ -43,6 +44,8 @@ const RequireEntitlement = ({
   const target = systems[system];
   const programme = programmes[target.programme];
   const { pathname } = useLocation();
+  // Re-render when a module is switched on or off while this page is open.
+  useFeatureFlagsVersion();
 
   /*
     Not served here, before entitlement is considered.
@@ -60,6 +63,11 @@ const RequireEntitlement = ({
   */
   if (!servesPlatform(target.programme)) {
     return <NotServedHere programme={target.programme} />;
+  }
+
+  // Switched off in this deployment - nobody's roles are the reason, so say that instead.
+  if (!isSystemEnabled(system)) {
+    return <SwitchedOff label={target.label} />;
   }
 
   if (entitledTo(target.programme) && entitledToSystem(system)) {
@@ -86,7 +94,7 @@ const RequireEntitlement = ({
 
   const covered = programmeRefused
     ? actorProgrammes.map((code) => programmes[code].label)
-    : actorSystems.map((code) => systems[code].label);
+    : actorSystems.filter(isSystemEnabled).map((code) => systems[code].label);
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
@@ -112,6 +120,32 @@ const RequireEntitlement = ({
             : 'none of its systems'}
         . If you need it, ask for the role that carries it rather than a link to this page - the
         service would refuse the request regardless.
+      </p>
+      {home && (
+        <Link
+          to={home}
+          className="mt-5 inline-flex h-11 items-center gap-2 rounded-lg bg-brand-800 px-4 text-theme-sm font-medium text-white transition-colors hover:bg-brand-700"
+        >
+          <Icon name="dashboard" size={17} />
+          Back to your dashboard
+        </Link>
+      )}
+    </div>
+  );
+};
+
+/** A system the deployment's feature flags have switched off. */
+const SwitchedOff = ({ label }: { label: string }) => {
+  const home = landingPath();
+  return (
+    <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
+      <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
+        <Icon name="lock" size={26} />
+      </span>
+      <p className="text-title-sm font-bold text-gray-900">{label} is not switched on</p>
+      <p className="mt-2 max-w-lg text-theme-sm text-gray-600">
+        A system administrator has switched this module off for everyone. Your roles are not the
+        reason you are seeing this - ask them if you expected it to be available.
       </p>
       {home && (
         <Link

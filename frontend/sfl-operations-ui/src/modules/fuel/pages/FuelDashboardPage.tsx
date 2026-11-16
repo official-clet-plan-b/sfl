@@ -294,7 +294,7 @@ const FuelDashboardPage = () => {
         <SectionHeader>
           <SectionTitle>Fuel dashboard</SectionTitle>
           <SectionActions className="items-end [&_button]:whitespace-nowrap">
-            <SiteSelect value={siteCode} onChange={setSiteCode} required />
+            <SiteSelect inline value={siteCode} onChange={setSiteCode} required />
             <Button variant="outline" onClick={refreshAll}>
               <RefreshCw size={14} strokeWidth={1.5} aria-hidden />
               Refresh
@@ -337,7 +337,8 @@ const FuelDashboardPage = () => {
        * than across whatever page the dashboard happened to fetch.
        */}
       <PageSection>
-        <MetricCards>
+        {/* Five figures on one row - the default four columns left the fifth alone on a second row. */}
+        <MetricCards className="sm:grid-cols-2! lg:grid-cols-3! xl:grid-cols-5!">
           <MetricCard
             variant="soft"
             loading={metricsLoading}

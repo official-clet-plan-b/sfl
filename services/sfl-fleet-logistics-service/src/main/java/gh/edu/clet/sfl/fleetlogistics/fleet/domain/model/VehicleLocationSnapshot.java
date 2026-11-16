@@ -6,7 +6,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-/** Vendor-neutral vehicle location snapshot for telematics-ready integrations (SRS-SFL-S166-04). */
+/**
+ * Vendor-neutral vehicle location snapshot for telematics-ready integrations (SRS-SFL-S166-04).
+ *
+ * <p>A position fed by an integration names the inbox message it came from. One the driver's own phone
+ * reported during a trip ({@link #DRIVER_MOBILE}) has no inbox message, and only that kind may omit it.
+ */
 public record VehicleLocationSnapshot(
         UUID id,
         UUID vehicleId,
@@ -19,6 +24,9 @@ public record VehicleLocationSnapshot(
         UUID integrationMessageId,
         String correlationId) {
 
+    /** The source system of a position the assigned driver's phone reported directly to the trip. */
+    public static final String DRIVER_MOBILE = "DRIVER_MOBILE";
+
     public VehicleLocationSnapshot {
         Objects.requireNonNull(id, "id is required");
         Objects.requireNonNull(vehicleId, "vehicleId is required");
@@ -26,8 +34,10 @@ public record VehicleLocationSnapshot(
         Objects.requireNonNull(latitude, "latitude is required");
         Objects.requireNonNull(longitude, "longitude is required");
         Objects.requireNonNull(recordedAt, "recordedAt is required");
-        Objects.requireNonNull(integrationMessageId, "integrationMessageId is required");
         sourceSystem = requireText(sourceSystem, "sourceSystem").toUpperCase(java.util.Locale.ROOT);
+        if (integrationMessageId == null && !DRIVER_MOBILE.equals(sourceSystem)) {
+            throw new NullPointerException("integrationMessageId is required");
+        }
     }
 
     public Map<String, Object> auditImage() {
@@ -40,7 +50,7 @@ public record VehicleLocationSnapshot(
                 Map.entry("odometerValue", odometerValue == null ? "" : odometerValue),
                 Map.entry("recordedAt", recordedAt.toString()),
                 Map.entry("sourceSystem", sourceSystem),
-                Map.entry("integrationMessageId", integrationMessageId.toString()),
+                Map.entry("integrationMessageId", integrationMessageId == null ? "" : integrationMessageId.toString()),
                 Map.entry("correlationId", correlationId == null ? "" : correlationId));
     }
 

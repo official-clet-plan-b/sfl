@@ -55,9 +55,10 @@ class FleetSecurityConfiguration {
     @ConditionalOnProperty(name = "sfl.security.enabled", havingValue = "true", matchIfMissing = true)
     JwtDecoder jwtDecoder(
             @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}") String issuerUri,
+            @Value("${sfl.security.jwks.uri:}") String jwkSetUri,
             @Value("${sfl.security.jwks.connect-timeout:PT3S}") Duration connectTimeout,
             @Value("${sfl.security.jwks.read-timeout:PT3S}") Duration readTimeout) {
-        return TimeoutBoundedJwtDecoders.fromIssuerLocation(issuerUri, connectTimeout, readTimeout);
+        return TimeoutBoundedJwtDecoders.fromIssuerLocation(issuerUri, jwkSetUri, connectTimeout, readTimeout);
     }
 
     @Bean
@@ -70,7 +71,7 @@ class FleetSecurityConfiguration {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(requests -> requests
-                        .requestMatchers("/", "/index.html", "/assets/**", "/ui", "/ui/**", "/fleet/**", "/fuel/**",
+                        .requestMatchers("/", "/index.html", "/home", "/home/**", "/assets/**", "/ui", "/ui/**", "/fleet/**", "/fuel/**",
                                 "/dispatch/**", "/sfl-logo.png", "/favicon.ico").permitAll()
                         // Swagger/OpenAPI is not open here, unlike an earlier revision - it is full
                         // endpoint/schema recon for an unauthenticated caller, and facilities never

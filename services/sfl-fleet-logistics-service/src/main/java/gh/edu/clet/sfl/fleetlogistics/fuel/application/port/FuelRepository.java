@@ -228,6 +228,12 @@ public interface FuelRepository {
     Optional<FuelTransaction> findPreviousTransaction(
             String siteCode, UUID vehicleId, Instant before);
 
+    /**
+     * Whether the vehicle has another active transaction after {@code after} - i.e. this one is
+     * history.
+     */
+    boolean hasLaterTransaction(String siteCode, UUID vehicleId, Instant after, UUID excludingId);
+
     // --- logbooks ------------------------------------------------------------------------------
 
     DriverLogbook saveLogbook(DriverLogbook logbook);

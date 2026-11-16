@@ -27,7 +27,7 @@ class FleetValueObjectTest {
         void blank_site_is_rejected() {
             assertThatThrownBy(() -> SiteCode.of("  "))
                     .isInstanceOf(MissingSiteScopeException.class)
-                    .hasMessage("Select a valid CLET site before saving this record.");
+                    .hasMessage("Select a valid GSL site before saving this record.");
             assertThatThrownBy(() -> SiteCode.of(null)).isInstanceOf(MissingSiteScopeException.class);
         }
     }

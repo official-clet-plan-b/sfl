@@ -20,7 +20,7 @@ class RegisterExportTest {
         RegisterExport.Result r = RegisterExport.build("S177", "agreements", "CLET-HQ", "director", "Quarterly audit", AT, List.of("A", "B"),
                 List.of("x"), v -> List.of(v, 1));
 
-        assertThat(r.csv()).startsWith("# CLET S177 agreements - CONFIDENTIAL");
+        assertThat(r.csv()).startsWith("# GSL S177 agreements - CONFIDENTIAL");
         assertThat(r.csv()).contains("# Exported by director at 2026-10-03T10:00:00Z for site CLET-HQ").contains("# Reason: Quarterly audit").contains("A,B\nx,1\n");
         assertThat(r.fileName()).isEqualTo("s177-agreements-clet-hq-2026-10-03.csv");
     }

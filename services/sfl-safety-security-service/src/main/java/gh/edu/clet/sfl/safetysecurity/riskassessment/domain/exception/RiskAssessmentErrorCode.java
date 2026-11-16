@@ -6,7 +6,7 @@ package gh.edu.clet.sfl.safetysecurity.riskassessment.domain.exception;
  */
 public enum RiskAssessmentErrorCode {
 
-    RISK_ASSESSMENT_MISSING_SITE_SCOPE(400, "Select a valid CLET site before saving this risk assessment."),
+    RISK_ASSESSMENT_MISSING_SITE_SCOPE(400, "Select a valid GSL site before saving this risk assessment."),
     RISK_ASSESSMENT_UNAUTHORIZED_SCOPE(403, "You are not authorised to access this site or record."),
     RISK_ASSESSMENT_VALIDATION_FAILED(400, "The request failed validation."),
     RISK_ASSESSMENT_RECORD_NOT_FOUND(404, "The requested risk assessment record was not found."),

@@ -15,7 +15,8 @@
  *
  * <h2>The real path already exists beside it</h2>
  *
- * `deploy/idp/sfl-realm.json` carries the same twenty accounts with the same addresses and
+ * `deploy/idp/demo/sfl-users-0.json` carries the same nineteen accounts (imported only when
+ * `SFL_KEYCLOAK_DEMO_USERS` points at it, on a local machine) with the same addresses and
  * password, and `oidc.ts` exchanges them for a genuine token. When a service runs with security
  * on, that is the path - and `session.ts` stores either kind identically, so nothing downstream cares
  * which one signed you in. The roles below and the roles in the realm are the same roles.
@@ -53,14 +54,6 @@ export const seededAccounts: SeededAccount[] = [
     roles: ['FLEET_MANAGER'],
     sites: ['CLET-HQ'],
     description: 'Fleet, fuel and dispatch - plans trips and assigns drivers',
-  },
-  {
-    email: 'driver@clet.gh',
-    username: 'kwame.driver',
-    displayName: 'Kwame Driver',
-    roles: ['FLEET_DRIVER'],
-    sites: ['CLET-HQ'],
-    description: 'My driving day, assigned trips, logbook',
   },
   {
     email: 'fleetofficer@clet.gh',
@@ -215,7 +208,7 @@ export const findAccount = (email: string): SeededAccount | undefined => {
 /**
  * The accounts that can actually work on the origin serving this bundle.
  *
- * <p>The sign-in page used to list all twenty on every service, which reads as an invitation and
+ * <p>The sign-in page used to list all nineteen on every service, which reads as an invitation and
  * is not one: signing into the facilities service as a driver produced a session with no facilities
  * capability and an empty dashboard, and nothing on the page had said that would happen. On the
  * portal the full list is right, because the portal serves all three platforms.

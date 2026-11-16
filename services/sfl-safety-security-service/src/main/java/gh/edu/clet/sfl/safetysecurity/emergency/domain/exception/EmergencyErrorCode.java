@@ -9,7 +9,7 @@ public enum EmergencyErrorCode {
 
     // SRS-SFL-S174-01 operational records
     EMERGENCY_DUPLICATE_IDENTIFIER(409, "An active record with this identifier already exists for this site."),
-    EMERGENCY_MISSING_SITE_SCOPE(400, "Select a valid CLET site before saving this record."),
+    EMERGENCY_MISSING_SITE_SCOPE(400, "Select a valid GSL site before saving this record."),
     EMERGENCY_UNAUTHORIZED_SCOPE(403, "You are not authorised to access this site or record."),
 
     // SRS-SFL-S174-02 workflow

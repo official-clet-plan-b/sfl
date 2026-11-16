@@ -39,7 +39,7 @@ class VehicleLocationSnapshotEntity {
     @Column(name = "source_system", nullable = false, length = 80)
     private String sourceSystem;
 
-    @Column(name = "integration_message_id", nullable = false)
+    @Column(name = "integration_message_id")
     private UUID integrationMessageId;
 
     @Column(name = "correlation_id", length = 120)

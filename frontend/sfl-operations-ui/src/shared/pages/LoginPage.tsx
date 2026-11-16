@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import logo from 'assets/sfl-logo.png';
 import {
   Button,
@@ -8,7 +8,6 @@ import {
   Input,
   Notice,
 } from '@rfdtech/components';
-import { SEEDED_PASSWORD, accountsForServingPlatform } from 'shared/auth/accounts';
 import { signInWithConfiguredProvider } from 'shared/auth/provider';
 import { directorate } from 'shared/layout/navigation';
 
@@ -28,21 +27,14 @@ import { directorate } from 'shared/layout/navigation';
  * right" - on the grounds that this is a development sign-in whose whole account list is printed on
  * the page, so there was nothing to protect. The owner asked for the single message, and that is the
  * right default to build in: the moment this page points at real accounts, distinguishing the two
- * turns the form into an account-enumeration oracle. The list below still tells a developer which
- * addresses exist, which is where that information belongs.
+ * turns the form into an account-enumeration oracle. The seeded demo accounts are not listed:
+ * people sign in with the accounts they were given, and the demo accounts work only on a
+ * developer's own machine.
  */
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [accountsOpen, setAccountsOpen] = useState(false);
-  /*
-    Only the accounts that can work on this origin. The full twenty appear on the portal,
-    which serves all three platforms; on a single service the rest would be an invitation to a
-    session with no capability and an empty dashboard.
-  */
-  const platformAccounts = useMemo(() => accountsForServingPlatform(), []);
-
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!email.trim() || !password) {
@@ -73,13 +65,6 @@ const LoginPage = () => {
       user would land on somebody else's portal.
     */
     window.location.assign(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/`);
-  };
-
-  const fillFrom = (accountEmail: string) => {
-    setEmail(accountEmail);
-    setPassword(SEEDED_PASSWORD);
-    setError(null);
-    setAccountsOpen(false);
   };
 
   return (
@@ -168,51 +153,6 @@ const LoginPage = () => {
             </div>
           </form>
 
-          {/*
-            The account list is on the page deliberately. This is a development sign-in against seeded
-            accounts, and hiding the list would mean the only way to use the form is to read the
-            source - while the accounts are in the bundle either way.
-          */}
-          <div className="mt-7 border-t border-border pt-4 text-center">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setAccountsOpen((open) => !open)}
-              aria-expanded={accountsOpen}
-            >
-              {accountsOpen
-                ? 'Hide accounts'
-                : `Show the ${platformAccounts.length} account${platformAccounts.length === 1 ? '' : 's'} for this service`}
-            </Button>
-
-            {accountsOpen && (
-              <>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Every account uses the password{' '}
-                  <code className="rounded bg-muted px-1 font-medium">{SEEDED_PASSWORD}</code>.
-                  Choose one to fill the form.
-                </p>
-                <ul className="custom-scrollbar mt-3 max-h-64 space-y-1 overflow-y-auto pr-1 text-left">
-                  {platformAccounts.map((account) => (
-                    <li key={account.email}>
-                      <button
-                        type="button"
-                        onClick={() => fillFrom(account.email)}
-                        className="w-full rounded-md px-2 py-1.5 text-left transition-colors hover:bg-(--clet-hover)"
-                      >
-                        <span className="block text-sm font-medium text-foreground">
-                          {account.email}
-                        </span>
-                        <span className="block text-xs text-muted-foreground">
-                          {account.description}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-          </div>
         </div>
       </div>
     </div>

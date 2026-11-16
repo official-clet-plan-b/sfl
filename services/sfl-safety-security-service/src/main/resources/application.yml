@@ -94,6 +94,13 @@ management:
       enabled: ${SFL_RABBITMQ_HEALTH_ENABLED:false}
 
 sfl:
+  # Feature flags: which systems this deployment switches on. Blank allow-list = everything on.
+  # e.g. SFL_FEATURES_ENABLED_SYSTEMS=S166,S167,S168,S168a  or  SFL_FEATURES_DISABLED_SYSTEMS=S171
+  features:
+    enabled-systems: ${SFL_FEATURES_ENABLED_SYSTEMS:}
+    disabled-systems: ${SFL_FEATURES_DISABLED_SYSTEMS:}
+    # Administrators' on/off choices from the dashboard; they override the defaults above.
+    table: safety_security.sfl_feature_flags
   security:
     roles-claim: ${SFL_SECURITY_ROLES_CLAIM:realm_access.roles}
     # Secure unless deliberately opened, matching the other two platforms. This key was absent
@@ -102,6 +109,9 @@ sfl:
     # answered 401 to its own probe. See SafetySecurityConfiguration.
     enabled: ${SFL_SECURITY_ENABLED:true}
     jwks:
+      # Optional. Where to fetch signing keys when the service reaches the identity provider at a
+      # different address from the issuer in the token (e.g. inside a container network).
+      uri: ${SFL_IAM_JWKS_URI:}
       # Bounds how long a request thread can block fetching/validating against the identity
       # provider's JWKS - see SafetySecurityConfiguration.jwtDecoder and TimeoutBoundedJwtDecoders.
       connect-timeout: ${SFL_JWKS_CONNECT_TIMEOUT:PT3S}

@@ -8,6 +8,11 @@ import { ApiErrorEnvelope, FieldErrorPayload } from 'shared/api/types';
  * and drives inline field errors; `details` carries the domain exception's context map (for example
  * the readiness blockers behind `FLEET_READINESS_BLOCKED`).
  */
+/** Codes that mean "this account may not do or see this". */
+const ACCESS_DENIED = /UNAUTHORIZED|FORBIDDEN|NO_SCOPE|DENIED/;
+const ACCESS_DENIED_MESSAGE =
+  'Your account cannot open or change this. If you need it for your work, ask your fleet office or system administrator.';
+
 export class FleetApiError extends Error {
   readonly status: number;
   readonly code: string;
@@ -70,10 +75,16 @@ export class FleetApiError extends Error {
         ? (data as Record<string, unknown>)
         : null;
 
+    // The code and correlation id are for support, not for the person using the screen: they go to
+    // the browser console, where a support engineer can read them, and the page shows a sentence.
+    if (status >= 400) {
+      console.warn(`[SFL] ${error.code}${error.correlationId ? ` · correlation ${error.correlationId}` : ''}`);
+    }
+    const accessDenied = ACCESS_DENIED.test(error.code ?? '');
     return new FleetApiError({
       status,
       code: error.code,
-      message: error.message,
+      message: accessDenied ? ACCESS_DENIED_MESSAGE : error.message,
       correlationId: error.correlationId,
       fieldErrors,
       details,
@@ -143,8 +154,8 @@ export class FleetApiError extends Error {
       code: status >= 500 ? 'FLEET_SERVICE_FAILURE' : 'FLEET_UNEXPECTED_STATUS',
       message:
         status >= 500
-          ? 'The service could not complete this request. It has been recorded - quote the correlation id below if you report it.'
-          : 'This request was refused and the service did not say why. Check the details you entered; if they look right, quote the correlation id below.',
+          ? 'This could not be completed just now. Please try again in a moment - if it keeps happening, let your system administrator know.'
+          : 'This could not be saved. Check the details you entered and try again.',
       correlationId,
     });
   }
@@ -168,8 +179,7 @@ export const isApiErrorEnvelope = (value: unknown): value is ApiErrorEnvelope =>
  *
  * <p>These titles are grouped by what the reader can do about it, which is the only distinction that
  * changes their next action: fix the form, ask for access, reload, or report it. The code itself is
- * still shown - `errorDetail` puts it in the alert's footnote beside the correlation id, because that
- * pair is exactly what support asks for.
+ * not shown; it is logged to the console for support.
  *
  * <p>Codes are matched by suffix so the three services' prefixes (`FLEET_`, `FACILITIES_`, and the
  * SRS's own unprefixed ones) share one table rather than three that drift.
@@ -182,7 +192,7 @@ const ERROR_TITLES: { match: RegExp; title: string }[] = [
     match: /STATE_TRANSITION|BLOCKED|LOCKED|EVIDENCE_MISSING|NOT_APPROVED|PRETRIP_INSPECTION_MISSING/,
     title: 'This cannot be done yet',
   },
-  { match: /UNAUTHORIZED|FORBIDDEN|NO_SCOPE|DENIED/, title: 'You do not have access to this' },
+  { match: ACCESS_DENIED, title: 'Not available for your account' },
   { match: /NOT_FOUND/, title: 'That record no longer exists' },
   { match: /VERSION_CONFLICT|IDEMPOTENCY/, title: 'Somebody else changed this first' },
   { match: /DUPLICATE/, title: 'That already exists' },
@@ -198,16 +208,14 @@ export const errorLabel = (error: FleetApiError): string => {
 };
 
 /**
- * The technical half, for the footnote under the message.
- *
- * <p>Kept on screen rather than hidden: support asks for the correlation id, and the code is what
- * turns a vague report into a searchable one. It is secondary text under a readable sentence instead
- * of the headline above it.
+ * The technical half - deliberately no longer shown. People using SFL should read what to do, not
+ * an error code and a correlation id; support finds both in the browser console.
  */
 export const errorDetail = (error: FleetApiError): string | undefined => {
-  const parts = [error.code, error.correlationId ? `correlation ${error.correlationId}` : null];
-  const detail = parts.filter(Boolean).join(' · ');
-  return detail || undefined;
+  // Nothing technical on screen. The code and correlation id are logged to the console when the
+  // error is built (see `fromEnvelope`), which is where support reads them.
+  void error;
+  return undefined;
 };
 
 /** `true` for anything thrown by the API client. */

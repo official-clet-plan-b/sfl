@@ -105,8 +105,8 @@ const FindingDialog = ({ findingId, onClose, onChanged }: { findingId: string; o
                         { label: 'Owner', value: finding.ownerReference ?? 'Not assigned' },
                         { label: 'Target date', value: finding.targetDate ? formatDate(finding.targetDate) : '-' },
                         { label: 'Status', value: humanise(finding.status) },
-                        { label: 'Maintenance work order (S153)', value: <>{linkText(finding.workOrderState, finding.workOrderNumber, 'S153')}</> },
-                        { label: 'Safety incident (S163)', value: finding.requiresIncident ? linkText(finding.incidentState, finding.incidentReference, 'S163') : 'Not required' },
+                        { label: 'Maintenance work order', value: <>{linkText(finding.workOrderState, finding.workOrderNumber, 'S153')}</> },
+                        { label: 'Safety incident', value: finding.requiresIncident ? linkText(finding.incidentState, finding.incidentReference, 'S163') : 'Not required' },
                         { label: 'Description', value: finding.description ?? '-', span: 2 },
                         ...(finding.closureMode ? [{ label: 'Closed by', value: `${humanise(finding.closureMode)}${finding.closureApprovedBy ? ` · approved by ${finding.closureApprovedBy}` : ''}${finding.closedAt ? ` · ${formatDateTime(finding.closedAt)}` : ''}`, span: 2 as const }] : []),
                         ...(finding.closureReason ? [{ label: 'Closure reason', value: finding.closureReason, span: 2 as const }] : []),
@@ -216,7 +216,7 @@ const FindingDialog = ({ findingId, onClose, onChanged }: { findingId: string; o
       {finding && pending?.kind === 'action' && <ActionFormDialog finding={finding} onClose={() => setPending(undefined)} onDone={done} />}
       {finding && pending?.kind === 'evidence' && <EvidenceFormDialog finding={finding} actions={detail.data?.actions ?? []} onClose={() => setPending(undefined)} onDone={done} />}
       {finding && pending?.kind === 'incident' && (
-        <ReasonDialog title="Link the incident" description="Enter the reference Incident Reporting (S163) gave this incident." label="Incident reference" submitLabel="Link incident"
+        <ReasonDialog title="Link the incident" description="Enter the reference Incident Reporting gave this incident." label="Incident reference" submitLabel="Link incident"
           write={(reference) => hygieneApi.linkIncident(finding.id, reference)} onClose={() => setPending(undefined)} onDone={done} />
       )}
       {finding && pending?.kind === 'exception' && (

@@ -42,26 +42,26 @@ describe('accounts for the serving platform', () => {
     expect(accountsForServingPlatform()).toHaveLength(seededAccounts.length);
   });
 
-  it('the facilities service lists facilities accounts and not a driver', () => {
+  it('the facilities service lists facilities accounts and not a fleet officer', () => {
     serving.value = 'IFIMP';
     const emails = accountsForServingPlatform().map((account) => account.email);
 
     expect(emails).toContain('facilitiesmanager@clet.gh');
     expect(emails).toContain('technician@clet.gh');
-    expect(emails).not.toContain('driver@clet.gh');
+    expect(emails).not.toContain('fleetofficer@clet.gh');
   });
 
-  it('the fleet service lists a driver and not a facilities technician', () => {
+  it('the fleet service lists a fleet officer and not a facilities technician', () => {
     serving.value = 'FTLMP';
     const emails = accountsForServingPlatform().map((account) => account.email);
 
-    expect(emails).toContain('driver@clet.gh');
+    expect(emails).toContain('fleetofficer@clet.gh');
     expect(emails).toContain('fleetmanager@clet.gh');
     expect(emails).not.toContain('technician@clet.gh');
   });
 
-  it('a driver is foreign to facilities and at home on fleet', () => {
-    const driver = findAccount('driver@clet.gh');
+  it('a fleet officer is foreign to facilities and at home on fleet', () => {
+    const driver = findAccount('fleetofficer@clet.gh');
     expect(driver).toBeDefined();
 
     serving.value = 'IFIMP';

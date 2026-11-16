@@ -169,7 +169,7 @@ const RiskAssessmentDetailPage = () => {
                   { label: 'Signed off by', value: assessment.signedOffBy ?? 'Nobody yet' },
                   { label: 'Draft open', value: assessment.draftVersion ? `v${assessment.draftVersion}` : 'No' },
                   { label: 'Activity type', value: assessment.activityType },
-                  { label: 'S152 location', value: assessment.locationCode },
+                  { label: 'Location', value: assessment.locationCode },
                   { label: 'Open review flags', value: detail.reviewFlags.filter((flag) => flag.status !== 'CLEARED').length },
                 ]}
               />

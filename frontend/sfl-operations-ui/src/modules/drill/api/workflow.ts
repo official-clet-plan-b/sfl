@@ -42,9 +42,9 @@ export const readinessProblems = (plan: Pick<PlanRequest, 'drillType' | 'schedul
   });
   if (!plan.scheduledFor) problems.push('Choose when the drill will run.');
   if (!plan.assemblyZone?.trim()) problems.push('Name the assembly point the roll-call is taken at.');
-  if (!plan.notificationTemplateId) problems.push('Choose the S174 drill template the notification is sent with.');
+  if (!plan.notificationTemplateId) problems.push('Choose the drill notification template the notification is sent with.');
   if (plan.audienceGroupIds.length === 0 && plan.recipientZoneIds.length === 0) {
-    problems.push('Choose at least one S174 audience group or zone to notify.');
+    problems.push('Choose at least one audience group or zone to notify.');
   }
   return problems;
 };

@@ -40,7 +40,7 @@ class FacilitiesOpenApiConfiguration {
                                 (`sfl.security.enabled=false`) the actor is supplied by the `X-SFL-*` headers; in \
                                 production the same context is derived from the OIDC/JWT principal.
                                 """)
-                        .license(new License().name("CLET internal")))
+                        .license(new License().name("GSL internal")))
                 .components(new Components()
                         .addSecuritySchemes("bearer-jwt", new SecurityScheme()
                                 .type(SecurityScheme.Type.HTTP)

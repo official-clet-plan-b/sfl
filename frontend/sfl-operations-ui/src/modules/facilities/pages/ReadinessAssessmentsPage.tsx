@@ -142,7 +142,7 @@ const ReadinessAssessmentsPage = () => {
           </SectionDescription>
           <SectionActions className="items-end [&_button]:whitespace-nowrap">
             {!roomId && (
-              <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
+              <SiteSelect inline value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
             )}
             {roomId && (
               <Button variant="ghost" size="sm" onClick={() => setParams({})}>

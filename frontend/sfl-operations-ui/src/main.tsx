@@ -4,6 +4,7 @@ import { ThemeProvider } from '@rfdtech/components';
 import App from './App';
 import { loadActorPermissions } from 'shared/layout/actorPermissions';
 import { loadActorSites } from 'shared/layout/actorSites';
+import { loadFeatureFlags } from 'shared/layout/featureFlags';
 import { loadServingPlatform } from 'shared/platform';
 import { SystemPreferencesProvider } from 'shared/layout/SystemPreferences';
 import './index.css';
@@ -42,9 +43,12 @@ const render = () =>
  * `loadActorSites` joins them for the same reason and resolves against the same platform answer: a
  * `*` site scope has to become real site codes before a filter or a create dialog reads it, and both
  * are synchronous. It is a no-op for the actors whose scope is already a list, which is most of them.
+ * `loadFeatureFlags` asks the same services which systems this deployment has switched on, so the
+ * sidebar and route guard can drop switched-off modules before the first paint.
+ *
  * Run alongside the permission load rather than after it - neither needs the other's answer, and
  * two round trips in series would double the delay before the first paint for no gain.
  */
 loadServingPlatform()
-  .then(() => Promise.all([loadActorPermissions(), loadActorSites()]))
+  .then(() => Promise.all([loadActorPermissions(), loadActorSites(), loadFeatureFlags()]))
   .finally(render);

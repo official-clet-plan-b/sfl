@@ -109,7 +109,7 @@ const Overview = ({ siteCode, refresh, onOpen }: { siteCode: string; refresh: nu
       </PageSection>
       {d && (
         <PageSection>
-          <Panel title="Rent still to run" subtitle={d.financialExposure ? 'By currency, from today to each agreement end. Payable is rent CLET owes; receivable is rent owed to CLET.' : 'Not shown to your role.'}>
+          <Panel title="Rent still to run" subtitle={d.financialExposure ? 'By currency, from today to each agreement end. Payable is rent GSL owes; receivable is rent owed to GSL.' : 'Not shown to your role.'}>
             {d.financialExposure ? (
               Object.keys(d.financialExposure).length === 0 ? <p className="text-theme-sm text-gray-600">No active agreements with rent.</p> : (
                 <ul className="divide-y divide-border rounded-lg border border-border">

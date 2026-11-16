@@ -81,9 +81,10 @@ class SafetySecurityConfiguration {
     @ConditionalOnProperty(name = "sfl.security.enabled", havingValue = "true", matchIfMissing = true)
     JwtDecoder jwtDecoder(
             @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}") String issuerUri,
+            @Value("${sfl.security.jwks.uri:}") String jwkSetUri,
             @Value("${sfl.security.jwks.connect-timeout:PT3S}") Duration connectTimeout,
             @Value("${sfl.security.jwks.read-timeout:PT3S}") Duration readTimeout) {
-        return TimeoutBoundedJwtDecoders.fromIssuerLocation(issuerUri, connectTimeout, readTimeout);
+        return TimeoutBoundedJwtDecoders.fromIssuerLocation(issuerUri, jwkSetUri, connectTimeout, readTimeout);
     }
 
     @Bean
@@ -110,7 +111,7 @@ class SafetySecurityConfiguration {
                         // life-safety-feed integration endpoints are authenticated the same way
                         // (SRS-SFL-S161-01/04, SRS-SFL-S162-01, SRS-SFL-S162a-01): a VMS, an alarm panel or
                         // a fire panel gateway has no SFL bearer token either.
-                        .requestMatchers("/", "/index.html", "/emergency/**",
+                        .requestMatchers("/", "/index.html", "/home", "/home/**", "/emergency/**",
                                 "/api/v1/emergency/provider-callbacks/**", "/api/v1/access-control/integration/**",
                                 "/api/v1/cctv/integration/**", "/api/v1/intrusion/integration/**",
                                 "/api/v1/life-safety/integration/**")

@@ -6,7 +6,7 @@ package gh.edu.clet.sfl.safetysecurity.drill.domain.exception;
  */
 public enum DrillErrorCode {
 
-    DRILL_MISSING_SITE_SCOPE(400, "Select a valid CLET site before saving this drill."),
+    DRILL_MISSING_SITE_SCOPE(400, "Select a valid GSL site before saving this drill."),
     DRILL_UNAUTHORIZED_SCOPE(403, "You are not authorised to access this site or record."),
     DRILL_VALIDATION_FAILED(400, "The request failed validation."),
     DRILL_RECORD_NOT_FOUND(404, "The requested drill record was not found."),

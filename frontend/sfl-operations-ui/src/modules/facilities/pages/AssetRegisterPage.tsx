@@ -202,7 +202,7 @@ const AssetRegisterPage = () => {
             Fixed plant and equipment, and what its condition does to the estate
           </SectionDescription>
           <SectionActions className="items-end [&_button]:whitespace-nowrap">
-            <SiteSelect
+            <SiteSelect inline
               value={siteCode}
               onChange={setSiteCode}
               allowEmpty

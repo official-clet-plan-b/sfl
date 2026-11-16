@@ -141,6 +141,31 @@ class FleetDashboardApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("the same vehicle and driver on trips at different times is not a conflict, and a "
+            + "booking for later does not take the vehicle off the road now")
+    void separate_bookings_are_not_conflicts_and_future_bookings_leave_the_vehicle_available() {
+        Vehicle vehicle = FleetFixtures.vehicle();
+        UUID driverId = UUID.fromString("33333333-3333-3333-3333-333333333333");
+        DateTimeRange tomorrow = DateTimeRange.of(NOW.plus(Duration.ofHours(24)), NOW.plus(Duration.ofHours(28)));
+        DateTimeRange nextDay = DateTimeRange.of(NOW.plus(Duration.ofHours(48)), NOW.plus(Duration.ofHours(52)));
+        trips.save(Trip.plan(UUID.randomUUID(), "TRP-C", ACCRA, "Deliver examination materials", "Accra HQ",
+                        "Kumasi Centre", OperatingMode.EXAMINATION, tomorrow, FleetFixtures.metadata())
+                .assign(vehicle.id(), driverId, FleetFixtures.metadata()));
+        trips.save(Trip.plan(UUID.randomUUID(), "TRP-D", ACCRA, "Deliver examination materials", "Accra HQ",
+                        "Kumasi Centre", OperatingMode.EXAMINATION, nextDay, FleetFixtures.metadata())
+                .assign(vehicle.id(), driverId, FleetFixtures.metadata()));
+        UUID tripId = trips.findAllInScope(SiteScopeFilter.all())
+                .get(0).id();
+        vehicles.save(vehicle.assignToTrip(tripId, FleetFixtures.metadata()));
+
+        OperationsDashboardSnapshot snapshot = service.operations(filter("ACCRA"),
+                FleetTestDoubles.fleetManager("ACCRA"), false);
+
+        assertThat(snapshot.indicators().assignmentConflicts()).isZero();
+        assertThat(snapshot.indicators().vehiclesAvailable()).isEqualTo(2);
+    }
+
+    @Test
     @DisplayName("go-live readiness report blocks release when SRS dashboard blockers remain")
     void go_live_readiness_blocks_on_dashboard_gaps() {
         var report = service.goLiveReadiness(filter("ACCRA"), FleetTestDoubles.complianceOfficer("ACCRA"));

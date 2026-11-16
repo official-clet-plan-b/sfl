@@ -157,7 +157,7 @@ const Exceptions = ({ siteCode, refresh, onChanged }: { siteCode: string; refres
     { id: 'exception', header: 'Exception', width: 280, cell: ({ row }) => <CellStack primary={humanise(row.exceptionType)} secondary={`${row.reference} · ${row.description}`} /> },
     { id: 'owner', header: 'Owner', width: 150, hideBelowLg: true, cell: ({ row }) => row.ownerReference ?? 'Not assigned' },
     { id: 'due', header: 'Due', width: 120, cell: ({ row }) => formatDate(row.dueOn) },
-    { id: 'links', header: 'S153 / S163', width: 170, hideBelowLg: true, cell: ({ row }) => `${row.workOrderNumber ?? (row.workOrderState === 'PENDING_MANUAL' ? 'WO pending' : '-')} / ${row.incidentState === 'NOT_REQUIRED' ? '-' : row.incidentState === 'LINKED' ? row.incidentReference : 'pending'}` },
+    { id: 'links', header: 'Maintenance / Incidents', width: 170, hideBelowLg: true, cell: ({ row }) => `${row.workOrderNumber ?? (row.workOrderState === 'PENDING_MANUAL' ? 'WO pending' : '-')} / ${row.incidentState === 'NOT_REQUIRED' ? '-' : row.incidentState === 'LINKED' ? row.incidentReference : 'pending'}` },
     { id: 'status', header: 'Status', width: 140, align: 'right', cell: ({ row }) => <WasteBadge value={row.status} label={row.status !== 'RESOLVED' && row.dueOn < today ? 'Overdue' : undefined} /> },
   ], [today]);
   return (

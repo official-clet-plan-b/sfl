@@ -149,7 +149,7 @@ const FacilitiesAuditPage = () => {
             Every state change, and the hash-chain replay that proves none was altered
           </SectionDescription>
           <SectionActions className="items-end [&_button]:whitespace-nowrap">
-            <SiteSelect value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
+            <SiteSelect inline value={siteCode} onChange={setSiteCode} allowEmpty emptyLabel="All sites" />
             {canVerifyAuditChain() && (
               <Button variant="outline" onClick={runVerification} disabled={verifying}>
                 {verifying ? 'Verifying…' : 'Verify chain'}

@@ -18,11 +18,17 @@ import gh.edu.clet.sfl.fleetlogistics.assets.domain.AssetHistoryEntry;
 import gh.edu.clet.sfl.fleetlogistics.assets.domain.AssetReference;
 import gh.edu.clet.sfl.fleetlogistics.assets.domain.AssetStatus;
 import gh.edu.clet.sfl.fleetlogistics.assets.domain.LocationType;
+import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.DriverProfileRepository;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.TripRepository;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.VehicleLocationRepository;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.port.VehicleRepository;
 import gh.edu.clet.sfl.fleetlogistics.fleet.application.service.SiteScopeFilter;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.DateTimeRange;
+import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.DriverEligibilityStatus;
+import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.DriverLifecycleStatus;
+import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.DriverProfileReference;
+import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.LicenceClass;
+import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.LicenceDetails;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.OperatingMode;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.SiteCode;
 import gh.edu.clet.sfl.fleetlogistics.fleet.domain.model.Trip;
@@ -33,6 +39,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -71,11 +78,35 @@ class Phase2PersistencePostgresTest extends FleetPostgresSupport {
     @Autowired private VehicleRepository vehicles;
     @Autowired private VehicleLocationRepository locations;
     @Autowired private TripRepository trips;
+    @Autowired private DriverProfileRepository drivers;
     @PersistenceContext private EntityManager entityManager;
 
     private AssetReference register(String code, String tag) {
         return assets.register(new RegisterAssetCommand(code, "Projector", AssetCategory.EQUIPMENT, "ACCRA",
                 LocationType.SITE, "ACCRA", null, tag, "operator", "corr"));
+    }
+
+    @Test
+    @DisplayName("an archived driver is listed under All but never offered as eligible")
+    void an_archived_driver_is_not_in_the_eligible_view() {
+        LocalDate expiry = LocalDate.now().plusYears(1);
+        DriverProfileReference active = drivers.save(DriverProfileReference.register(UUID.randomUUID(), "HR-ACT",
+                "Active Driver", new LicenceDetails("DL-ACT", LicenceClass.B, expiry), expiry, HQ, "Unit", null,
+                FleetFixtures.metadata()));
+        DriverProfileReference archived = drivers.save(DriverProfileReference.register(UUID.randomUUID(), "HR-ARC",
+                "Archived Driver", new LicenceDetails("DL-ARC", LicenceClass.B, expiry), expiry, HQ, "Unit", null,
+                FleetFixtures.metadata()).changeLifecycle(DriverLifecycleStatus.ARCHIVED, "Left", FleetFixtures.metadata()));
+        entityManager.flush();
+
+        List<UUID> eligible = drivers.search(new DriverProfileRepository.DriverSearchCriteria(HQ.value(), null,
+                DriverEligibilityStatus.ELIGIBLE, null, null, null, 0, 50, null), SiteScopeFilter.all())
+                .content().stream().map(DriverProfileReference::id).toList();
+        List<UUID> all = drivers.search(new DriverProfileRepository.DriverSearchCriteria(HQ.value(), null,
+                null, null, null, null, 0, 50, null), SiteScopeFilter.all())
+                .content().stream().map(DriverProfileReference::id).toList();
+
+        assertThat(eligible).contains(active.id()).doesNotContain(archived.id());
+        assertThat(all).contains(active.id(), archived.id());
     }
 
     @Test
