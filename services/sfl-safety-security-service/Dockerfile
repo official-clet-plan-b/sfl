@@ -18,7 +18,7 @@ COPY services/sfl-portal-service/pom.xml services/sfl-portal-service/pom.xml
 COPY frontend frontend
 RUN mvn -f services/pom.xml -pl sfl-safety-security-service -am -Pui package -DskipTests
 
-FROM mirror.gcr.io/library/eclipse-temurin:17-jre
+FROM mirror.gcr.io/library/eclipse-temurin:25-jre
 RUN groupadd -r spring && useradd -r -g spring spring
 WORKDIR /app
 COPY --from=build /workspace/services/sfl-safety-security-service/target/sfl-safety-security-service-0.1.0-SNAPSHOT.jar app.jar
